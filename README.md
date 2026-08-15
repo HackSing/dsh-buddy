@@ -26,7 +26,7 @@ npm start
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `DSH_CMD` | `npx` | 启动器命令(全局安装了 dsh 可改为 `dsh`) |
-| `DSH_ARGS` | `@deepseek-ai/dsh web` | 启动参数 |
+| `DSH_ARGS` | `@deepseek-ai/dsh@0.1.0-rc.6 web` | 启动参数(版本钉死,dsh 处于 developer preview,有破坏性变更风险) |
 | `DSH_URL` | `http://127.0.0.1:3080` | Web UI 地址(dsh 默认端口 3080) |
 
 > 默认配置依赖 Node.js:首次启动时 `npx` 会自动下载 `@deepseek-ai/dsh`,可能需要等待片刻。

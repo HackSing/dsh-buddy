@@ -5,7 +5,7 @@ const http = require('http');
 // ---- 配置区:默认用 npx 启动 dsh Web UI(可用环境变量覆盖)----
 // 参考 https://github.com/deepseek-ai/deepseek-harness#run
 const DSH_CMD = process.env.DSH_CMD || 'npx';
-const DSH_ARGS = (process.env.DSH_ARGS || '@deepseek-ai/dsh web').split(' ');
+const DSH_ARGS = (process.env.DSH_ARGS || '@deepseek-ai/dsh@0.1.0-rc.6 web').split(' ');
 const DSH_URL = process.env.DSH_URL || 'http://127.0.0.1:3080';
 // ---------------------------------------------------------------
 
