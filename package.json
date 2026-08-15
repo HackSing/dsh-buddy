@@ -1,0 +1,17 @@
+{
+  "name": "dsh-buddy",
+  "productName": "DSH Buddy",
+  "version": "0.1.0",
+  "description": "A desktop buddy for DeepSeek Harness",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^38.0.0"
+  },
+  "allowScripts": {
+    "electron@38.8.6": true
+  }
+}
