@@ -5,13 +5,49 @@
   "description": "A desktop buddy for DeepSeek Harness",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder --mac --publish never",
+    "pack": "electron-builder --dir"
   },
   "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.1.0-rc.6"
+  },
   "devDependencies": {
-    "electron": "^38.0.0"
+    "electron": "^38.0.0",
+    "electron-builder": "^26.15.3"
   },
   "allowScripts": {
-    "electron@38.8.6": true
+    "electron@38.8.6": true,
+    "@deepseek-ai/dsh-subprocess-local@0.1.0-rc.6": true,
+    "@google/genai@1.52.0": true,
+    "koffi@3.1.5": true,
+    "node-pty@1.1.0": true,
+    "protobufjs@7.6.5": true
+  },
+  "build": {
+    "appId": "com.dshbuddy.app",
+    "productName": "DSH Buddy",
+    "files": [
+      "**/*",
+      "!docs${/*}"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/**"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": "arm64"
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "identity": null
+    },
+    "directories": {
+      "output": "dist"
+    }
   }
 }

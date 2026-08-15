@@ -6,9 +6,10 @@ A desktop buddy for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-h
 
 ## MVP 能做什么
 
+- **零依赖**:dsh 随应用分发,用 Electron 自带的 Node 运行时执行,用户机器无需安装 Node.js
 - 双击启动:自动拉起 `dsh` 服务进程(已在运行则直接复用)
 - 健康检查:轮询等待服务就绪后才打开窗口,不给用户看白屏
-- 生命周期托管:退出时回收 dsh 子进程,不留孤儿进程
+- 生命周期托管:退出时整组回收 dsh 进程树,不留孤儿进程
 - 单实例锁:重复启动只会聚焦已有窗口
 - 外部链接自动交给系统浏览器
 
@@ -16,8 +17,20 @@ A desktop buddy for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-h
 
 ```bash
 npm install
-npm start
+npm start        # 开发态
+npm run dist     # 打包 macOS .app → dist/mac-arm64/DSH Buddy.app
 ```
+
+> 打包产物未做代码签名与公证,首次打开可能需要在「系统设置 → 隐私与安全性」中放行。
+
+## 启动器解析顺序
+
+`main.js` 按以下优先级决定怎么把 dsh 跑起来:
+
+1. **环境变量覆盖**(`DSH_CMD` / `DSH_ARGS`):开发者逃生通道,完全按给定命令行执行
+2. **复用存活服务**:`DSH_URL` 已经能连通 → 直接连接,不拉起也不回收(不会误杀用户自己启动的 dsh)
+3. **内嵌 dsh**(默认):`ELECTRON_RUN_AS_NODE=1` + `process.execPath` 执行随包分发的 `@deepseek-ai/dsh`
+4. **npx 回退**:内嵌入口解析不到时,退回 `npx @deepseek-ai/dsh@<pinned> web`(需要机器上有 Node)
 
 ## 配置
 
@@ -25,11 +38,11 @@ npm start
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `DSH_CMD` | `npx` | 启动器命令(全局安装了 dsh 可改为 `dsh`) |
-| `DSH_ARGS` | `@deepseek-ai/dsh@0.1.0-rc.6 web` | 启动参数(版本钉死,dsh 处于 developer preview,有破坏性变更风险) |
-| `DSH_URL` | `http://127.0.0.1:3080` | Web UI 地址(dsh 默认端口 3080) |
+| `DSH_URL` | `http://127.0.0.1:3080` | Web UI 地址;同时决定内嵌 dsh 的 `--host` / `--port` |
+| `DSH_CMD` | *(未设置)* | 设置后走逃生通道,自定义启动器命令 |
+| `DSH_ARGS` | `@deepseek-ai/dsh@0.1.0-rc.6 web` | 逃生通道的启动参数(仅在 `DSH_CMD`/`DSH_ARGS` 任一被设置时生效) |
 
-> 默认配置依赖 Node.js:首次启动时 `npx` 会自动下载 `@deepseek-ai/dsh`,可能需要等待片刻。
+> dsh 版本在 `dependencies` 中钉死为 `0.1.0-rc.6`——它仍处于 developer preview,有破坏性变更风险。
 
 ## Roadmap
 
@@ -37,4 +50,5 @@ npm start
 - [ ] macOS 关窗常驻(Dock 保活)
 - [ ] 多工作区切换
 - [ ] 桌面通知(任务完成提醒)
-- [ ] 打包分发(electron-builder)
+- [x] 打包分发(electron-builder,macOS arm64)
+- [ ] 代码签名 + 公证、自动更新、Windows/Linux 打包
