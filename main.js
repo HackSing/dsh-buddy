@@ -241,7 +241,7 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  if (immersive) attachDragStrip(win);
+  if (immersive) attachDragStrip(win, { version: app.getVersion() });
 
   // 外部链接交给系统浏览器,不在壳内打开
   win.webContents.setWindowOpenHandler(({ url }) => {
