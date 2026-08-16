@@ -1,0 +1,124 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "bundled preset 自动安装验收",
+  "key_symbols": [
+    "installBundledPresets",
+    "dsh-anchored-standard",
+    ".agent-presets"
+  ],
+  "objective": "dsh-buddy vendor dsh-anchored-standard 并在壳启动前把三个 agent preset 幂等安装到 DSH_HOME,真实 dsh 发现列表包含且非 broken",
+  "plan_ref": "docs/plans/bundled-free-plugins.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "vendored 插件自带测试全部通过(node --test)",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T024523-01b54a5f13",
+          "objective_fingerprint": "sha256:86453b8a12903fceb80667993fd6c4cf190b2bb5625a9b87d145b4af220803c0",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "在 plugins/dsh-anchored-standard 运行 npm test(node --test,Node v24.18.1):111 项测试全部通过,exit 0",
+          "evidence_refs": [
+            "docs/acceptance/evidence/bundled-free-plugins/c1-node-test.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T02:45:23+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "安装器冒烟:空 HOME 全量安装、二次运行跳过、已存在目录不被触碰",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T024701-5a3160fa5f",
+          "objective_fingerprint": "sha256:86453b8a12903fceb80667993fd6c4cf190b2bb5625a9b87d145b4af220803c0",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "纯 Node 冒烟脚本驱动 installBundledPresets:空 HOME 全量安装三目录、二次运行全部跳过、用户改动的既存目录保持原样、DSH_HOME env 覆盖契约成立;全部断言通过",
+          "evidence_refs": [
+            "docs/acceptance/evidence/bundled-free-plugins/c2-installer-smoke.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T02:47:01+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "真实内嵌 dsh web 启动后 preset 发现列表包含三项且非 broken",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T025011-eb480bd2df",
+          "objective_fingerprint": "sha256:86453b8a12903fceb80667993fd6c4cf190b2bb5625a9b87d145b4af220803c0",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "临时 DSH_HOME 安装后真实启动内嵌 dsh web(rc.6),UI preset 选择器列出三个 bundled preset 且均显示完整描述(非 broken),Whoami 可选中",
+          "evidence_refs": [
+            "docs/acceptance/evidence/bundled-free-plugins/c3-dsh-preset-discovery.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T02:50:11+00:00"
+        }
+      ]
+    }
+  ],
+  "status": "passed",
+  "revision": 5,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:09c551669d6df90d73c3341a7551267c9976edab9491a02830a8cb8f95438843",
+      "updated_at": "2026-08-16T02:44:40+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:7e48d979f052a63fd0a5084c4bc57d7c21c6d5c35f8742d718f04d54ce5b2dd6",
+      "updated_at": "2026-08-16T02:45:23+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:907558047b63d53069871cbd45350871ea5cab88cb3c6c818cc1e0bf353ae6bd",
+      "updated_at": "2026-08-16T02:47:01+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:ef721d6c9943bfd256b1f447cd5e1fcc564a1566524071e25112e9747ffc24a5",
+      "updated_at": "2026-08-16T02:50:11+00:00"
+    }
+  ],
+  "created_at": "2026-08-16T02:44:40+00:00",
+  "updated_at": "2026-08-16T02:50:20+00:00",
+  "settled_at": "2026-08-16T02:50:20+00:00",
+  "asset_fingerprint": "sha256:f8ca70371ddc7960b83fe3ab8e95c3a1cbca924d1d82c1c22d2cf07984ab638f",
+  "replacement": null
+}

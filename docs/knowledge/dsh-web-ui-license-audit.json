@@ -1,0 +1,40 @@
+{
+  "schema_version": "docs-harness/knowledge-asset/v1",
+  "title": "dsh-web-ui 协议尽调与预装子集决策",
+  "key_symbols": [
+    "preinstall-manifest",
+    "dsh-web-ui-all",
+    "cloudflared",
+    "@linxin666"
+  ],
+  "summary": "dsh-web-ui(@linxin666 系列)为 Apache-2.0,与 MIT 主仓兼容;预装限安全 UI 子集,走 dsh plugin(pnpm)链而非 preset 拷贝",
+  "facts": [
+    {
+      "id": "webui.license.apache2",
+      "statement": "dsh-web-ui 仓库 LICENSE 为标准 Apache-2.0 且全部 12 个包 license 字段一致;与 dsh-buddy 顶层 MIT 兼容,分发时义务为保留其 LICENSE/NOTICE、README 标注该子树协议、修改需注明;无 copyleft,自带专利授权",
+      "source_refs": [
+        "plugins/preinstall-manifest.json"
+      ]
+    },
+    {
+      "id": "webui.install.pnpm-chain",
+      "statement": "dsh-web-ui 各包经 dsh plugin --profile web add 安装(转发 pnpm 到 profile 目录),内嵌 dsh 不带 pnpm,终端用户零依赖环境无法启动时自动安装;发布前预装须在构建机装好 profile 随包分发,清单以 plugins/preinstall-manifest.json 为准",
+      "source_refs": [
+        "plugins/preinstall-manifest.json"
+      ]
+    },
+    {
+      "id": "webui.subset.security",
+      "statement": "预装限六包安全 UI 子集(task-board/git-graph/skins/pet/live-stats/web-ui-settings,均 0.1.16);dsh-ssh(明文凭据)与 dsh-remote-web-ui(cloudflared 公网隧道)及聚合包 dsh-web-ui-all 明确排除,理由记录于 manifest 的 excluded 字段;pnpm 10 默认拦截 cloudflared 构建脚本可作为二线防护但不可依赖",
+      "source_refs": [
+        "plugins/preinstall-manifest.json"
+      ]
+    }
+  ],
+  "status": "active",
+  "revision": 1,
+  "revision_history": [],
+  "created_at": "2026-08-16T03:40:05+00:00",
+  "updated_at": "2026-08-16T03:40:05+00:00",
+  "asset_fingerprint": "sha256:79723fbf0ebf1d0b3e92731b20098180d09f571b0c698b5652525ca07f7f1a85"
+}

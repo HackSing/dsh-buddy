@@ -1,0 +1,39 @@
+{
+  "schema_version": "docs-harness/knowledge-asset/v1",
+  "title": "插件预装协议门槛(license gate)",
+  "key_symbols": [
+    "license_gate",
+    "preinstall-manifest",
+    "copyleft"
+  ],
+  "summary": "每个新插件进入预装清单前必须过协议门:MIT/BSD/Apache/ISC 绿灯,MPL 黄灯,GPL/AGPL/SSPL/BUSL 红灯,结论记入 preinstall-manifest",
+  "facts": [
+    {
+      "id": "gate.rule.tiers",
+      "statement": "预装协议三级门:绿灯 MIT/BSD/Apache-2.0/ISC(无传染,可进分发物,义务=保留 LICENSE/NOTICE、改动需注明);黄灯 MPL(文件级 copyleft,须逐案评估且不得修改其文件后闭源);红灯 GPL/AGPL/SSPL/BUSL(进同一分发物可能强制开源组合作品或限制使用场景,一律不进本项目分发物)",
+      "source_refs": [
+        "plugins/preinstall-manifest.json"
+      ]
+    },
+    {
+      "id": "gate.rule.evidence",
+      "statement": "过门证据不得只看 README 自述:须核对仓库 LICENSE 文件全文与每个包 package.json 的 license 字段一致性,并检查 install/postinstall 脚本与敏感依赖(隧道、凭据存储、二进制下载);结论与版本 pin 一并记入 preinstall-manifest.json,分发触发义务而自用不触发",
+      "source_refs": [
+        "plugins/preinstall-manifest.json",
+        "docs/knowledge/dsh-web-ui-license-audit.md"
+      ]
+    }
+  ],
+  "status": "active",
+  "revision": 2,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:ef350375a0aae0984d92f3188cdfbbb88b82c3267129a00677bdeef6c3624469",
+      "updated_at": "2026-08-16T03:45:22+00:00"
+    }
+  ],
+  "created_at": "2026-08-16T03:45:22+00:00",
+  "updated_at": "2026-08-16T03:53:37+00:00",
+  "asset_fingerprint": "sha256:018afcddbafbe9a19856538271dfb8e4285c18f6cc02abc81557e09b3867c460"
+}

@@ -1,0 +1,21 @@
+验证方式:
+1. 全新临时 DSH_HOME(scratchpad/dsh-home-e2e),用 lib/bundled-presets.js 的
+   installBundledPresets 安装三个随包 preset(preset/zero-anchored-standard/whoami-standard)。
+2. 以该 DSH_HOME 真实启动内嵌 dsh:
+   DSH_HOME=<temp> ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron \
+     node_modules/@deepseek-ai/dsh/lib/bin.js web --host 127.0.0.1 --port 3199
+   服务 1 秒内打印 "dsh web: http://127.0.0.1:3199"。
+3. 浏览器打开 UI,点开 Agent 预设选择器,页面文本(get_page_text)实录如下——
+   官方 4 preset 之外,三个 bundled preset 全部出现,且各自显示 preset.yml 的完整
+   描述(broken preset 会显示故障原因而非描述,故三项均非 broken):
+
+  Anchored Standard (experimental)
+  Bootstrap with the Minimal preset's real tool pair (persistent bash + str_replace_editor) and no auto-injected workspace or skill context, then expose the full Standard catalog after the first durable tool call or reply.
+  Zero-Anchored Standard (experimental)
+  Inject one zero-tool anchor turn (fixed user message), then expose the full Standard tool catalog from the next turn on.
+  Whoami Standard (experimental)
+  Seed one fixed "你是谁" (who are you) self-introduction turn on an empty tool surface, then let the user's first real message proceed on the next turn with the promoted resident catalog unlocked. Subagents inherit the same anchor flow.
+
+4. 选中 Whoami Standard 成功(选择器按钮标签更新)。未覆盖层:实际挂载(mount)
+   需要选定工作区,无头浏览器无法驱动原生目录选择器;../preset/ 相对引用的
+   文件级可解析性已在 c2 冒烟中断言(instruction-hint.mjs 等文件就位)。

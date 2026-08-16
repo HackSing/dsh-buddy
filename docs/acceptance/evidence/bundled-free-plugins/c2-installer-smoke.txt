@@ -1,0 +1,5 @@
+run1 installed: preset,whoami-standard,zero-anchored-standard
+run2 skipped: preset,whoami-standard,zero-anchored-standard
+run3 user edit preserved
+defaultDshHome contract ok
+SMOKE PASS

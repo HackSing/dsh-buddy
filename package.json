@@ -10,6 +10,9 @@
     "pack": "electron-builder --dir"
   },
   "license": "MIT",
+  "workspaces": [
+    "plugins/*"
+  ],
   "dependencies": {
     "@deepseek-ai/dsh": "0.1.0-rc.6"
   },
@@ -34,7 +37,8 @@
     ],
     "asar": true,
     "asarUnpack": [
-      "node_modules/**"
+      "node_modules/**",
+      "plugins/**"
     ],
     "mac": {
       "target": [

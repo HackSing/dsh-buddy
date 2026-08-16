@@ -1,0 +1,25 @@
+{
+  "comment": "dsh-buddy 预装插件清单:发布前的构建机预装链路以此为准;新插件入单前先过协议门(规则见 docs/knowledge/plugin-license-gate.md),本批尽调结论见 docs/knowledge/dsh-web-ui-license-audit.md",
+  "license_gate": {
+    "green": ["MIT", "BSD", "Apache-2.0", "ISC"],
+    "yellow": ["MPL(文件级 copyleft,逐案评估)"],
+    "red": ["GPL", "AGPL", "SSPL", "BUSL(不进分发物)"],
+    "evidence": "核对 LICENSE 全文+每包 license 字段+install 脚本+敏感依赖,不只信 README"
+  },
+  "profile": "web",
+  "source": "https://github.com/zhu1090093659/dsh-web-ui",
+  "license": "Apache-2.0",
+  "packages": [
+    { "name": "@linxin666/dsh-client-ui-task-board", "version": "0.1.16" },
+    { "name": "@linxin666/dsh-client-ui-git-graph", "version": "0.1.16" },
+    { "name": "@linxin666/dsh-skins", "version": "0.1.16" },
+    { "name": "@linxin666/dsh-pet", "version": "0.1.16" },
+    { "name": "@linxin666/dsh-live-stats", "version": "0.1.16" },
+    { "name": "@linxin666/dsh-client-ui-web-ui-settings", "version": "0.1.16" }
+  ],
+  "excluded": [
+    { "name": "@linxin666/dsh-ssh", "reason": "SSH 凭据明文存 ~/.dsh/dsh-ssh.json,不默认替用户开启" },
+    { "name": "@linxin666/dsh-remote-web-ui", "reason": "依赖 cloudflared 建公网隧道暴露本地 UI,不默认替用户开启" },
+    { "name": "@linxin666/dsh-web-ui-all", "reason": "聚合包含上述 remote-web-ui,预装用子集不用聚合" }
+  ]
+}

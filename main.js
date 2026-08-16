@@ -1,8 +1,11 @@
 const { app, BrowserWindow, shell, dialog } = require('electron');
 const { spawn } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const http = require('http');
+const { installBundledPresets, defaultDshHome } = require('./lib/bundled-presets');
+const { attachDragStrip } = require('./lib/immersive-titlebar');
 
 // ---- 配置区 ----
 // 默认走「内嵌 dsh」:用 Electron 自带的 Node 运行时执行随包分发的 dsh,用户机器无需 Node。
@@ -126,6 +129,33 @@ async function waitForServer(url, timeoutMs) {
   return false;
 }
 
+// 随包 plugins 目录:打包态在 asar 之外(asarUnpack),开发态即仓库目录
+function resolvePluginsRoot() {
+  if (app.isPackaged && process.resourcesPath) {
+    return path.join(process.resourcesPath, 'app.asar.unpacked', 'plugins');
+  }
+  return path.join(app.getAppPath(), 'plugins');
+}
+
+// 把随包 agent preset 装进 DSH_HOME。preset 是增强项:
+// 安装失败要让用户看见,但不阻断 dsh 本体启动。
+function ensurePresets() {
+  try {
+    const summary = installBundledPresets({
+      pluginsRoot: resolvePluginsRoot(),
+      dshHome: defaultDshHome(process.env, os.homedir()),
+    });
+    if (summary.installed.length > 0) {
+      console.log(`[dsh-buddy] installed bundled presets: ${summary.installed.join(', ')}`);
+    }
+  } catch (err) {
+    dialog.showErrorBox(
+      'DSH Buddy',
+      `内置 preset 安装失败:${err.message}\ndsh 仍将正常启动,可稍后重装应用修复。`
+    );
+  }
+}
+
 // 若 dsh 未在运行,则作为子进程拉起并托管生命周期
 async function ensureDsh() {
   if (await isUp(DSH_URL)) {
@@ -172,15 +202,20 @@ async function ensureDsh() {
 }
 
 function createWindow() {
+  // macOS 走沉浸式:隐藏原生标题栏,红绿灯悬浮,dsh 界面直通窗口顶端;
+  // 拖拽能力由注入的顶部拖拽带补回(见 lib/immersive-titlebar.js)。
+  const immersive = process.platform === 'darwin';
   win = new BrowserWindow({
     width: 1280,
     height: 800,
     title: 'DSH Buddy',
+    ...(immersive ? { titleBarStyle: 'hiddenInset' } : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
+  if (immersive) attachDragStrip(win);
 
   // 外部链接交给系统浏览器,不在壳内打开
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -204,6 +239,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
+    ensurePresets();
     const ok = await ensureDsh();
     if (!ok) {
       dialog.showErrorBox(

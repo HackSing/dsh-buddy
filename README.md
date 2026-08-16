@@ -1,10 +1,31 @@
 # DSH Buddy
 
-A desktop buddy for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`).
+**[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)(`dsh`)的桌面发行版**——打包、策展、集成、信任。
 
-把 dsh 的 Web UI 装进原生桌面窗口,并托管 dsh 服务进程的完整生命周期:启动即拉起、就绪才展示、退出即回收。
+dsh 是一个强大且快速演进的 agent harness;DSH Buddy 把它变成双击即用的桌面应用:
+**从下载到第一个 agent 会话不超过一分钟——不需要 Node,不需要终端,不需要自己判断哪个插件能装。**
 
-## MVP 能做什么
+> 本项目是社区项目,与 DeepSeek 无隶属关系,不代表其认可或背书。DeepSeek 及相关商标归其权利人所有。
+
+## 发行版的四个职能
+
+| 职能 | 具体动作 |
+|---|---|
+| 打包 | dsh 随应用零依赖分发,双击启动,进程生命周期托管 |
+| 策展 | 精选社区 preset 与插件,过协议门和安全审查后随包提供 |
+| 集成 | 幂等安装、沉浸式窗口、开箱即用的默认配置 |
+| 信任 | 协议逐包核验、安全敏感组件默认不启用、版本钉死可复现 |
+
+## 策展承诺
+
+进入随包清单的每个组件都要过三道门:
+
+1. **协议门**:核对 LICENSE 全文与每个包的 license 字段,copyleft 组件不进分发物
+   (规则见 [plugin-license-gate](docs/knowledge/plugin-license-gate.md));
+2. **安全门**:涉及凭据存储、网络隧道、远程访问的组件默认不预装,由用户自行决定;
+3. **版本门**:版本钉死在 [preinstall-manifest](plugins/preinstall-manifest.json),升级须重新过门。
+
+## 壳能力
 
 - **零依赖**:dsh 随应用分发,用 Electron 自带的 Node 运行时执行,用户机器无需安装 Node.js
 - 双击启动:自动拉起 `dsh` 服务进程(已在运行则直接复用)
@@ -12,6 +33,14 @@ A desktop buddy for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-h
 - 生命周期托管:退出时整组回收 dsh 进程树,不留孤儿进程
 - 单实例锁:重复启动只会聚焦已有窗口
 - 外部链接自动交给系统浏览器
+
+## 内置插件
+
+`plugins/` 是免费开源插件的 npm workspace。当前随包分发
+[dsh-anchored-standard](plugins/dsh-anchored-standard/README.zh-CN.md):三个实验性
+agent preset(Anchored / Zero-Anchored / Whoami Standard)。应用启动时把它们幂等安装到
+`$DSH_HOME/.agent-presets/`——目录已存在则跳过,不覆盖你的本地修改——启动后即可在
+dsh 的 preset 选择器中选用。
 
 ## 运行
 
