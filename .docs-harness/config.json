@@ -1,0 +1,41 @@
+{
+  "schema_version": "docs-harness/project-config/v9",
+  "version": "2.7.2",
+  "installed_script_fingerprint": "sha256:94fe45823db3a57f6ae7f012aa96091e2eeb772bdda3e9112a6aeebbc3cd12f8",
+  "installed_module_fingerprints": {
+    "managed_assets.py": "sha256:67036e922fc32c1c1cd1e80d71409f54b0a248b92ad4068b5b62607969f30f79",
+    "asset_checks.py": "sha256:4d38f2667fa413c6de2c712ea229d095c74c660775a901f79e4ce10c6174d4ba",
+    "plan_governance.py": "sha256:853a01f60e67ad87c734e2e0094b977208879f65c3d552a5adbbe9e72562d4e0",
+    "knowledge_assets.py": "sha256:35007eff1a9a8d3f181b65ebfeb04441ffe9772f5e390fea7a9b914122ef8e12",
+    "acceptance_assets.py": "sha256:027c332ce5a77bc6fa4a10a314162a791827c6f30ebe7af3c17a83f7db6e6ab5"
+  },
+  "installed_plan_template_fingerprints": {
+    "levels/brief.json": "sha256:c750c65edaa702a033e92dca6f2a9058c744e77ada605398924fcd46de506cda",
+    "levels/full.json": "sha256:8f819fc72b2281865badd1936774003a232a85f6f5c3d7091845f32ef37e7348",
+    "profiles/general.json": "sha256:257ac7a7d199cabe3f96176caec8af538a8aaa837d63bb2eb7630a19cab5c207",
+    "profiles/frontend-ui.json": "sha256:fc55dbd67b9a8806a6129a120947296bdcf27bda344bce5267cb9c7d745bbf7b",
+    "profiles/backend-service.json": "sha256:e4e5b6eac81c4b868209d686753ab7712773d6124054392014848595b28d6be2",
+    "profiles/bugfix.json": "sha256:42eb2bdfe2164ef5d5d5c84537ef9e0aad4680350b145f3eb3dfbf0854cf366e",
+    "profiles/architecture.json": "sha256:17aa8f3fde2507cfcc5f05f0041c862a91f44350c229b4d604331941a50bf43c",
+    "profiles/migration-release.json": "sha256:3418bb4385dc5d2def6b8372dfcb9f18d38730cf47cb0ac245a5ab6b355e3ef3"
+  },
+  "installed_githook_fingerprints": {
+    "pre-commit": "sha256:74328d35afaecc36554b9145d306b5a6b7e15301ee9b576c5f400cbc90c0639b",
+    "setup.sh": "sha256:8d209ab68fc4e69210e3c653e19e24a1d3a3b0d3f3bafddf6157a4edbefbd0c4"
+  },
+  "direct_mode": {
+    "default": true
+  },
+  "knowledge": {
+    "mode": "asset_lifecycle",
+    "query": "on_demand",
+    "docs_preexisting_at_install": true
+  },
+  "migration": {
+    "source_version": null,
+    "legacy_document_system": "not_present",
+    "removed_paths": [],
+    "preserved_paths": []
+  },
+  "installed_at": "2026-08-16T01:48:34+00:00"
+}

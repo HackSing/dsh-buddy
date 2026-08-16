@@ -1,0 +1,16 @@
+{
+  "schema_version": "docs-harness/plan-template/v3",
+  "kind": "profile",
+  "id": "frontend_ui",
+  "version": "2.7.2",
+  "fields": [
+    {"id": "user_scenario", "label": "用户与场景", "required": true},
+    {"id": "user_flow", "label": "入口与用户流程", "required": true},
+    {"id": "state_matrix", "label": "完整状态矩阵", "required": true},
+    {"id": "components_interactions", "label": "组件与交互", "required": true},
+    {"id": "visual_responsive", "label": "视觉与响应式", "required": true},
+    {"id": "accessibility", "label": "可访问性", "required": true},
+    {"id": "design_system_reuse", "label": "设计系统复用", "required": true},
+    {"id": "runtime_acceptance", "label": "真实页面或桌面运行态验收", "required": true}
+  ]
+}

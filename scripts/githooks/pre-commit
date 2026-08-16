@@ -1,0 +1,31 @@
+#!/bin/sh
+# Docs Harness pre-commit：三类资产的快速机械完整性检查。
+# 结构不具备（无 scripts/harness.py 或 docs）时静默放行；
+# python 不可用时不锁死提交，但打印醒目警告。
+
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+[ -f "$ROOT/scripts/harness.py" ] || exit 0
+[ -d "$ROOT/docs" ] || exit 0
+cd "$ROOT" || exit 0
+
+if command -v python >/dev/null 2>&1; then
+    PYTHON_BIN=python
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN=python3
+else
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2
+    echo "!! WARNING: 未找到 python/python3，已跳过 assets-check 检查 !!" >&2
+    echo "!! 三类文档资产未验证，请尽快补跑：                         !!" >&2
+    echo "!!   python scripts/harness.py assets-check --fast          !!" >&2
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2
+    exit 0
+fi
+
+OUTPUT=$("$PYTHON_BIN" scripts/harness.py assets-check --target . --fast 2>&1)
+CODE=$?
+if [ "$CODE" -ne 0 ]; then
+    echo "$OUTPUT" >&2
+    echo "pre-commit: assets-check 未通过（exit=$CODE），提交已中止" >&2
+    exit 1
+fi
+exit 0
