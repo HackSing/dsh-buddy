@@ -82,7 +82,7 @@ npm run dist     # 打包 macOS .app → dist/mac-arm64/DSH Buddy.app
 - [x] dsh 追新兼容验证(每日自动值班,新版本自动开 issue 报告)
 - [ ] Windows 安装包转正(profile 产物改为单独构建经 artifact 分发,绕开 bsdtar × pnpm junction)
 - [ ] 代码签名 + 公证 + 全自动更新(签名就绪后同一发布流升级)
-- [ ] 存量用户 profile 增量更新(版本戳分流:未改动整体替换;有自定义则自动只加不改合并,异常回滚备份)
+- [ ] 存量用户随包资产增量更新(版本戳分流;profile:未改动整体替换、有自定义则自动只加不改合并;preset:未改动替换、已改动保留用户版本;均先备份,异常回滚)
 - [ ] 系统托盘、关窗常驻等桌面体验(按用户反馈驱动)
 
 搭建思路见[发布基础设施三件套指南](docs/release-infra-playbook.md)。
