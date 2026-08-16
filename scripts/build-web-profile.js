@@ -14,12 +14,16 @@ const path = require('path');
 const REPO_ROOT = path.join(__dirname, '..');
 const MANIFEST_PATH = path.join(REPO_ROOT, 'plugins', 'preinstall-manifest.json');
 const OUTPUT_PATH = path.join(REPO_ROOT, 'build', 'web-profile.tar.gz');
-const ELECTRON_BIN = path.join(REPO_ROOT, 'node_modules', '.bin', 'electron');
-const DSH_BIN = path.join(REPO_ROOT, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js');
+const DSH_PKG_DIR = path.join(REPO_ROOT, 'node_modules', '@deepseek-ai', 'dsh');
+const { binEntryFrom } = require('../lib/dsh-entry');
 
+// 本脚本自身就运行在 Node 里,用同一个运行时(process.execPath)拉起 dsh 即可:
+// 跨平台一致(Windows 上没有 .bin/electron 这个 POSIX 路径),也少一层间接。
 function dshPlugin(dshHome, profile, args) {
-  execFileSync(ELECTRON_BIN, [DSH_BIN, 'plugin', '--profile', profile, ...args], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', DSH_HOME: dshHome },
+  const entry = binEntryFrom(DSH_PKG_DIR);
+  if (!entry) throw new Error(`cannot resolve dsh bin entry from ${DSH_PKG_DIR}`);
+  execFileSync(process.execPath, [entry, 'plugin', '--profile', profile, ...args], {
+    env: { ...process.env, DSH_HOME: dshHome },
     stdio: 'inherit',
   });
 }

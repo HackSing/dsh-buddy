@@ -1,0 +1,104 @@
+# 发布流水线:推送 v* tag → 双平台并行构建安装包 → 挂到同名 GitHub Release。
+# tag 含 - 后缀(如 v0.1.0-test1)自动标记为 prerelease:不占 /releases/latest,
+# 应用内更新检查不会把它推给用户,可放心用来试流水线。
+# Windows 侧为实验性(continue-on-error):打不出包不阻塞 macOS 发布。
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-14
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      # predist 的 profile 构建要把插件装进临时 profile,dsh plugin 转发给 pnpm
+      - name: 启用 pnpm
+        run: corepack enable
+
+      - name: 校验 tag 与 package.json 版本一致
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          ver="$(node -p "require('./package.json').version")"
+          case "$tag" in
+            "v$ver"|"v$ver"-*) echo "tag $tag ↔ version $ver OK" ;;
+            *) echo "tag $tag 与 package.json version $ver 不一致,先改版本再打 tag"; exit 1 ;;
+          esac
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建 dmg(含 predist 预装 profile)
+        run: npm run dist
+
+      - name: 创建 Release 并上传 dmg
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          prerelease=""
+          case "$tag" in *-*) prerelease="--prerelease" ;; esac
+          # 双平台任务并行,谁先到谁创建;已存在则忽略失败继续上传
+          gh release create "$tag" --title "$tag" --generate-notes $prerelease || true
+          gh release upload "$tag" dist/*.dmg --clobber
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    # 实验性:Windows 打包路径尚未在真机验证,失败不阻塞 macOS 发布
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: 启用 pnpm
+        run: corepack enable
+
+      - name: 校验 tag 与 package.json 版本一致
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          ver="$(node -p "require('./package.json').version")"
+          case "$tag" in
+            "v$ver"|"v$ver"-*) echo "tag $tag ↔ version $ver OK" ;;
+            *) echo "tag $tag 与 package.json version $ver 不一致,先改版本再打 tag"; exit 1 ;;
+          esac
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建 Windows 安装包(nsis x64)
+        run: npm run dist:win
+
+      - name: 上传安装包到 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          prerelease=""
+          case "$tag" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$tag" --title "$tag" --generate-notes $prerelease || true
+          gh release upload "$tag" dist/*.exe --clobber

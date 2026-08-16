@@ -1,0 +1,95 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "Release CI 验收",
+  "key_symbols": [
+    "release.yml",
+    "dist:win",
+    "gh release upload"
+  ],
+  "objective": "v* tag 触发双平台构建并自动发布 Release;测试 prerelease tag 全链验证 macOS 侧",
+  "plan_ref": "docs/plans/release-ci.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "跨平台重构后的构建脚本本地产出有效 tar",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T091031-e1160d6169",
+          "objective_fingerprint": "sha256:40d1416fda2f8af377457a73a1ce0452a90a10c8620d9f77dafcf54fdfe02b25",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "重构后 node scripts/build-web-profile.js 本地运行 exit 0,tar 内 @linxin666 六包+skin-center 齐全",
+          "evidence_refs": [
+            "docs/acceptance/evidence/release-ci/c1-build-script.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T09:10:31+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "release.yml YAML 有效且版本守卫逻辑正确",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T091031-ce2139c254",
+          "objective_fingerprint": "sha256:40d1416fda2f8af377457a73a1ce0452a90a10c8620d9f77dafcf54fdfe02b25",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "yaml.safe_load 通过;守卫 case 逻辑四组断言:同版本与预发布后缀 PASS,版本不符与前缀伪匹配 REJECT",
+          "evidence_refs": [
+            "docs/acceptance/evidence/release-ci/c2-yaml-guard.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T09:10:31+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "真实 tag 推送触发 macOS 构建,Release 自动创建且 dmg 资产挂载",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "pending",
+      "records": []
+    }
+  ],
+  "status": "pending",
+  "revision": 3,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:5c091aace631aa0688ddcc33afd7fb4aab55ac8550546963d2e47f2303937712",
+      "updated_at": "2026-08-16T09:10:18+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:1d456693159aeff94fd6804ff58c562c5172651ba4a90204c58f7fde80a4f4d8",
+      "updated_at": "2026-08-16T09:10:31+00:00"
+    }
+  ],
+  "created_at": "2026-08-16T09:10:18+00:00",
+  "updated_at": "2026-08-16T09:10:31+00:00",
+  "settled_at": null,
+  "asset_fingerprint": "sha256:0d6a6c788efd5350008889de75bfa114533b68261ddc97b7a4ebf48058b0eb5e"
+}

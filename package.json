@@ -8,7 +8,8 @@
     "start": "electron .",
     "dist": "electron-builder --mac --publish never",
     "pack": "electron-builder --dir",
-    "predist": "node scripts/build-web-profile.js"
+    "predist": "node scripts/build-web-profile.js",
+    "dist:win": "node scripts/build-web-profile.js && electron-builder --win --publish never"
   },
   "license": "MIT",
   "workspaces": [
@@ -69,6 +70,14 @@
     ],
     "dmg": {
       "sign": false
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": "x64"
+        }
+      ]
     }
   }
 }

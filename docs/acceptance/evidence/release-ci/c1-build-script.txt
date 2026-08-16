@@ -1,0 +1,9 @@
+== c1 重构后构建脚本本地运行(见任务输出,exit 0) ==
+tar 内 @linxin666 条目数: 453(非空,与重构前一致的包集合)
+web/node_modules/@linxin666/dsh-client-ui-web-ui-settings/
+web/node_modules/@linxin666/dsh-client-ui-task-board/
+web/node_modules/@linxin666/dsh-live-stats/
+web/node_modules/@linxin666/dsh-client-ui-skin-center/
+web/node_modules/@linxin666/dsh-pet/
+web/node_modules/@linxin666/dsh-client-ui-git-graph/
+web/node_modules/@linxin666/dsh-skins/

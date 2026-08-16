@@ -1,0 +1,7 @@
+== c2 YAML 解析 ==
+YAML OK
+== 守卫逻辑本地断言(tag/version 匹配表) ==
+v0.1.0 vs 0.1.0 -> PASS
+v0.1.0-test1 vs 0.1.0 -> PASS
+v0.2.0 vs 0.1.0 -> REJECT
+v0.1.00 vs 0.1.0 -> REJECT
