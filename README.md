@@ -75,9 +75,13 @@ npm run dist     # 打包 macOS .app → dist/mac-arm64/DSH Buddy.app
 
 ## Roadmap
 
-- [ ] 系统托盘 + 全局唤醒快捷键
-- [ ] macOS 关窗常驻(Dock 保活)
-- [ ] 多工作区切换
-- [ ] 桌面通知(任务完成提醒)
-- [x] 打包分发(electron-builder,macOS arm64)
-- [ ] 代码签名 + 公证、自动更新、Windows/Linux 打包
+- [x] 打包分发(electron-builder,macOS arm64 dmg)
+- [x] 随包资产:精选 agent preset 预装 + 插件 profile 随包
+- [x] 发布流水线(推 tag 即自动构建并发 Release;Windows 侧实验性)
+- [x] 应用内更新提示(检查 GitHub Releases,24h 节流)
+- [x] dsh 追新兼容验证(每日自动值班,新版本自动开 issue 报告)
+- [ ] Windows 安装包转正(profile 产物改为单独构建经 artifact 分发,绕开 bsdtar × pnpm junction)
+- [ ] 代码签名 + 公证 + 全自动更新(签名就绪后同一发布流升级)
+- [ ] 系统托盘、关窗常驻等桌面体验(按用户反馈驱动)
+
+搭建思路见[发布基础设施三件套指南](docs/release-infra-playbook.md)。
