@@ -2,6 +2,10 @@
 
 项目文档从这里进入；Docs Harness 只维护下方任务方案区块。
 
+## 方法论
+
+- [开源项目发布基础设施三件套搭建指南](release-infra-playbook.md) — 状态：有效（方法论沉淀）；rc 追新值班 / tag 即发流水线 / 应用内更新提示的通用搭建方法与实战坑；关键符号：`dsh-compat.yml`、`release.yml`、`update-check`、`workflow_dispatch`
+
 <!-- docs-harness:plans-index:start -->
 ## 任务方案
 
