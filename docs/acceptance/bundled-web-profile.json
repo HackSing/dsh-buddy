@@ -1,0 +1,156 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "bundled web profile 链路验收",
+  "key_symbols": [
+    "build-web-profile",
+    "installBundledProfile",
+    "extraResources"
+  ],
+  "objective": "构建机生成含六插件的 web profile tar 随包分发,新机器首启解包获得完整体验,已有 profile 不被触碰",
+  "plan_ref": "docs/plans/bundled-web-profile.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "tar 内容与 manifest 六包一致且目录齐全",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T044357-df747b9a2f",
+          "objective_fingerprint": "sha256:21cc16acd29ffe863f86d5d946a0cebf6c4ae4be8124865ada429be1bfeeb026",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "node scripts/build-web-profile.js 产出 4.3M tar;tar 清单验证 web/package.json 依赖恰为 manifest 六包,node_modules/@linxin666 含六包+skins 传递依赖 skin-center",
+          "evidence_refs": [
+            "docs/acceptance/evidence/bundled-web-profile/c1-tar-contents.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T04:43:57+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "空 DSH_HOME 解包后真实启动,UI 出现任务看板",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T044540-94c13bf4f1",
+          "objective_fingerprint": "sha256:21cc16acd29ffe863f86d5d946a0cebf6c4ae4be8124865ada429be1bfeeb026",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "全新 DSH_HOME 经壳安装器(presets+profile 解包)后真实启动内嵌 dsh,UI 首屏出现任务看板,插件零网络装载成功",
+          "evidence_refs": [
+            "docs/acceptance/evidence/bundled-web-profile/c2-fresh-boot.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T04:45:40+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "已存在 profiles/web 时跳过且不触碰",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T044459-243aef28c3",
+          "objective_fingerprint": "sha256:21cc16acd29ffe863f86d5d946a0cebf6c4ae4be8124865ada429be1bfeeb026",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "冒烟脚本三路径断言:空 HOME 安装成功且包目录齐全、已存在 profile 跳过且用户文件原样、tar 缺失返回 no-tarball 开发态正常",
+          "evidence_refs": [
+            "docs/acceptance/evidence/bundled-web-profile/c3-installer-smoke.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T04:44:59+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "dist 产物 Resources 含 web-profile.tar.gz",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T044852-4a220229c4",
+          "objective_fingerprint": "sha256:21cc16acd29ffe863f86d5d946a0cebf6c4ae4be8124865ada429be1bfeeb026",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "npm run dist 经 predist 钩子自动重建 tar 后打包,产物 .app 的 Contents/Resources/web-profile.tar.gz 存在(4.3M)",
+          "evidence_refs": [
+            "docs/acceptance/evidence/bundled-web-profile/c4-dist-resource.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T04:48:52+00:00"
+        }
+      ]
+    }
+  ],
+  "status": "passed",
+  "revision": 6,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:fb6af309fe2c1e44118b3d1cfcddf68eb3553602ca8fec6cd5d7e1aa117558ed",
+      "updated_at": "2026-08-16T04:40:41+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:b0241690a09f68756cd6b3b2bcf93f84422d394ba9944cb79e784901d29482b5",
+      "updated_at": "2026-08-16T04:43:57+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:6216aba6aca711d4bc1d3075b5931fd203fdd30e98bb99eaeb55017e42ddf276",
+      "updated_at": "2026-08-16T04:44:59+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:0a686ceb287a40f212ebafd6aa0303768401154cbe68c97866a02fc2fb89e2aa",
+      "updated_at": "2026-08-16T04:45:40+00:00"
+    },
+    {
+      "revision": 5,
+      "asset_fingerprint": "sha256:0548079e09d736b8a80408edd2a89e2a07b233a0315fbf8a3343f0c0fe11d059",
+      "updated_at": "2026-08-16T04:48:52+00:00"
+    }
+  ],
+  "created_at": "2026-08-16T04:40:41+00:00",
+  "updated_at": "2026-08-16T04:48:52+00:00",
+  "settled_at": "2026-08-16T04:48:52+00:00",
+  "asset_fingerprint": "sha256:deff23036c700e06d348264ad19addfc161e69306207bb253611687e762a6ffd",
+  "replacement": null
+}

@@ -1,0 +1,17 @@
+== c5 dsh-compat workflow YAML 语法与最小权限契约 ==
+
+命令: python3 - <<PY (yaml.safe_load + 结构断言) ; 见下方输出
+被校验文件: .github/workflows/dsh-compat.yml
+
+[1] yaml.safe_load OK: .github/workflows/dsh-compat.yml
+    顶层键: ['True', 'jobs', 'name', 'permissions']
+[2] 触发器: ['schedule', 'workflow_dispatch']
+[3] permissions: {'contents': 'read', 'issues': 'write'}
+[4] runs-on=ubuntu-latest timeout=30
+[5] 步骤: ['actions/checkout@v4', 'actions/setup-node@v4', '启用 pnpm', '比对 dist-tag 与钉住版本', '运行兼容验证', '开 issue 报告结论', '标记兼容验证失败']
+[6] probe 步骤同时含 dist-tag 查询与 changed 两分支
+[7] verify 步骤经 env 传版本号,run 体内无 ${{ }} 插值(无表达式注入面)
+[8] issue 步骤:先 gh issue list 按标题查重,再 gh issue create,用 GITHUB_TOKEN
+[9] 工作流内无任何写回版本/推送动作(只读 package.json 做比对)
+YAML CHECK PASS
+exit=0

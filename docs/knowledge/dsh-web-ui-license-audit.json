@@ -7,19 +7,21 @@
     "cloudflared",
     "@linxin666"
   ],
-  "summary": "dsh-web-ui(@linxin666 系列)为 Apache-2.0,与 MIT 主仓兼容;预装限安全 UI 子集,走 dsh plugin(pnpm)链而非 preset 拷贝",
+  "summary": "dsh-web-ui(@linxin666 系列)为 Apache-2.0;预装限安全 UI 子集,构建机产出 profile tar 随包分发,tar 跨平台可复用",
   "facts": [
     {
       "id": "webui.license.apache2",
-      "statement": "dsh-web-ui 仓库 LICENSE 为标准 Apache-2.0 且全部 12 个包 license 字段一致;与 dsh-buddy 顶层 MIT 兼容,分发时义务为保留其 LICENSE/NOTICE、README 标注该子树协议、修改需注明;无 copyleft,自带专利授权",
+      "statement": "dsh-web-ui 仓库 LICENSE 为标准 Apache-2.0 且全部 12 个包 license 字段一致;与本仓库顶层 MIT 兼容,分发时义务为保留其 LICENSE/NOTICE、README 标注该子树协议、修改需注明;无 copyleft,自带专利授权",
       "source_refs": [
         "plugins/preinstall-manifest.json"
       ]
     },
     {
       "id": "webui.install.pnpm-chain",
-      "statement": "dsh-web-ui 各包经 dsh plugin --profile web add 安装(转发 pnpm 到 profile 目录),内嵌 dsh 不带 pnpm,终端用户零依赖环境无法启动时自动安装;发布前预装须在构建机装好 profile 随包分发,清单以 plugins/preinstall-manifest.json 为准",
+      "statement": "dsh-web-ui 各包经 dsh plugin --profile web add 安装(转发 pnpm),内嵌 dsh 不带 pnpm,故预装链路为:构建机 scripts/build-web-profile.js 在临时 DSH_HOME 初始化并装包后打 tar(dsh plugin 子命令对空 HOME 自动初始化 profile,已实证;tar 保留 pnpm 相对符号链接、硬链接落地实体),predist 钩子随 npm run dist 自动重建,extraResources 进 Resources;运行时 lib/bundled-profile.js 幂等解包,已有 profile 跳过不合并",
       "source_refs": [
+        "scripts/build-web-profile.js",
+        "lib/bundled-profile.js",
         "plugins/preinstall-manifest.json"
       ]
     },
@@ -29,12 +31,32 @@
       "source_refs": [
         "plugins/preinstall-manifest.json"
       ]
+    },
+    {
+      "id": "webui.profile.portable",
+      "statement": "预装六包全部为纯 JS(clsx/schemastery/zod 等,无原生模块——含原生依赖的 dsh-ssh 已被子集排除),因此同一份 web-profile.tar.gz 跨平台可复用,Windows 打包无需按平台重建 profile;构建脚本依赖构建机的系统 tar 与 pnpm:macOS 自带 bsdtar,Windows 10+ 同样自带 bsdtar(tar.exe),pnpm 需自行安装;Windows 壳侧现状:titleBarStyle 沉浸式仅 darwin 启用(win 保留原生边框),killDsh 已有 taskkill 分支,npx 回退在 win32 下经 shell 执行",
+      "source_refs": [
+        "scripts/build-web-profile.js",
+        "plugins/preinstall-manifest.json",
+        "main.js"
+      ]
     }
   ],
   "status": "active",
-  "revision": 1,
-  "revision_history": [],
+  "revision": 3,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:79723fbf0ebf1d0b3e92731b20098180d09f571b0c698b5652525ca07f7f1a85",
+      "updated_at": "2026-08-16T03:40:05+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:643338aff9beae8b76f700c6295e44d02c6d6426c7307783305c2db49bc4b0b2",
+      "updated_at": "2026-08-16T04:49:09+00:00"
+    }
+  ],
   "created_at": "2026-08-16T03:40:05+00:00",
-  "updated_at": "2026-08-16T03:40:05+00:00",
-  "asset_fingerprint": "sha256:79723fbf0ebf1d0b3e92731b20098180d09f571b0c698b5652525ca07f7f1a85"
+  "updated_at": "2026-08-16T05:02:01+00:00",
+  "asset_fingerprint": "sha256:85e1457b933ff9fd3d042f00f5c1f5fa16b19de5133ffc1b3ea96fe74cb70e2c"
 }

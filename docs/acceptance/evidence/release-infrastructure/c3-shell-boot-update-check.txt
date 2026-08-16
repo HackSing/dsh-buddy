@@ -1,0 +1,39 @@
+== c3 真实启动壳:更新检查不阻塞启动链且无弹窗 ==
+
+环境隔离:DSH_HOME 指向 scratchpad 下的临时目录(未触碰 ~/.dsh),DSH_URL 指向内核分配的空闲端口 52738。
+命令:DSH_HOME=<临时> DSH_URL=http://127.0.0.1:52738 ./node_modules/.bin/electron .
+
+--- 第一次启动(全新 userData 状态,已先删除 update-check.json)---
+[dsh-buddy] installed bundled presets: preset, zero-anchored-standard, whoami-standard
+[dsh-buddy] bundled profile: installed
+[dsh-buddy] launcher=embedded entry=/Users/aiware/projects/dsh-buddy/node_modules/@deepseek-ai/dsh/lib/bin.js cmd=/Users/aiware/projects/dsh-buddy/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron args=["/Users/aiware/projects/dsh-buddy/node_modules/@deepseek-ai/dsh/lib/bin.js","web","--host","127.0.0.1","--port","52738"]
+dsh web: http://127.0.0.1:52738
+[dsh-buddy] update check: no-release
+/Users/aiware/projects/dsh-buddy/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron exited with signal SIGTERM
+
+判读:
+- 日志顺序即执行顺序 —— ensureBundledAssets(presets/profile)→ ensureDsh(embedded 拉起 + 等待就绪)
+  → createWindow → update check。update check 出现在最后一行,证明它排在 createWindow 之后,
+  没有插进任何一个前置环节。
+- 结果 no-release:仓库还没发过 release,GitHub API 返回 404。全程无对话框弹出,
+  窗口正常创建(Electron Helper (Renderer) 进程 24928 在位)。
+- 服务可用性:curl http://127.0.0.1:52738/ → HTTP 200
+- 落盘状态(~/Library/Application Support/DSH Buddy/update-check.json):
+  {"lastCheckedAt": 1786868842737, "lastNotifiedVersion": null}
+  拿不到 release 也记账,避免每次启动重试。
+
+--- 第二次启动(同一 userData,验证 24 小时节流在真实进程里生效)---
+[dsh-buddy] bundled profile: skipped
+[dsh-buddy] launcher=embedded entry=/Users/aiware/projects/dsh-buddy/node_modules/@deepseek-ai/dsh/lib/bin.js cmd=/Users/aiware/projects/dsh-buddy/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron args=["/Users/aiware/projects/dsh-buddy/node_modules/@deepseek-ai/dsh/lib/bin.js","web","--host","127.0.0.1","--port","52738"]
+dsh web: http://127.0.0.1:52738
+[dsh-buddy] update check: throttled
+/Users/aiware/projects/dsh-buddy/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron exited with signal SIGTERM
+
+判读:第二次直接 throttled,未再发起任何网络请求,窗口与 dsh 一切照常。
+另可见 "bundled profile: skipped" —— 既有幂等安装逻辑未受本次重构影响。
+
+--- 隔离核对 ---
+$ stat -f "%Sm %N" ~/.dsh
+Aug 16 12:11:16 2026 /Users/aiware/.dsh   (启动发生在 16:27 之后,真实 DSH_HOME 未被写入)
+$ ls <临时 DSH_HOME>/.agent-presets  → preset  whoami-standard  zero-anchored-standard
+$ ls <临时 DSH_HOME>/profiles        → web

@@ -1,0 +1,84 @@
+# dsh 追新兼容验证:每日比对 npm dist-tag 与仓库钉住的 @deepseek-ai/dsh 版本,
+# 发现新版本才跑四项兼容验证,并把逐项结论开成 issue。
+# 本工作流只报告 —— 任何情况下都不会自动修改 package.json 里钉住的版本。
+name: dsh compat
+
+on:
+  schedule:
+    - cron: '23 2 * * *' # 每日 UTC 02:23
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  compat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # dsh plugin 子命令把安装转发给 pnpm,corepack 提供它
+      - name: 启用 pnpm
+        run: corepack enable
+
+      - name: 比对 dist-tag 与钉住版本
+        id: probe
+        run: |
+          set -euo pipefail
+          latest="$(npm view @deepseek-ai/dsh dist-tags.latest)"
+          pinned="$(node -p "require('./package.json').dependencies['@deepseek-ai/dsh']")"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          if [ "$latest" = "$pinned" ]; then
+            echo "已是最新($pinned),跳过兼容验证"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "发现新版本:$pinned -> $latest"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 版本号经 env 传入,不拼进 ${{ }} 表达式,避免注册表返回值被当成脚本执行
+      - name: 运行兼容验证
+        id: verify
+        if: steps.probe.outputs.changed == 'true'
+        continue-on-error: true # 验证失败也要走到下面的开 issue 步骤
+        env:
+          DSH_CANDIDATE: ${{ steps.probe.outputs.latest }}
+        run: |
+          node scripts/verify-dsh-compat.js "$DSH_CANDIDATE" \
+            --report "$RUNNER_TEMP/compat-report.md" \
+            --summary "$RUNNER_TEMP/compat-summary.txt"
+
+      - name: 开 issue 报告结论
+        if: steps.probe.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          DSH_CANDIDATE: ${{ steps.probe.outputs.latest }}
+        run: |
+          set -euo pipefail
+          report="$RUNNER_TEMP/compat-report.md"
+          summary="$(cat "$RUNNER_TEMP/compat-summary.txt" 2>/dev/null || echo '验证脚本异常中止')"
+          title="dsh $DSH_CANDIDATE 兼容性: $summary"
+
+          # 同版本每天只开一次:先按标题精确搜(含已关闭的)
+          existing="$(gh issue list --state all --search "\"dsh $DSH_CANDIDATE 兼容性\" in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            echo "已存在同版本 issue #$existing,跳过创建"
+            exit 0
+          fi
+
+          if [ ! -f "$report" ]; then
+            printf '验证脚本未产出报告,请查看本次 workflow 运行日志。\n' > "$report"
+          fi
+          gh issue create --title "$title" --body-file "$report"
+
+      # 兼容性回归要在 Actions 列表里就看得见,不能只躺在 issue 里
+      - name: 标记兼容验证失败
+        if: steps.verify.outcome == 'failure'
+        run: exit 1

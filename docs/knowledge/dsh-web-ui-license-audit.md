@@ -3,30 +3,36 @@
 
 # dsh-web-ui 协议尽调与预装子集决策
 
-- 修订：1
+- 修订：3
 - 关键符号：`preinstall-manifest`、`dsh-web-ui-all`、`cloudflared`、`@linxin666`
-- 资产指纹：`sha256:79723fbf0ebf1d0b3e92731b20098180d09f571b0c698b5652525ca07f7f1a85`
+- 资产指纹：`sha256:85e1457b933ff9fd3d042f00f5c1f5fa16b19de5133ffc1b3ea96fe74cb70e2c`
 
 ## 摘要
 
-dsh-web-ui(@linxin666 系列)为 Apache-2.0,与 MIT 主仓兼容;预装限安全 UI 子集,走 dsh plugin(pnpm)链而非 preset 拷贝
+dsh-web-ui(@linxin666 系列)为 Apache-2.0;预装限安全 UI 子集,构建机产出 profile tar 随包分发,tar 跨平台可复用
 
 ## 事实
 
 ### `webui.license.apache2`
 
-dsh-web-ui 仓库 LICENSE 为标准 Apache-2.0 且全部 12 个包 license 字段一致;与 dsh-buddy 顶层 MIT 兼容,分发时义务为保留其 LICENSE/NOTICE、README 标注该子树协议、修改需注明;无 copyleft,自带专利授权
+dsh-web-ui 仓库 LICENSE 为标准 Apache-2.0 且全部 12 个包 license 字段一致;与本仓库顶层 MIT 兼容,分发时义务为保留其 LICENSE/NOTICE、README 标注该子树协议、修改需注明;无 copyleft,自带专利授权
 
 证据：`plugins/preinstall-manifest.json`
 
 ### `webui.install.pnpm-chain`
 
-dsh-web-ui 各包经 dsh plugin --profile web add 安装(转发 pnpm 到 profile 目录),内嵌 dsh 不带 pnpm,终端用户零依赖环境无法启动时自动安装;发布前预装须在构建机装好 profile 随包分发,清单以 plugins/preinstall-manifest.json 为准
+dsh-web-ui 各包经 dsh plugin --profile web add 安装(转发 pnpm),内嵌 dsh 不带 pnpm,故预装链路为:构建机 scripts/build-web-profile.js 在临时 DSH_HOME 初始化并装包后打 tar(dsh plugin 子命令对空 HOME 自动初始化 profile,已实证;tar 保留 pnpm 相对符号链接、硬链接落地实体),predist 钩子随 npm run dist 自动重建,extraResources 进 Resources;运行时 lib/bundled-profile.js 幂等解包,已有 profile 跳过不合并
 
-证据：`plugins/preinstall-manifest.json`
+证据：`scripts/build-web-profile.js`、`lib/bundled-profile.js`、`plugins/preinstall-manifest.json`
 
 ### `webui.subset.security`
 
 预装限六包安全 UI 子集(task-board/git-graph/skins/pet/live-stats/web-ui-settings,均 0.1.16);dsh-ssh(明文凭据)与 dsh-remote-web-ui(cloudflared 公网隧道)及聚合包 dsh-web-ui-all 明确排除,理由记录于 manifest 的 excluded 字段;pnpm 10 默认拦截 cloudflared 构建脚本可作为二线防护但不可依赖
 
 证据：`plugins/preinstall-manifest.json`
+
+### `webui.profile.portable`
+
+预装六包全部为纯 JS(clsx/schemastery/zod 等,无原生模块——含原生依赖的 dsh-ssh 已被子集排除),因此同一份 web-profile.tar.gz 跨平台可复用,Windows 打包无需按平台重建 profile;构建脚本依赖构建机的系统 tar 与 pnpm:macOS 自带 bsdtar,Windows 10+ 同样自带 bsdtar(tar.exe),pnpm 需自行安装;Windows 壳侧现状:titleBarStyle 沉浸式仅 darwin 启用(win 保留原生边框),killDsh 已有 taskkill 分支,npx 回退在 win32 下经 shell 执行
+
+证据：`scripts/build-web-profile.js`、`plugins/preinstall-manifest.json`、`main.js`

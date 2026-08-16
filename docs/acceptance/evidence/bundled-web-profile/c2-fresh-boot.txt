@@ -1,0 +1,8 @@
+验证方式:
+1. 全新临时 DSH_HOME(dsh-home-profile-e2e),依次运行壳的两个安装器:
+   presets: ["preset","zero-anchored-standard","whoami-standard"]
+   profile: installed(node_modules/@linxin666 下 7 目录=六包+skin-center 传递依赖)
+2. DSH_HOME=<temp> 启动内嵌 dsh web --port 3299,1 秒内就绪。
+3. 浏览器打开 UI,页面文本首行即出现"任务看板"(@linxin666/dsh-client-ui-task-board
+   的侧栏入口),证明 bundled profile 的插件在零网络安装、纯解包路径下被 dsh
+   正常装载;preset 选择器同页可见。

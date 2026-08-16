@@ -1,0 +1,29 @@
+== c4 启动链重构后内嵌 dsh 入口解析与 HTTP 就绪等待不回归 ==
+
+重构内容:main.js 中的 binEntryFrom 移入 lib/dsh-entry.js;isUp/waitForServer 的 HTTP 探测与
+轮询移入 lib/http-probe.js(probeHttp/waitForHttp),main.js 只保留 isDshServing 判定与两个薄适配器;
+killDsh 的进程组回收移入 lib/process-tree.js(killProcessTree)。三者同时被
+scripts/verify-dsh-compat.js 复用,不存在平行实现。
+
+--- 证据 1:入口解析仍然走 bin 字段(取自真实启动日志)---
+[dsh-buddy] launcher=embedded entry=/Users/aiware/projects/dsh-buddy/node_modules/@deepseek-ai/dsh/lib/bin.js cmd=/Users/aiware/projects/dsh-buddy/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron args=["/Users/aiware/projects/dsh-buddy/node_modules/@deepseek-ai/dsh/lib/bin.js","web","--host","127.0.0.1","--port","52738"]
+launcher=embedded 且 entry 指向 node_modules/@deepseek-ai/dsh/lib/bin.js —— 该路径由
+lib/dsh-entry.js 的 binEntryFrom 从包的 package.json bin 字段解出,不是猜测路径。
+
+--- 证据 2:HTTP 就绪等待仍然生效 ---
+dsh web: http://127.0.0.1:52738
+waitForServer(经 lib/http-probe 的 waitForHttp + isDshServing)返回 true 后才走到 createWindow;
+若就绪等待失效,startup 会走进「等待 dsh 服务超时」的错误对话框并 app.quit(),日志将止于此。
+实际日志继续输出了 update check 行,证明 createWindow 已执行。
+
+$ curl -s -o /dev/null -w "HTTP %{http_code}" http://127.0.0.1:52738/
+HTTP 200
+
+--- 证据 3:进程组回收仍然生效 ---
+关闭壳后核对:
+$ ps -eo pid,command | grep "dsh-buddy/node_modules/electron" | grep -v grep
+(已全部退出)  —— dsh 子进程(Electron as node,PID 24926)随壳一并回收,无孤儿。
+
+--- 证据 4:同一份 lib 在纯 node 环境可用 ---
+scripts/verify-dsh-compat.js 以普通 node 进程 require 这三个 lib 并跑通四项验证
+(见 c6 证据),说明抽出的模块不含 electron 依赖,主进程与 CI 共用同一实现。

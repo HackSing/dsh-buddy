@@ -1,0 +1,106 @@
+== c1 更新检查纯逻辑冒烟(版本解析比较/24 小时节流/同版本去重) ==
+
+执行:cd <scratchpad> && node --test update-check-pure.test.js
+(冒烟脚本按任务约定放在 scratchpad,源码内联于本文件末尾以便复现;
+ 被测模块为仓库内 lib/update-check.js,脚本以绝对路径 require)
+
+--- 输出 ---
+✔ parseVersion 容忍 v 前缀与空白,丢弃预发布后缀 (1.128166ms)
+✔ parseVersion 对不可比较的输入返回 null (0.063125ms)
+✔ normalizeTag 把 tag 归一化成版本标识 (0.052792ms)
+✔ isNewerVersion 逐段数值比较,短段按 0 补齐 (0.073167ms)
+✔ isNewerVersion 按数值而非字典序比较 (0.042875ms)
+✔ isNewerVersion 不把预发布 tag 当作更新,不可解析时不提示 (0.040542ms)
+✔ isCheckDue 满 24 小时才放行 (0.047083ms)
+✔ shouldNotify 只在「更新且没提示过」时为真 (0.045833ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 64.378542
+exit=0
+
+--- 冒烟脚本源码(update-check-pure.test.js)---
+// 冒烟:lib/update-check.js 的纯逻辑(版本解析比较、24 小时节流、同版本去重)。
+// 不触网、不落盘。
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const {
+  parseVersion,
+  normalizeTag,
+  isNewerVersion,
+  isCheckDue,
+  shouldNotify,
+  CHECK_INTERVAL_MS,
+} = require('/Users/aiware/projects/dsh-buddy/lib/update-check');
+
+test('parseVersion 容忍 v 前缀与空白,丢弃预发布后缀', () => {
+  assert.deepEqual(parseVersion('v0.2.0'), [0, 2, 0]);
+  assert.deepEqual(parseVersion('0.2.0'), [0, 2, 0]);
+  assert.deepEqual(parseVersion('  V1.10.2  '), [1, 10, 2]);
+  assert.deepEqual(parseVersion('0.1.0-rc.6'), [0, 1, 0]);
+  assert.deepEqual(parseVersion('2'), [2]);
+});
+
+test('parseVersion 对不可比较的输入返回 null', () => {
+  assert.equal(parseVersion('nightly'), null);
+  assert.equal(parseVersion('1..2'), null);
+  assert.equal(parseVersion(''), null);
+  assert.equal(parseVersion(null), null);
+  assert.equal(parseVersion(undefined), null);
+  assert.equal(parseVersion(42), null);
+});
+
+test('normalizeTag 把 tag 归一化成版本标识', () => {
+  assert.equal(normalizeTag('v0.2.0'), '0.2.0');
+  assert.equal(normalizeTag('0.2.0'), '0.2.0');
+  assert.equal(normalizeTag('  v1.0.0-rc.1 '), '1.0.0-rc.1');
+  assert.equal(normalizeTag('v'), null);
+  assert.equal(normalizeTag(''), null);
+  assert.equal(normalizeTag(123), null);
+});
+
+test('isNewerVersion 逐段数值比较,短段按 0 补齐', () => {
+  assert.equal(isNewerVersion('0.2.0', '0.1.0'), true);
+  assert.equal(isNewerVersion('v0.2.0', '0.1.0'), true);
+  assert.equal(isNewerVersion('1.0.0', '0.99.99'), true);
+  assert.equal(isNewerVersion('0.2', '0.1.0'), true);
+  assert.equal(isNewerVersion('0.1.1', '0.1'), true);
+  assert.equal(isNewerVersion('0.1.0', '0.1.0'), false);
+  assert.equal(isNewerVersion('0.2.0', '0.2'), false);
+  assert.equal(isNewerVersion('0.0.9', '0.1.0'), false);
+});
+
+test('isNewerVersion 按数值而非字典序比较', () => {
+  assert.equal(isNewerVersion('0.10.0', '0.9.0'), true);
+  assert.equal(isNewerVersion('0.9.0', '0.10.0'), false);
+});
+
+test('isNewerVersion 不把预发布 tag 当作更新,不可解析时不提示', () => {
+  assert.equal(isNewerVersion('0.2.0-rc.1', '0.2.0'), false);
+  assert.equal(isNewerVersion('v0.2.0-rc.1', '0.1.0'), true); // 数值核心确实更新
+  assert.equal(isNewerVersion('nightly', '0.1.0'), false);
+  assert.equal(isNewerVersion('0.2.0', 'unknown'), false);
+});
+
+test('isCheckDue 满 24 小时才放行', () => {
+  const base = 1_700_000_000_000;
+  assert.equal(isCheckDue({ lastCheckedAt: 0 }, base), true);
+  assert.equal(isCheckDue({ lastCheckedAt: base }, base), false);
+  assert.equal(isCheckDue({ lastCheckedAt: base }, base + CHECK_INTERVAL_MS - 1), false);
+  assert.equal(isCheckDue({ lastCheckedAt: base }, base + CHECK_INTERVAL_MS), true);
+});
+
+test('shouldNotify 只在「更新且没提示过」时为真', () => {
+  const fresh = { lastCheckedAt: 0, lastNotifiedVersion: null };
+  const notified = { lastCheckedAt: 0, lastNotifiedVersion: '0.2.0' };
+  assert.equal(shouldNotify(fresh, '0.2.0', '0.1.0'), true);
+  assert.equal(shouldNotify(notified, '0.2.0', '0.1.0'), false);
+  assert.equal(shouldNotify(notified, '0.3.0', '0.1.0'), true);
+  assert.equal(shouldNotify(fresh, '0.1.0', '0.1.0'), false);
+  assert.equal(shouldNotify(fresh, '0.0.1', '0.1.0'), false);
+});

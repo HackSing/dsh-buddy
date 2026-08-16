@@ -1,0 +1,16 @@
+1261
+---@linxin666 dirs:
+web/node_modules/@linxin666/dsh-client-ui-web-ui-settings/
+web/node_modules/@linxin666/dsh-client-ui-task-board/
+web/node_modules/@linxin666/dsh-live-stats/
+web/node_modules/@linxin666/dsh-client-ui-skin-center/
+web/node_modules/@linxin666/dsh-pet/
+web/node_modules/@linxin666/dsh-client-ui-git-graph/
+web/node_modules/@linxin666/dsh-skins/
+---profile package.json deps:
+@linxin666/dsh-client-ui-git-graph
+@linxin666/dsh-client-ui-task-board
+@linxin666/dsh-client-ui-web-ui-settings
+@linxin666/dsh-live-stats
+@linxin666/dsh-pet
+@linxin666/dsh-skins

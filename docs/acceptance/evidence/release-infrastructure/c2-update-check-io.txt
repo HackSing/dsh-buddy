@@ -1,0 +1,193 @@
+== c2 更新检查 IO 编排冒烟(节流/未发布/不可达/通知/去重) ==
+
+执行:cd <scratchpad> && node --test update-check-io.test.js
+(冒烟脚本按任务约定放在 scratchpad,源码内联于本文件末尾以便复现;
+ 被测模块为仓库内 lib/update-check.js,脚本以绝对路径 require)
+
+--- 输出 ---
+✔ 节流:24 小时内不再发起请求 (1.22625ms)
+✔ 首次运行:请求带 User-Agent,命中未发布 release(404)不提示 (0.890541ms)
+✔ 限流 403 与网络异常都折叠成 unreachable 且带原因 (0.852458ms)
+✔ 远端不更新:up-to-date,不提示 (0.648084ms)
+✔ 有新版本:提示一次并落盘,24 小时后同版本不再提示 (1.465584ms)
+✔ 响应缺字段按 unreachable 处理;写状态不留临时文件 (0.510292ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68.371042
+exit=0
+
+--- 冒烟脚本源码(update-check-io.test.js)---
+// 冒烟:lib/update-check.js 的 IO 编排。fetch 用 stub 顶掉(不触网),
+// 状态文件落在临时目录(不碰 userData),notify 用假函数记录调用。
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const {
+  checkForUpdate,
+  UPDATE_OUTCOME,
+  CHECK_INTERVAL_MS,
+  STATE_FILE_NAME,
+  RELEASE_API_URL,
+} = require('/Users/aiware/projects/dsh-buddy/lib/update-check');
+
+const CURRENT = '0.1.0';
+const NOW = 1_700_000_000_000;
+
+function tempDir() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-buddy-update-'));
+}
+
+function readState(dir) {
+  return JSON.parse(fs.readFileSync(path.join(dir, STATE_FILE_NAME), 'utf8'));
+}
+
+// 记录 fetch 调用参数并返回预设响应
+function stubFetch(responder) {
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url, init });
+    return responder(calls.length);
+  };
+  return calls;
+}
+
+function jsonResponse(status, body) {
+  return { status, ok: status >= 200 && status < 300, json: async () => body };
+}
+
+function collector() {
+  const seen = [];
+  return { seen, notify: async (payload) => void seen.push(payload) };
+}
+
+const original = globalThis.fetch;
+test.after(() => {
+  globalThis.fetch = original;
+});
+
+test('节流:24 小时内不再发起请求', async () => {
+  const dir = tempDir();
+  fs.writeFileSync(
+    path.join(dir, STATE_FILE_NAME),
+    JSON.stringify({ lastCheckedAt: NOW, lastNotifiedVersion: null })
+  );
+  const calls = stubFetch(() => jsonResponse(200, {}));
+  const { notify, seen } = collector();
+
+  const r = await checkForUpdate({ currentVersion: CURRENT, stateDir: dir, notify, now: NOW + 1 });
+
+  assert.equal(r.outcome, UPDATE_OUTCOME.throttled);
+  assert.equal(calls.length, 0, 'throttled 时不应发起任何请求');
+  assert.equal(seen.length, 0);
+});
+
+test('首次运行:请求带 User-Agent,命中未发布 release(404)不提示', async () => {
+  const dir = tempDir();
+  const calls = stubFetch(() => jsonResponse(404, {}));
+  const { notify, seen } = collector();
+
+  const r = await checkForUpdate({ currentVersion: CURRENT, stateDir: dir, notify, now: NOW });
+
+  assert.equal(r.outcome, UPDATE_OUTCOME.noRelease);
+  assert.equal(seen.length, 0, '404 绝不弹窗');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, RELEASE_API_URL);
+  assert.equal(calls[0].init.headers['User-Agent'], 'dsh-buddy-update-check');
+  assert.equal(readState(dir).lastCheckedAt, NOW, '拿不到也要记账,避免每次启动重试');
+});
+
+test('限流 403 与网络异常都折叠成 unreachable 且带原因', async () => {
+  const dirA = tempDir();
+  stubFetch(() => jsonResponse(403, {}));
+  const a = await checkForUpdate({
+    currentVersion: CURRENT,
+    stateDir: dirA,
+    notify: async () => assert.fail('不该提示'),
+    now: NOW,
+  });
+  assert.equal(a.outcome, UPDATE_OUTCOME.unreachable);
+  assert.equal(a.detail, 'HTTP 403');
+
+  const dirB = tempDir();
+  globalThis.fetch = async () => {
+    throw new Error('The operation was aborted due to timeout');
+  };
+  const b = await checkForUpdate({
+    currentVersion: CURRENT,
+    stateDir: dirB,
+    notify: async () => assert.fail('不该提示'),
+    now: NOW,
+  });
+  assert.equal(b.outcome, UPDATE_OUTCOME.unreachable);
+  assert.match(b.detail, /timeout/);
+  assert.equal(readState(dirB).lastCheckedAt, NOW);
+});
+
+test('远端不更新:up-to-date,不提示', async () => {
+  const dir = tempDir();
+  stubFetch(() => jsonResponse(200, { tag_name: 'v0.1.0', html_url: 'https://example.invalid/r' }));
+  const { notify, seen } = collector();
+
+  const r = await checkForUpdate({ currentVersion: CURRENT, stateDir: dir, notify, now: NOW });
+
+  assert.equal(r.outcome, UPDATE_OUTCOME.upToDate);
+  assert.equal(seen.length, 0);
+  assert.equal(readState(dir).lastNotifiedVersion, null);
+});
+
+test('有新版本:提示一次并落盘,24 小时后同版本不再提示', async () => {
+  const dir = tempDir();
+  const release = { tag_name: 'v0.2.0', html_url: 'https://example.invalid/releases/v0.2.0' };
+  stubFetch(() => jsonResponse(200, release));
+  const { notify, seen } = collector();
+
+  const first = await checkForUpdate({ currentVersion: CURRENT, stateDir: dir, notify, now: NOW });
+  assert.equal(first.outcome, UPDATE_OUTCOME.notified);
+  assert.deepEqual(seen, [{ version: '0.2.0', url: release.html_url }]);
+  assert.deepEqual(readState(dir), { lastCheckedAt: NOW, lastNotifiedVersion: '0.2.0' });
+
+  const later = NOW + CHECK_INTERVAL_MS;
+  const second = await checkForUpdate({
+    currentVersion: CURRENT,
+    stateDir: dir,
+    notify,
+    now: later,
+  });
+  assert.equal(second.outcome, UPDATE_OUTCOME.alreadyNotified);
+  assert.equal(seen.length, 1, '同一版本只提示一次');
+  assert.equal(readState(dir).lastCheckedAt, later);
+
+  // 再来一个更新的版本 → 重新提示
+  stubFetch(() => jsonResponse(200, { tag_name: '0.3.0', html_url: 'https://example.invalid/x' }));
+  const third = await checkForUpdate({
+    currentVersion: CURRENT,
+    stateDir: dir,
+    notify,
+    now: later + CHECK_INTERVAL_MS,
+  });
+  assert.equal(third.outcome, UPDATE_OUTCOME.notified);
+  assert.equal(seen.length, 2);
+  assert.equal(readState(dir).lastNotifiedVersion, '0.3.0');
+});
+
+test('响应缺字段按 unreachable 处理;写状态不留临时文件', async () => {
+  const dir = tempDir();
+  stubFetch(() => jsonResponse(200, { name: 'no tag here' }));
+  const r = await checkForUpdate({
+    currentVersion: CURRENT,
+    stateDir: dir,
+    notify: async () => assert.fail('不该提示'),
+    now: NOW,
+  });
+  assert.equal(r.outcome, UPDATE_OUTCOME.unreachable);
+  assert.match(r.detail, /tag_name/);
+  assert.deepEqual(fs.readdirSync(dir), [STATE_FILE_NAME], '不应残留 .writing 临时文件');
+});

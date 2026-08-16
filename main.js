@@ -1,11 +1,15 @@
 const { app, BrowserWindow, shell, dialog } = require('electron');
 const { spawn } = require('child_process');
-const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const http = require('http');
 const { installBundledPresets, defaultDshHome } = require('./lib/bundled-presets');
+const { installBundledProfile } = require('./lib/bundled-profile');
 const { attachDragStrip } = require('./lib/immersive-titlebar');
+const { binEntryFrom } = require('./lib/dsh-entry');
+const { probeHttp, waitForHttp } = require('./lib/http-probe');
+const { killProcessTree } = require('./lib/process-tree');
+const { checkForUpdate } = require('./lib/update-check');
+const preinstallManifest = require('./plugins/preinstall-manifest.json');
 
 // ---- 配置区 ----
 // 默认走「内嵌 dsh」:用 Electron 自带的 Node 运行时执行随包分发的 dsh,用户机器无需 Node。
@@ -29,21 +33,6 @@ function parseTarget(url) {
   }
 }
 const TARGET = parseTarget(DSH_URL);
-
-// 从包目录读取 bin 字段,拿到真实入口脚本(不猜路径)
-function binEntryFrom(pkgDir) {
-  const manifest = path.join(pkgDir, 'package.json');
-  let bin;
-  try {
-    bin = JSON.parse(fs.readFileSync(manifest, 'utf8')).bin;
-  } catch (_) {
-    return null;
-  }
-  const rel = typeof bin === 'string' ? bin : bin && (bin.dsh || Object.values(bin)[0]);
-  if (!rel) return null;
-  const entry = path.join(pkgDir, rel);
-  return fs.existsSync(entry) ? entry : null;
-}
 
 // 解析内嵌 dsh 的入口脚本;打包态必须落在 app.asar.unpacked(子进程读不了 asar 里的 ESM)
 function resolveEmbeddedEntry() {
@@ -104,29 +93,19 @@ function resolveLauncher() {
   };
 }
 
+// 「dsh 已在监听」的判定单一来源:5xx 说明进程活着只是内部出错,
+// 仍算就绪(壳的职责是把 UI 指过去,不替 dsh 判断业务错误)。
+const isDshServing = (status) => status < 500;
+
 // 探测 dsh 服务是否已就绪
-function isUp(url) {
-  return new Promise((resolve) => {
-    const req = http.get(url, (res) => {
-      res.resume();
-      resolve(res.statusCode < 500);
-    });
-    req.on('error', () => resolve(false));
-    req.setTimeout(1000, () => {
-      req.destroy();
-      resolve(false);
-    });
-  });
+async function isUp(url) {
+  const status = await probeHttp(url);
+  return status !== null && isDshServing(status);
 }
 
 // 轮询等待服务就绪
 async function waitForServer(url, timeoutMs) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (await isUp(url)) return true;
-    await new Promise((r) => setTimeout(r, 300));
-  }
-  return false;
+  return (await waitForHttp(url, { timeoutMs, accept: isDshServing })) !== null;
 }
 
 // 随包 plugins 目录:打包态在 asar 之外(asarUnpack),开发态即仓库目录
@@ -137,21 +116,33 @@ function resolvePluginsRoot() {
   return path.join(app.getAppPath(), 'plugins');
 }
 
-// 把随包 agent preset 装进 DSH_HOME。preset 是增强项:
+// 随包 web profile tar:打包态在 Resources 根(extraResources),开发态为构建产物
+function resolveProfileTarball() {
+  if (app.isPackaged && process.resourcesPath) {
+    return path.join(process.resourcesPath, 'web-profile.tar.gz');
+  }
+  return path.join(app.getAppPath(), 'build', 'web-profile.tar.gz');
+}
+
+// 把随包 agent preset 和预装 profile 装进 DSH_HOME。两者都是增强项:
 // 安装失败要让用户看见,但不阻断 dsh 本体启动。
-function ensurePresets() {
+function ensureBundledAssets() {
+  const dshHome = defaultDshHome(process.env, os.homedir());
   try {
-    const summary = installBundledPresets({
-      pluginsRoot: resolvePluginsRoot(),
-      dshHome: defaultDshHome(process.env, os.homedir()),
-    });
+    const summary = installBundledPresets({ pluginsRoot: resolvePluginsRoot(), dshHome });
     if (summary.installed.length > 0) {
       console.log(`[dsh-buddy] installed bundled presets: ${summary.installed.join(', ')}`);
     }
+    const profileResult = installBundledProfile({
+      tarballPath: resolveProfileTarball(),
+      dshHome,
+      profileName: preinstallManifest.profile,
+    });
+    console.log(`[dsh-buddy] bundled profile: ${profileResult}`);
   } catch (err) {
     dialog.showErrorBox(
       'DSH Buddy',
-      `内置 preset 安装失败:${err.message}\ndsh 仍将正常启动,可稍后重装应用修复。`
+      `内置资产安装失败:${err.message}\ndsh 仍将正常启动,可稍后重装应用修复。`
     );
   }
 }
@@ -201,6 +192,41 @@ async function ensureDsh() {
   return waitForServer(DSH_URL, launcher.timeoutMs);
 }
 
+// 提示层:只负责把「有新版本」这件事呈现给用户。
+// 要不要提示、提示哪个版本已由 lib/update-check 判定完毕,这里不做任何判断。
+async function notifyUpdate({ version, url }) {
+  const { response } = await dialog.showMessageBox({
+    type: 'info',
+    title: 'DSH Buddy',
+    message: `发现新版本 ${version}`,
+    detail: `当前版本 ${app.getVersion()}。前往 GitHub Release 页下载?`,
+    buttons: ['去下载', '忽略'],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  });
+  if (response === 0) await shell.openExternal(url); // 只开下载页,不自动下载安装
+}
+
+// 启动后的更新检查:刻意不 await,不进启动链,也不因失败影响任何既有流程。
+// 节流跳过、仓库还没发过 release、离线/超时/限流都是可预期状态,
+// 由 checkForUpdate 折叠成具名 outcome,这里只落一行日志。
+// 末尾的 catch 是这条链路唯一的错误边界:更新提示是纯增强项,
+// 非预期错误(如 userData 不可写)也只记录,绝不弹窗、绝不影响 dsh 使用。
+function scheduleUpdateCheck() {
+  checkForUpdate({
+    currentVersion: app.getVersion(),
+    stateDir: app.getPath('userData'),
+    notify: notifyUpdate,
+  })
+    .then(({ outcome, detail }) => {
+      console.log(`[dsh-buddy] update check: ${outcome}${detail ? ` (${detail})` : ''}`);
+    })
+    .catch((err) => {
+      console.log(`[dsh-buddy] update check skipped: ${err.message}`);
+    });
+}
+
 function createWindow() {
   // macOS 走沉浸式:隐藏原生标题栏,红绿灯悬浮,dsh 界面直通窗口顶端;
   // 拖拽能力由注入的顶部拖拽带补回(见 lib/immersive-titlebar.js)。
@@ -239,7 +265,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
-    ensurePresets();
+    ensureBundledAssets();
     const ok = await ensureDsh();
     if (!ok) {
       dialog.showErrorBox(
@@ -250,6 +276,7 @@ if (!app.requestSingleInstanceLock()) {
       return;
     }
     createWindow();
+    scheduleUpdateCheck(); // 窗口出来之后再查,全程与启动链解耦
   });
 }
 
@@ -258,15 +285,7 @@ function killDsh() {
   if (!dshProc) return;
   const pid = dshProc.pid;
   dshProc = null;
-  try {
-    if (process.platform === 'win32') {
-      spawn('taskkill', ['/pid', String(pid), '/T', '/F']);
-    } else {
-      process.kill(-pid, 'SIGTERM'); // 负 PID = 杀整个进程组
-    }
-  } catch (_) {
-    /* 进程已退出 */
-  }
+  killProcessTree(pid);
 }
 
 app.on('before-quit', () => {

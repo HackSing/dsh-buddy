@@ -7,7 +7,8 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --mac --publish never",
-    "pack": "electron-builder --dir"
+    "pack": "electron-builder --dir",
+    "predist": "node scripts/build-web-profile.js"
   },
   "license": "MIT",
   "workspaces": [
@@ -43,15 +44,31 @@
     "mac": {
       "target": [
         {
+          "target": "dmg",
+          "arch": "arm64"
+        },
+        {
           "target": "dir",
           "arch": "arm64"
         }
       ],
       "category": "public.app-category.developer-tools",
-      "identity": null
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist"
     },
     "directories": {
       "output": "dist"
+    },
+    "extraResources": [
+      {
+        "from": "build/web-profile.tar.gz",
+        "to": "web-profile.tar.gz"
+      }
+    ],
+    "dmg": {
+      "sign": false
     }
   }
 }

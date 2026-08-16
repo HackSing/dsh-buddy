@@ -1,0 +1,4 @@
+run1 installed ok
+run2 skipped, user file intact
+run3 no-tarball ok
+SMOKE PASS
