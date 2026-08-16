@@ -35,9 +35,9 @@
     "acceptance_required": true,
     "knowledge_impact": "unchanged",
     "updated_knowledge_refs": [],
-    "unchanged_reason": null,
-    "governance_settled_at": null
+    "unchanged_reason": "发布链事实由本 plan 与 acceptance 证据承载;Windows tar/junction 问题待修复方案落地后再入 Knowledge",
+    "governance_settled_at": "2026-08-16T09:14:25+00:00"
   },
   "frozen_at": "2026-08-16T09:10:18+00:00",
-  "plan_fingerprint": "sha256:68ba8e9ee4b93db34ed338e7cabab705f4417f72a7895f4f06e953f2965f6903"
+  "plan_fingerprint": "sha256:e16f009c1bfa7dc55b381c45d936ad9616db413a83b6a616e3f21d61500eb800"
 }

@@ -1,0 +1,4 @@
+== c3 真实 tag 端到端(run 31938358469) ==
+macos: success
+windows: failure
+{"assets":[{"name":"DSH.Buddy-0.1.0-arm64.dmg","size":153642462}],"prerelease":true,"tag":"v0.1.0-test1"}

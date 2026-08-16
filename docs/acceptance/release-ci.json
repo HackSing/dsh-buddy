@@ -70,12 +70,30 @@
       "acceptance_type": "behavior_acceptance",
       "layer": "L4",
       "evidence_layer": "package_or_install",
-      "status": "pending",
-      "records": []
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T091425-ce1464c768",
+          "objective_fingerprint": "sha256:40d1416fda2f8af377457a73a1ce0452a90a10c8620d9f77dafcf54fdfe02b25",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "推送 v0.1.0-test1 后 run 31938358469:macos 任务 success,Release 自动创建且 isPrerelease=true,dmg 资产 153MB 挂载;windows 任务失败但被 continue-on-error 隔离未阻塞(计划内实验性)",
+          "evidence_refs": [
+            "docs/acceptance/evidence/release-ci/c3-tag-e2e.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T09:14:25+00:00"
+        }
+      ]
     }
   ],
-  "status": "pending",
-  "revision": 3,
+  "status": "passed",
+  "revision": 5,
   "revision_history": [
     {
       "revision": 1,
@@ -86,10 +104,21 @@
       "revision": 2,
       "asset_fingerprint": "sha256:1d456693159aeff94fd6804ff58c562c5172651ba4a90204c58f7fde80a4f4d8",
       "updated_at": "2026-08-16T09:10:31+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:0d6a6c788efd5350008889de75bfa114533b68261ddc97b7a4ebf48058b0eb5e",
+      "updated_at": "2026-08-16T09:10:31+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:925fe5f693e11a98af78a41ca910d1492e6126aa0c88d24d5312990be708f3ea",
+      "updated_at": "2026-08-16T09:14:25+00:00"
     }
   ],
   "created_at": "2026-08-16T09:10:18+00:00",
-  "updated_at": "2026-08-16T09:10:31+00:00",
-  "settled_at": null,
-  "asset_fingerprint": "sha256:0d6a6c788efd5350008889de75bfa114533b68261ddc97b7a4ebf48058b0eb5e"
+  "updated_at": "2026-08-16T09:14:25+00:00",
+  "settled_at": "2026-08-16T09:14:25+00:00",
+  "asset_fingerprint": "sha256:4adb6c4ba044787c78a23e782a2cc39479708543ab464894913ce617a1b435d1",
+  "replacement": null
 }

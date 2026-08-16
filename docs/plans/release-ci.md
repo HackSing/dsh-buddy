@@ -1,9 +1,9 @@
-> 状态：有效（实施中）
+> 状态：已实施-仅追溯（代码已是真源，2026-08-16 核对）
 <!-- docs-harness:plan-document/v1 -->
 
 # Release CI:tag 触发双平台构建并发布 GitHub Release
 
-- 冻结合同：`sha256:68ba8e9ee4b93db34ed338e7cabab705f4417f72a7895f4f06e953f2965f6903`
+- 冻结合同：`sha256:e16f009c1bfa7dc55b381c45d936ad9616db413a83b6a616e3f21d61500eb800`
 - 关键符号：`release.yml`、`dist:win`、`GITHUB_REF_NAME`、`gh release upload`
 
 ## 背景
