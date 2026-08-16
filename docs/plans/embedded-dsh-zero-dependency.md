@@ -1,0 +1,125 @@
+> 状态：已实施-仅追溯（代码已是真源，2026-08-16 核对）
+<!-- docs-harness:plan-document/v1 -->
+
+# 内嵌 dsh(零依赖分发)
+
+- 冻结合同：`sha256:23d98e5590ff89701b82a09cb31bd52c8fd29f123ea4563b0408f44112a4bace`
+- 关键符号：`resolveEmbeddedEntry`、`resolveLauncher`、`ELECTRON_RUN_AS_NODE`、`asarUnpack`
+
+## 背景
+
+dsh-buddy 原通过 spawn npx 拉起 dsh,依赖用户机器有 Node.js。打包分发后:普通用户无 Node 直接失败;macOS 从 Finder 启动的 GUI 应用 PATH 不含 homebrew/nvm 路径,即使装了 Node 也找不到 npx;npx 不钉版本还有版本漂移风险(dsh 处于 developer preview,官方声明会有破坏性变更)。
+
+## 目标
+
+用户下载 DSH Buddy 后双击即用——不要求机器上有 Node.js、npm 或任何预装的 dsh。
+
+## 非目标
+
+代码签名、公证、自动更新、Windows/Linux 打包、端口策略变更(维持 3080 默认 + 环境变量覆盖)。
+
+## 成功标准
+
+5 条验收标准全部通过:开发态内嵌启动、无 Node 环境跑打包 .app、进程回收无孤儿、复用外部服务不破坏、全部启动路径回归。详见关联 Acceptance 资产。
+
+## 执行范围
+
+package.json(dependencies 精确钉版本 + electron-builder build 配置)、main.js(四级启动器解析)、README.md、package-lock.json。不修改 dsh 本体。
+
+## 执行内容
+
+1) @deepseek-ai/dsh@0.1.0-rc.6 以精确版本入 dependencies;2) main.js 实现四级启动器解析:环境变量覆盖(env)→ 复用存活服务(reuse,在 ensureDsh 内短路)→ 内嵌 dsh(embedded,新默认)→ npx 回退;3) 内嵌路径用 process.execPath + ELECTRON_RUN_AS_NODE=1 执行包内 dsh 入口(入口从包 package.json 的 bin 字段运行时读取,不猜路径);4) electron-builder 产出 mac arm64 .app,asarUnpack 全量 node_modules;5) 保留 detached 进程组整组回收。
+
+## 验收方案
+
+按 docs/plans 关联 Acceptance 资产逐条实测:开发态日志可辨识 launcher=embedded;打包态在 command -v node/npm/npx 全空的环境变量下启动;lsof/ps 验证端口释放与零孤儿;外部 dsh 场景验证不重复拉起、退出不误杀;env 覆盖与 npx 回退两级各自回归。
+
+## 是否需要 Acceptance 资产闭环
+
+```json
+true
+```
+
+## Knowledge 影响
+
+unchanged
+
+## 约束
+
+dsh 处于 developer preview(0.1.0-rc.6),版本必须精确钉死;本机 npm 配置 allowScripts 白名单,新装带 install 脚本的包需显式放行。
+
+## 风险与回滚
+
+主要风险:dsh 升版本时 4 个原生模块(node-pty、koffi、sharp、node-addon-require-builtin)的 N-API 预编译是否仍然齐全——当前 ABI 兼容属于依赖方提供预编译的运气,不是本方案的保障,升版本时列为回归重点。回滚:revert 单提交即回到纯 npx 方案。
+
+## 当前约束
+
+Electron 38 内嵌 Node 22(MODULE_VERSION 139)与系统 Node 24(137)ABI 不同,原生模块依赖 N-API 预编译才免重编译;dsh 为 ESM 包,子进程无法从 app.asar 内解析模块,必须落在 asar.unpacked;npx 冷启动需下载 500+ 包,实测约 200s。
+
+## 候选方案
+
+A) 要求用户自带 Node(文档说明)——放弃,违背零依赖目标;B) 维持 npx 自动下载(原状)——放弃,无 Node 用户直接失败且 GUI PATH 不可靠;C) 捆绑独立 Node 二进制——放弃,Electron 已内嵌等价运行时,徒增体积;D) ELECTRON_RUN_AS_NODE 内嵌执行——采用。
+
+## 真实取舍
+
+得:零依赖、版本钉死、PATH 问题消除。失:.app 体积 469MB(asarUnpack 全量 + dsh 依赖树,app.asar 仅剩 5.8MB);瘦身方向是裁剪 dsh 依赖树而非改打包方式,现阶段不投入。
+
+## 最终决策
+
+采用 ELECTRON_RUN_AS_NODE=1 + process.execPath 执行随包分发的 dsh;asarUnpack 配置为 node_modules/**(而非仅 dsh 包)——子进程从 unpacked 入口向上解析自身依赖,asar 内文件对其不可见,ESM-from-asar 在 Electron 中亦不可靠。先例:WorkBuddy 采用同构架构(app.asar.unpacked/cli/bin/codebuddy --serve)。
+
+## 边界与接口
+
+对外契约:四级启动器解析顺序(env → reuse → embedded → npx)与 DSH_URL/DSH_CMD/DSH_ARGS 三个环境变量。DSH_URL 单变量同时决定探测地址与内嵌拉起的 --host/--port(parseTarget)。启动器种类经 [dsh-buddy] launcher= 日志外显。
+
+## 兼容与迁移
+
+旧 npx 路径完整保留为第四级回退(超时 300s,冷启动实测约 200s,原 120s 为误报 bug 已修);环境变量逃生通道行为与旧版一致(不注入 --port);复用路径语义不变(不拉起、不回收外部 dsh)。
+
+## 回滚或替代路径
+
+git revert 提交 5c034fb 即回到纯 npx 方案;无数据迁移、无持久化状态需要清理;用户会话数据存于用户目录,不受打包方式影响。
+
+## 架构验收
+
+每级启动器在日志中可辨识(launcher=env/embedded/npx 或 reusing live dsh);进程组回收(detached + process.kill(-pid))适用全部拉起路径且经优雅退出与 SIGTERM 双路验证;单实例锁在打包态复验。
+
+## ADR 处理
+
+ADR:内嵌运行时选 ELECTRON_RUN_AS_NODE 而非捆绑独立 Node——复用 Electron 自带 Node 运行时,零额外体积、零版本错配;代价是子进程 ABI 跟随 Electron 版本,原生模块依赖 N-API 稳定性(已验证当前 4 个原生依赖均带 napi-v9 预编译)。
+
+## 源与目标
+
+源:npx 外部拉起(要求系统 Node,版本浮动);目标:包内 node_modules(精确 0.1.0-rc.6)+ Electron 内嵌 Node 执行,系统零依赖。
+
+## 版本与产物
+
+@deepseek-ai/dsh@0.1.0-rc.6(dependencies,无 caret);electron@38.8.6;electron-builder(devDependencies);产物 dist/mac-arm64/DSH Buddy.app(469MB,arm64,dir target,identity:null 未签名)。
+
+## 兼容与灰度
+
+首发仅 mac arm64;未签名未公证,分发后用户首次打开需在系统设置放行(README 已注明);Windows(taskkill 回收分支已预留)与 Linux 未打包未验证。
+
+## 数据安全
+
+不触碰用户会话数据(存于用户目录,与包分发方式无关);复用模式退出时不回收外部 dsh(dshProc 为空即不杀);测试全程使用 3991-3999 端口,验证过程未影响用户在 3080 的实例。
+
+## 监控与停止条件
+
+启动器种类与入口路径经启动日志外显;dsh 子进程意外退出触发弹窗并退出 app(quitting 标志区分主动回收);健康检查超时分级(embedded 60s / env与npx 300s)超时即弹窗停止,不无限等待。
+
+## 回滚
+
+revert 单提交 5c034fb;dist/ 产物删除即可;无 schema、无数据、无远端状态需要回滚。
+
+## 交付层分离
+
+已验:L2 聚焦检查(启动器解析单测于四级场景)、L3 本地运行(开发态 embedded/env/npx/reuse 四路径)、L4 打包安装(.app 于无 Node 环境变量下启动并加载 UI)。未验:L5 真实分发设备(签名/公证在非目标内,Gatekeeper 放行依赖用户手动操作)。
+
+<!-- docs-harness:plan-governance:start -->
+## 资产治理
+
+- 关联验收：`docs/acceptance/embedded-dsh-zero-dependency.json`
+- 需要 Acceptance：true
+- Knowledge 影响：unchanged
+<!-- docs-harness:plan-governance:end -->

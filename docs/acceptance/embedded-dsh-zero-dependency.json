@@ -1,0 +1,188 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "内嵌 dsh(零依赖分发)验收",
+  "key_symbols": [
+    "resolveEmbeddedEntry",
+    "ELECTRON_RUN_AS_NODE",
+    "asarUnpack"
+  ],
+  "objective": "验证 DSH Buddy 在无 Node 环境零依赖运行,且四级启动器解析、进程回收与复用语义全部符合方案约定。",
+  "plan_ref": "docs/plans/embedded-dsh-zero-dependency.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "开发态内嵌启动:npm start 走 launcher=embedded 并加载 UI",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T015315-7b5a1261ef",
+          "objective_fingerprint": "sha256:2c5809332e04782c3dff522b016316708720f892f5ba1da1e82b5b83249a06c9",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "DSH_URL 指定 3991 端口运行 npm start,核对启动日志 launcher=embedded 与入口路径,以 renderer 到服务端口的 ESTABLISHED 连接确认 UI 加载",
+          "evidence_refs": [
+            "docs/acceptance/evidence/2026-08-16-embedded-dsh-verification.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T01:53:15+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "打包态零依赖:.app 在 node/npm/npx 全空的环境下启动并加载 UI",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T015315-743be6de1a",
+          "objective_fingerprint": "sha256:2c5809332e04782c3dff522b016316708720f892f5ba1da1e82b5b83249a06c9",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "env -i 最小 PATH(确认 node/npm/npx 均不可用)下分别以直接执行与 open(LaunchServices)启动打包 .app,核对 launcher=embedded、unpacked 入口与 HTTP 200 及连接数",
+          "evidence_refs": [
+            "docs/acceptance/evidence/2026-08-16-embedded-dsh-verification.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T01:53:15+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "进程回收:四级启动路径退出后端口释放、零孤儿进程",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T015315-1dd2667f40",
+          "objective_fingerprint": "sha256:2c5809332e04782c3dff522b016316708720f892f5ba1da1e82b5b83249a06c9",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "四级启动路径各自启动后经优雅退出与 SIGTERM 退出,lsof 核对测试端口(3991-3999)释放,ps 核对零残留;核对 dsh 子进程独立 pgid 与整组回收",
+          "evidence_refs": [
+            "docs/acceptance/evidence/2026-08-16-embedded-dsh-verification.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T01:53:15+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "复用不破坏:外部 dsh 不重复拉起、app 退出不误杀",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T015315-4e057f98d1",
+          "objective_fingerprint": "sha256:2c5809332e04782c3dff522b016316708720f892f5ba1da1e82b5b83249a06c9",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "外部 dsh 预先占用 3992 后启动 app,核对 reusing 日志、监听进程 pid 唯一;app 退出后核对外部 dsh 仍存活;打包态二次启动核对单实例锁",
+          "evidence_refs": [
+            "docs/acceptance/evidence/2026-08-16-embedded-dsh-verification.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T01:53:15+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c5",
+      "title": "回归:env 覆盖与 npx 回退路径启动、加载、回收正常",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260816T015315-10f663a730",
+          "objective_fingerprint": "sha256:2c5809332e04782c3dff522b016316708720f892f5ba1da1e82b5b83249a06c9",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "设置 DSH_CMD/DSH_ARGS 验证 env 级;隐藏包内 dsh 目录验证 npx 回退级(测后恢复);两级均核对启动、UI 加载与回收;修复 npx 冷启动 120s 超时误报(调至 300s)后复验",
+          "evidence_refs": [
+            "docs/acceptance/evidence/2026-08-16-embedded-dsh-verification.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-16T01:53:15+00:00"
+        }
+      ]
+    }
+  ],
+  "status": "passed",
+  "revision": 7,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:4a0283a777974698b89508e466bc6c1e4bd3a2787344cbd959fbd3ea60c04392",
+      "updated_at": "2026-08-16T01:52:57+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:1729e46d4ab1a2568600c82ff2ba1734ea480e2fb30e0c16cc0e9f0d2c4f7562",
+      "updated_at": "2026-08-16T01:53:15+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:e8c0d15c12fd8fb81a0a1642709159a637df1fead143c0d1ce75d2c6ff152bbb",
+      "updated_at": "2026-08-16T01:53:15+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:62bdf7c474d37023070c75d9a131ed64016c8811b15df6e1efb9dcd2c2304591",
+      "updated_at": "2026-08-16T01:53:15+00:00"
+    },
+    {
+      "revision": 5,
+      "asset_fingerprint": "sha256:7a0c0ca25125772d153a55459477a1568ee5c282cb7fb7092cfddd0291170674",
+      "updated_at": "2026-08-16T01:53:15+00:00"
+    },
+    {
+      "revision": 6,
+      "asset_fingerprint": "sha256:93c74b0e3a8ba772116e36644ef7627ec9144f7df8f4acac81f164541325f13d",
+      "updated_at": "2026-08-16T01:53:15+00:00"
+    }
+  ],
+  "created_at": "2026-08-16T01:52:57+00:00",
+  "updated_at": "2026-08-16T01:53:26+00:00",
+  "settled_at": "2026-08-16T01:53:26+00:00",
+  "asset_fingerprint": "sha256:bd110aae84913e8b4b145299372cf6ece5c25b105ea891fe74cdda6ab48b7a6e",
+  "replacement": null
+}
