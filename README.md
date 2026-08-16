@@ -7,6 +7,13 @@ dsh 是一个强大且快速演进的 agent harness;DSH Buddy 把它变成双击
 
 > 本项目是社区项目,与 DeepSeek 无隶属关系,不代表其认可或背书。DeepSeek 及相关商标归其权利人所有。
 
+## 下载
+
+| 平台 | 入口 | 说明 |
+|---|---|---|
+| **macOS**(Apple Silicon) | [下载最新版 dmg](https://github.com/HackSing/dsh-buddy/releases/latest) | 拖入「应用程序」即完成安装。产物暂未签名公证,首次打开请右键 → 打开(或在「系统设置 → 隐私与安全性」放行) |
+| **Windows** | 即将推出 | Star 本仓库或关注 [Releases](https://github.com/HackSing/dsh-buddy/releases) 获取上线通知 |
+
 ## 发行版的四个职能
 
 | 职能 | 具体动作 |
