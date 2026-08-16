@@ -1,9 +1,9 @@
 # CLAUDE.md
 
 <!-- docs-harness:claude-bridge:start -->
-## Docs Harness 2.7.2：默认直跑，能力按需
+## Docs Harness 2.8.0：默认直跑，能力按需
 
-Docs Harness 当前版本：2.7.2
+Docs Harness 当前版本：2.8.0
 
 - 普通问答、只读检查、代码修改、构建和测试默认由 agent 直接完成；Harness 不作为任务入口，也不创建任务控制状态。
 - 用户明确说“不使用 Harness”时必须直接执行，不得暗中恢复旧流程。
@@ -74,7 +74,7 @@ Docs Harness 当前版本：2.7.2
 
 ## 文档可发现性规范（plans 文档）
 
-新增、实质修改或废弃 `docs/plans/` 文档时，同一次提交内完成以下闭环（用 `python scripts/harness.py docs-check` 校验；起草与反复调整期间不运行 docs-check，提交前或 plan settle 时执行一次即可，pre-commit 与 CI 的 assets-check 已包含该检查）：
+新增、实质修改或废弃 `docs/plans/` 文档时，同一次提交内完成以下闭环（用 `python scripts/harness.py plan check` 校验；起草与反复调整期间不运行 plan check，提交前或 plan settle 时执行一次即可，pre-commit 与 CI 的 assets-check 已包含该检查）：
 
 1. **状态横幅**：文件前 3 行内标注三值之一——`有效（现行事实/实施中）`、`已实施-仅追溯（代码已是真源，YYYY-MM-DD 核对）`、`已废弃-被 <文件> 取代（YYYY-MM-DD 核对）`。判定纪律：代码中找不到符号只能证明概念已死，不能证明 plan 过期（合法待实施方案同样没有代码）；证据不足标"存疑"，交用户裁决。
 2. **索引带符号**：`docs/INDEX.md` 条目带 2-4 个唯一性强的代码符号（取正文反引号标识符按频次排序，剔除 runId 类全仓通用词）+ 状态镜像，使 grep 符号能同时命中源码、索引与文档。

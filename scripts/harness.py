@@ -50,7 +50,7 @@ from acceptance_assets import (
     record as record_acceptance_asset,
     settle as settle_acceptance_asset,
 )
-VERSION = "2.7.2"
+VERSION = "2.8.0"
 CONFIG_SCHEMA = "docs-harness/project-config/v9"
 KNOWN_LEGACY_CONFIG_SCHEMAS = {
     f"docs-harness/project-config/v{version}" for version in range(1, 9)
@@ -128,17 +128,17 @@ LEGACY_RUNTIME_NAMES = (
 KNOWLEDGE_MAP_RELATIVE = "docs/knowledge-map.json"
 REPOWIKI_RELATIVE = ".qoder/repowiki"
 SEMVER_PATTERN = r"[0-9]+\.[0-9]+\.[0-9]+"
-DOCS_CHECK_BANNER_MARKER = "状态："
-DOCS_CHECK_BANNER_STATES = ("有效", "已实施-仅追溯", "已废弃")
-DOCS_CHECK_ARCHIVE_EXEMPTION = "已归档"
-DOCS_CHECK_EXCLUDED_DIRS = {"node_modules", ".worktrees", "deliverables", "output", "artifacts"}
-DOCS_CHECK_ARTIFACT_DIRS = {"dist", "build", "dist-electron", "release", "zbuddy-output", "test-results", "coverage", "软著"}
-DOCS_CHECK_SOURCE_SUFFIXES = {
+PLAN_CHECK_BANNER_MARKER = "状态："
+PLAN_CHECK_BANNER_STATES = ("有效", "已实施-仅追溯", "已废弃")
+PLAN_CHECK_ARCHIVE_EXEMPTION = "已归档"
+PLAN_CHECK_EXCLUDED_DIRS = {"node_modules", ".worktrees", "deliverables", "output", "artifacts"}
+PLAN_CHECK_ARTIFACT_DIRS = {"dist", "build", "dist-electron", "release", "zbuddy-output", "test-results", "coverage", "软著"}
+PLAN_CHECK_SOURCE_SUFFIXES = {
     ".go", ".ts", ".tsx", ".js", ".jsx", ".cjs", ".mjs", ".py",
     ".ps1", ".psm1", ".bat", ".cmd", ".sh", ".json", ".toml", ".yaml", ".yml",
 }
-DOCS_CHECK_STALE_DAYS = 90
-DOCS_CHECK_SYMBOL_MAX_FILE_BYTES = 2_000_000
+PLAN_CHECK_STALE_DAYS = 90
+PLAN_CHECK_SYMBOL_MAX_FILE_BYTES = 2_000_000
 PLAN_README_CONTENT = """# 任务方案
 
 本目录保存需要长期审查和追溯的复杂任务方案。Harness 生成的方案由同名 JSON
@@ -380,7 +380,7 @@ _GENERIC_STANDARDS = """
 
 ## 文档可发现性规范（plans 文档）
 
-新增、实质修改或废弃 `docs/plans/` 文档时，同一次提交内完成以下闭环（用 `python scripts/harness.py docs-check` 校验；起草与反复调整期间不运行 docs-check，提交前或 plan settle 时执行一次即可，pre-commit 与 CI 的 assets-check 已包含该检查）：
+新增、实质修改或废弃 `docs/plans/` 文档时，同一次提交内完成以下闭环（用 `python scripts/harness.py plan check` 校验；起草与反复调整期间不运行 plan check，提交前或 plan settle 时执行一次即可，pre-commit 与 CI 的 assets-check 已包含该检查）：
 
 1. **状态横幅**：文件前 3 行内标注三值之一——`有效（现行事实/实施中）`、`已实施-仅追溯（代码已是真源，YYYY-MM-DD 核对）`、`已废弃-被 <文件> 取代（YYYY-MM-DD 核对）`。判定纪律：代码中找不到符号只能证明概念已死，不能证明 plan 过期（合法待实施方案同样没有代码）；证据不足标"存疑"，交用户裁决。
 2. **索引带符号**：`docs/INDEX.md` 条目带 2-4 个唯一性强的代码符号（取正文反引号标识符按频次排序，剔除 runId 类全仓通用词）+ 状态镜像，使 grep 符号能同时命中源码、索引与文档。
@@ -943,7 +943,7 @@ def knowledge_settle(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     target = safe_target(args.target)
     try:
         payload = settle_knowledge_asset(
-            target, args.knowledge, args.status, args.replacement, utc_now(), docs_check_markdown_files(target)
+            target, args.knowledge, args.status, args.replacement, utc_now(), plan_check_markdown_files(target)
         )
     except AssetError as exc:
         raise translate_asset_error(exc) from exc
@@ -1317,7 +1317,7 @@ def replace_plan_status_banner(text: str, status: str) -> str:
     if PLAN_DOCUMENT_MARKER not in lines[:3]:
         raise HarnessError("方案缺少 Harness 文档标记", code="invalid_plan_document")
     for index, line in enumerate(lines[:3]):
-        if DOCS_CHECK_BANNER_MARKER in line:
+        if PLAN_CHECK_BANNER_MARKER in line:
             lines[index] = f"> 状态：{status}"
             return "\n".join(lines) + "\n"
     raise HarnessError("方案缺少状态横幅", code="invalid_plan_document")
@@ -1361,7 +1361,7 @@ def rewrite_archived_plan_links(target: Path, basename: str) -> list[str]:
         (f"plans/{basename}.md", f"plans/archive/{basename}.md"),
     )
     changed: list[str] = []
-    for path in docs_check_markdown_files(target):
+    for path in plan_check_markdown_files(target):
         before = path.read_text(encoding="utf-8")
         after = before
         for old, new in replacements:
@@ -1949,7 +1949,7 @@ def acceptance_settle(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             args.status,
             args.replacement,
             utc_now(),
-            docs_check_markdown_files(target),
+            plan_check_markdown_files(target),
             records=records,
             objective=objective,
         )
@@ -3344,19 +3344,19 @@ def command_release(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     return 0, payload
 
 
-def docs_check_banner(path: Path) -> str | None:
+def plan_check_banner(path: Path) -> str | None:
     """返回文档前 3 行内的状态横幅行；没有横幅返回 None。"""
     try:
         lines = path.read_text(encoding="utf-8").splitlines()[:3]
     except (OSError, UnicodeDecodeError) as exc:
-        raise HarnessError(f"无法读取文档：{path}", code="docs_check_unreadable") from exc
+        raise HarnessError(f"无法读取文档：{path}", code="plan_check_unreadable") from exc
     for line in lines:
-        if DOCS_CHECK_BANNER_MARKER in line:
+        if PLAN_CHECK_BANNER_MARKER in line:
             return line
     return None
 
 
-def docs_check_walk_files(target: Path, prune_dirs: set[str]) -> list[Path]:
+def plan_check_walk_files(target: Path, prune_dirs: set[str]) -> list[Path]:
     """剪枝遍历：不进入隐藏目录、符号链接目录与指定目录，避免枚举 node_modules 等巨大子树。"""
     files: list[Path] = []
     for root, dirs, names in os.walk(target):
@@ -3371,15 +3371,15 @@ def docs_check_walk_files(target: Path, prune_dirs: set[str]) -> list[Path]:
     return sorted(files)
 
 
-def docs_check_markdown_files(target: Path) -> list[Path]:
+def plan_check_markdown_files(target: Path) -> list[Path]:
     """全仓 .md 文件，排除 VCS 元数据、依赖、构建产物与隐藏目录。"""
     return [
-        path for path in docs_check_walk_files(target, DOCS_CHECK_EXCLUDED_DIRS)
+        path for path in plan_check_walk_files(target, PLAN_CHECK_EXCLUDED_DIRS)
         if path.suffix == ".md" and not path.is_symlink()
     ]
 
 
-def command_docs_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
+def command_plan_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     """docs/plans 文档卫生常驻检查：横幅、索引闭环、死链、取值、符号存活性与时效。"""
     target = safe_target(args.target)
     plans_dir = target / "docs" / "plans"
@@ -3418,12 +3418,12 @@ def command_docs_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     banners: dict[str, str] = {}
     for path in live_docs:
         relative = path.relative_to(target).as_posix()
-        banner = docs_check_banner(path)
+        banner = plan_check_banner(path)
         if banner is None:
             failures.append(f"FAIL: {relative}: 前 3 行内缺少状态横幅（状态：）")
             continue
         banners[relative] = banner
-        if not any(state in banner for state in DOCS_CHECK_BANNER_STATES):
+        if not any(state in banner for state in PLAN_CHECK_BANNER_STATES):
             failures.append(
                 f"FAIL: {relative}: 横幅取值非法，须含 有效/已实施-仅追溯/已废弃 之一"
             )
@@ -3452,7 +3452,7 @@ def command_docs_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     for basename in archived_names:
         leaked = [
             line for line in index_lines
-            if basename in line and DOCS_CHECK_ARCHIVE_EXEMPTION not in line
+            if basename in line and PLAN_CHECK_ARCHIVE_EXEMPTION not in line
         ]
         if leaked:
             failures.append(
@@ -3481,7 +3481,7 @@ def command_docs_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             )
 
     # C3：全仓 .md 不得引用已归档文档的旧路径 docs/plans/<basename>。
-    markdown_files = docs_check_markdown_files(target)
+    markdown_files = plan_check_markdown_files(target)
     for basename in archived_names:
         stale = re.compile(r"docs/plans/" + re.escape(basename) + r"(?![\w.-])")
         for path in markdown_files:
@@ -3511,8 +3511,8 @@ def command_docs_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             if symbols:
                 trace_pending[basename] = symbols
     if not fast and trace_pending:
-        prune = DOCS_CHECK_EXCLUDED_DIRS | DOCS_CHECK_ARTIFACT_DIRS
-        for path in docs_check_walk_files(target, prune):
+        prune = PLAN_CHECK_EXCLUDED_DIRS | PLAN_CHECK_ARTIFACT_DIRS
+        for path in plan_check_walk_files(target, prune):
             if not trace_pending:
                 break
             if not path.is_file() or path.is_symlink():
@@ -3520,10 +3520,10 @@ def command_docs_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             parts = path.relative_to(target).parts
             if parts[0] == "docs":
                 continue
-            if path.suffix.lower() not in DOCS_CHECK_SOURCE_SUFFIXES:
+            if path.suffix.lower() not in PLAN_CHECK_SOURCE_SUFFIXES:
                 continue
             try:
-                if path.stat().st_size > DOCS_CHECK_SYMBOL_MAX_FILE_BYTES:
+                if path.stat().st_size > PLAN_CHECK_SYMBOL_MAX_FILE_BYTES:
                     continue
                 content = path.read_text(encoding="utf-8")
             except (OSError, UnicodeDecodeError):
@@ -3553,9 +3553,9 @@ def command_docs_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                 )
             except ValueError:
                 continue
-            if (now - touched) > dt.timedelta(days=DOCS_CHECK_STALE_DAYS):
+            if (now - touched) > dt.timedelta(days=PLAN_CHECK_STALE_DAYS):
                 warnings.append(
-                    f"WARN: {relative}: 横幅为有效但超过 {DOCS_CHECK_STALE_DAYS} 天未触碰"
+                    f"WARN: {relative}: 横幅为有效但超过 {PLAN_CHECK_STALE_DAYS} 天未触碰"
                     f"（最后提交 {touched.date().isoformat()}），需确认是否仍然有效"
                 )
 
@@ -3574,7 +3574,7 @@ def command_docs_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         "failures": failures,
         "warnings": warnings,
         "summary": (
-            f"docs-check {status}：活文档 {len(live_docs)} 份、归档 {len(archived_names)} 份、"
+            f"plan check {status}：活文档 {len(live_docs)} 份、归档 {len(archived_names)} 份、"
             f"扫描 markdown {len(markdown_files)} 份，违规 {len(failures)} 条、警告 {len(warnings)} 条"
         ),
     }
@@ -3587,7 +3587,7 @@ def command_assets_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]
         target,
         fast=bool(getattr(args, "fast", False)),
         strict=bool(getattr(args, "strict", False)),
-        plan_checker=lambda current, quick: command_docs_check(argparse.Namespace(
+        plan_checker=lambda current, quick: command_plan_check(argparse.Namespace(
             target=str(current), strict=False, fast=quick
         ))[1],
         knowledge_checker=check_knowledge_assets,
@@ -3619,15 +3619,15 @@ def command_self_test(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     )
     strict_parse_ok = True
     try:
-        for command in ("docs-check", "assets-check"):
-            build_parser().parse_args([command, "--strict", "--fast"])
+        build_parser().parse_args(["plan", "check", "--strict", "--fast"])
+        build_parser().parse_args(["assets-check", "--strict", "--fast"])
     except SystemExit:
         strict_parse_ok = False
     checks = {
         "script_version": script_version_valid,
         "command_parser": all(
             name in build_parser().format_help()
-            for name in ("knowledge", "plan", "acceptance", "project", "release", "docs-check", "assets-check", "self-test")
+            for name in ("knowledge", "plan", "acceptance", "project", "release", "assets-check", "self-test")
         ),
         "asset_check_flags": strict_parse_ok,
         "direct_mode_default": (
@@ -3705,6 +3705,7 @@ PLAN_EPILOG = _EPILOG_INTRO + "\n\n" + "\n\n".join((
         f"plan settle --governance-input（{PLAN_GOVERNANCE_INPUT_SCHEMA}）：",
         PLAN_GOVERNANCE_INPUT_EXAMPLE,
     ),
+    "plan check [--fast] [--strict]：docs/plans 文档可发现性常驻检查（横幅、索引符号、归档死链、符号存活与时效）。",
 ))
 
 ACCEPTANCE_EPILOG = _EPILOG_INTRO + "\n\n" + "\n\n".join((
@@ -3758,8 +3759,10 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=PLAN_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    plan.add_argument("action", choices=("select", "create", "settle"))
+    plan.add_argument("action", choices=("select", "create", "settle", "check"))
     add_target(plan)
+    plan.add_argument("--strict", action="store_true", help="WARN 也使退出码非 0（供 CI 使用；仅 check）")
+    plan.add_argument("--fast", action="store_true", help="跳过符号存活性与 Git 时效慢检查（仅 check）")
     plan.add_argument("--level", choices=PLAN_LEVELS)
     plan.add_argument("--profile", choices=PLAN_PROFILES)
     plan.add_argument("--secondary-profile", action="append", choices=PLAN_PROFILES)
@@ -3821,12 +3824,6 @@ def build_parser() -> argparse.ArgumentParser:
     self_test = commands.add_parser("self-test", help=f"运行 {VERSION} 内置自检")
     add_target(self_test)
 
-    docs_check = commands.add_parser(
-        "docs-check",
-        help="docs/plans 文档可发现性常驻检查",
-    )
-    add_check_options(docs_check)
-
     assets_check = commands.add_parser(
         "assets-check",
         help="统一检查 Plan、Knowledge、Acceptance 与跨资产关系",
@@ -3864,12 +3861,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             }
             code, payload = knowledge_handlers[args.action](args)
         elif args.command == "plan":
-            if args.action == "select":
-                code, payload = plan_select(args)
-            elif args.action == "create":
-                code, payload = plan_create(args)
-            else:
-                code, payload = plan_settle(args)
+            plan_handlers = {
+                "select": plan_select,
+                "create": plan_create,
+                "settle": plan_settle,
+                "check": command_plan_check,
+            }
+            code, payload = plan_handlers[args.action](args)
         elif args.command == "acceptance":
             acceptance_handlers = {
                 "create": acceptance_create,
@@ -3882,8 +3880,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             code, payload = command_project(args)
         elif args.command == "release":
             code, payload = command_release(args)
-        elif args.command == "docs-check":
-            code, payload = command_docs_check(args)
         elif args.command == "assets-check":
             code, payload = command_assets_check(args)
         else:
