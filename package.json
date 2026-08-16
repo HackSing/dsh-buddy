@@ -53,6 +53,7 @@
           "arch": "arm64"
         }
       ],
+      "icon": "assets/icon.icns",
       "category": "public.app-category.developer-tools",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,

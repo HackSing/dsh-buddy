@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>DSH Buddy icon</title>
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e2749"/>
+      <stop offset="1" stop-color="#0b0e21"/>
+    </linearGradient>
+    <linearGradient id="amber" gradientUnits="userSpaceOnUse" x1="336" y1="366" x2="494" y2="658">
+      <stop offset="0" stop-color="#ffc46b"/>
+      <stop offset="1" stop-color="#ff9f3d"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded tile, Big Sur proportions: 832x832 centred in a 1024 canvas -->
+  <rect x="96" y="96" width="832" height="832" rx="188" ry="188" fill="url(#tile)"/>
+
+  <!-- terminal prompt chevron -->
+  <path d="M336 366 L494 512 L336 658"
+        fill="none"
+        stroke="url(#amber)"
+        stroke-width="64"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- cursor block -->
+  <rect x="540" y="600" width="168" height="58" rx="18" ry="18" fill="#5fd9f2"/>
+
+  <!-- edge lift -->
+  <rect x="99" y="99" width="826" height="826" rx="185" ry="185"
+        fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="6"/>
+</svg>
