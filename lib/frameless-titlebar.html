@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<!--
+  非 macOS 平台的自绘标题栏(独立 WebContentsView,不注入 dsh 页面)。
+  文案与状态全部由主进程经 IPC 下发(window.dshTitlebar,见同目录 preload),
+  本页只做渲染与点击上报,不持有任何业务逻辑。
+  下拉菜单不在本页内渲染(视图只有 38px 高,会裁剪):点击菜单按钮后由主进程
+  在对应位置 popup 原生菜单,关闭/定位/键盘交互全部交给系统。
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { color-scheme: light; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font: 12px/1 system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+    color: #1b1b1b;
+    background: #f3f3f3;
+    border-bottom: 1px solid #e0e0e0;
+    user-select: none;
+  }
+  #bar {
+    display: flex; align-items: center; height: 100%; padding: 0 4px;
+    -webkit-app-region: drag; /* 整条可拖拽,交互元素单独 no-drag */
+  }
+  #bar button, #bar img { -webkit-app-region: no-drag; }
+  #icon { width: 18px; height: 18px; margin: 0 8px; }
+  .navbtn, .menubtn, .ctlbtn {
+    display: flex; align-items: center; justify-content: center;
+    border: none; background: transparent; color: inherit; cursor: default;
+  }
+  .navbtn { width: 30px; height: 26px; border-radius: 4px; }
+  .navbtn svg { width: 14px; height: 14px; fill: currentColor; }
+  .navbtn:hover:not(:disabled), .menubtn:hover { background: #e4e4e4; }
+  .navbtn:disabled { opacity: 0.35; }
+  #menus { display: flex; align-items: center; margin-left: 4px; }
+  .menubtn { height: 26px; padding: 0 10px; border-radius: 4px; font: inherit; }
+  #spacer { flex: 1; }
+  #version { opacity: 0.35; font-size: 10px; margin-right: 8px; }
+  .ctlbtn { width: 40px; height: 30px; }
+  .ctlbtn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.2; }
+  .ctlbtn:hover { background: #e4e4e4; }
+  #close:hover { background: #e81123; color: #fff; }
+</style>
+</head>
+<body>
+  <div id="bar">
+    <img id="icon" src="../assets/icon.png" alt="">
+    <button id="back" class="navbtn"><svg viewBox="0 0 16 16"><path d="M10 2 4.7 7.3a1 1 0 0 0 0 1.4L10 14l1.4-1.4L6.8 8l4.6-4.6z"/></svg></button>
+    <button id="fwd" class="navbtn"><svg viewBox="0 0 16 16"><path d="M6 2l5.3 5.3a1 1 0 0 1 0 1.4L6 14 4.6 12.6 9.2 8 4.6 3.4z"/></svg></button>
+    <nav id="menus"></nav>
+    <div id="spacer"></div>
+    <span id="version"></span>
+    <button id="min" class="ctlbtn"><svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/></svg></button>
+    <button id="max" class="ctlbtn"><svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" rx="1"/></svg></button>
+    <button id="close" class="ctlbtn"><svg viewBox="0 0 12 12"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg></button>
+  </div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const act = (id) => window.dshTitlebar.action(id);
+
+  function renderMenus(menus) {
+    const nav = $('menus');
+    for (const menu of menus) {
+      const btn = document.createElement('button');
+      btn.className = 'menubtn';
+      btn.textContent = menu.label;
+      btn.addEventListener('click', () => {
+        const r = btn.getBoundingClientRect();
+        // 主进程在按钮正下方 popup 原生菜单(坐标相对窗口左上,本视图即在左上)
+        window.dshTitlebar.popupMenu(menu.id, Math.round(r.left), Math.round(r.bottom) + 2);
+      });
+      nav.appendChild(btn);
+    }
+  }
+
+  function applyState(s) {
+    if (typeof s.canBack === 'boolean') $('back').disabled = !s.canBack;
+    if (typeof s.canForward === 'boolean') $('fwd').disabled = !s.canForward;
+  }
+
+  $('back').addEventListener('click', () => act('nav:back'));
+  $('fwd').addEventListener('click', () => act('nav:forward'));
+  $('min').addEventListener('click', () => act('win:minimize'));
+  $('max').addEventListener('click', () => act('win:toggle-maximize'));
+  $('close').addEventListener('click', () => act('win:close'));
+  // 拖拽区双击 = 最大化/还原(与原生标题栏一致)
+  $('bar').addEventListener('dblclick', (e) => {
+    if (e.target.closest('button')) return;
+    act('win:toggle-maximize');
+  });
+
+  window.dshTitlebar.onState(applyState);
+  window.dshTitlebar.init().then((init) => {
+    renderMenus(init.menus);
+    $('version').textContent = 'v' + init.version;
+    applyState(init);
+  });
+})();
+</script>
+</body>
+</html>

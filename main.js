@@ -4,10 +4,12 @@ const os = require('os');
 const path = require('path');
 const { installBundledPresets, defaultDshHome } = require('./lib/bundled-presets');
 const { installBundledProfile } = require('./lib/bundled-profile');
+const { createFramelessWindow } = require('./lib/frameless-window');
 const { attachDragStrip } = require('./lib/immersive-titlebar');
 const { binEntryFrom } = require('./lib/dsh-entry');
 const { probeHttp, waitForHttp } = require('./lib/http-probe');
 const { killProcessTree } = require('./lib/process-tree');
+const { createDshLogger } = require('./lib/dsh-log');
 const { checkForUpdate } = require('./lib/update-check');
 const preinstallManifest = require('./plugins/preinstall-manifest.json');
 
@@ -20,6 +22,7 @@ const DSH_URL = process.env.DSH_URL || 'http://127.0.0.1:3080';
 // ----------------
 
 let dshProc = null;
+let dshLog = null; // dsh 子进程输出捕获器,仅在本壳拉起 dsh 时创建(复用外部服务时保持 null)
 let win = null;
 let quitting = false;
 
@@ -147,6 +150,18 @@ function ensureBundledAssets() {
   }
 }
 
+// 统一的 dsh 启动失败弹窗:标题一致,正文 = 具体原因 + 日志文件路径 + 最近输出,
+// 让用户不必外部复现就能直接看到 dsh 到底报了什么(dshLog 仅在本壳拉起 dsh 时存在)。
+function showDshFailure(reason) {
+  const parts = [reason];
+  if (dshLog) {
+    parts.push(`\n详细日志:${dshLog.path}`);
+    const tail = dshLog.tail();
+    if (tail) parts.push(`最近输出:\n${tail}`);
+  }
+  dialog.showErrorBox('DSH Buddy', parts.join('\n'));
+}
+
 // 若 dsh 未在运行,则作为子进程拉起并托管生命周期
 async function ensureDsh() {
   if (await isUp(DSH_URL)) {
@@ -162,17 +177,20 @@ async function ensureDsh() {
   );
 
   dshProc = spawn(launcher.cmd, launcher.args, {
-    stdio: 'inherit',
+    // 捕获 stdout/stderr(由 dshLog 落盘 + 透传控制台),取代 'inherit':
+    // 打包后的 GUI 应用无控制台,inherit 会丢弃 dsh 输出,启动失败时无从诊断。
+    stdio: ['ignore', 'pipe', 'pipe'],
     env: launcher.env,
     // Windows 下 npx 是 .cmd,需经 shell;内嵌路径是可执行文件,无需 shell
     shell: process.platform === 'win32' && launcher.kind !== 'embedded',
     // 独立进程组:dsh 自身还会派生子进程,退出时须整组回收
     detached: process.platform !== 'win32',
   });
+  dshLog = createDshLogger({ dir: path.join(app.getPath('userData'), 'logs') });
+  dshLog.attach(dshProc);
 
   dshProc.on('error', (err) => {
-    dialog.showErrorBox(
-      'DSH Buddy',
+    showDshFailure(
       `无法启动 dsh(${launcher.cmd}):${err.message}\n` +
         (launcher.kind === 'embedded'
           ? '内嵌 dsh 执行失败,请重新安装应用。'
@@ -184,12 +202,21 @@ async function ensureDsh() {
   dshProc.on('exit', (code) => {
     dshProc = null;
     if (!quitting) {
-      dialog.showErrorBox('DSH Buddy', `dsh 进程意外退出(code ${code})。`);
+      showDshFailure(`dsh 进程意外退出(code ${code})。`);
       app.quit();
     }
   });
 
-  return waitForServer(DSH_URL, launcher.timeoutMs);
+  const ready = await waitForServer(DSH_URL, launcher.timeoutMs);
+  // 仅当仍在正常等待(未因 error/exit 触发退出)时才报超时,避免与上面两个 handler 的弹窗重复
+  if (!ready && !quitting) {
+    const seconds = Math.round(launcher.timeoutMs / 1000);
+    showDshFailure(
+      `dsh 已启动但未在 ${seconds} 秒内就绪(${DSH_URL})。\n` +
+        '常见原因:profile 依赖不完整或运行环境异常(一般不是端口配置问题)。'
+    );
+  }
+  return ready;
 }
 
 // 提示层:只负责把「有新版本」这件事呈现给用户。
@@ -231,17 +258,24 @@ function createWindow() {
   // macOS 走沉浸式:隐藏原生标题栏,红绿灯悬浮,dsh 界面直通窗口顶端;
   // 拖拽能力由注入的顶部拖拽带补回(见 lib/immersive-titlebar.js)。
   const immersive = process.platform === 'darwin';
+  if (!immersive) {
+    // Windows/Linux:无边框 + 壳自绘标题栏视图(图标/前进后退/菜单/窗口控制),
+    // 见 lib/frameless-window.js
+    win = createFramelessWindow({ dshUrl: DSH_URL, version: app.getVersion() });
+    win.on('closed', () => (win = null));
+    return;
+  }
   win = new BrowserWindow({
     width: 1280,
     height: 800,
     title: 'DSH Buddy',
-    ...(immersive ? { titleBarStyle: 'hiddenInset' } : {}),
+    titleBarStyle: 'hiddenInset',
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
-  if (immersive) attachDragStrip(win, { version: app.getVersion() });
+  attachDragStrip(win, { version: app.getVersion() });
 
   // 外部链接交给系统浏览器,不在壳内打开
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -268,10 +302,7 @@ if (!app.requestSingleInstanceLock()) {
     ensureBundledAssets();
     const ok = await ensureDsh();
     if (!ok) {
-      dialog.showErrorBox(
-        'DSH Buddy',
-        `等待 dsh 服务超时(${DSH_URL})。\n请检查启动命令与端口配置。`
-      );
+      // 失败详情已由 ensureDsh 通过 showDshFailure 呈现(含日志路径与最近输出)
       app.quit();
       return;
     }
@@ -291,6 +322,10 @@ function killDsh() {
 app.on('before-quit', () => {
   quitting = true;
   killDsh();
+  if (dshLog) {
+    dshLog.close();
+    dshLog = null;
+  }
 });
 
 app.on('window-all-closed', () => {

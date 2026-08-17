@@ -97,13 +97,15 @@ gh release upload "$TAG" dist/*.dmg --clobber
 |---|---|---|
 | 官方 action 版本陈旧 | `checkout@v4`/`setup-node@v4` 报 Node 20 弃用警告 | 升 v5，一行事 |
 | Windows tar × pnpm | Windows bsdtar 处理不了 pnpm 的 junction 目录链接，打包炸 exit 2 | 平台无关的产物（如预装资源包）单独用一个 ubuntu job 构建一次，经 artifact 分发给各平台打包任务——顺带保证多平台字节一致 |
+| GNU tar × 盘符路径 | Git Bash 环境里系统 `tar` 命中 GNU tar，`tar -czf D:\...` 把盘符当远程主机报 "Cannot connect to D"，本机打包必炸 | 打包脚本不碰系统 tar，用项目已依赖的 node-tar（见 [build-web-profile.js](../scripts/build-web-profile.js)）；GNU tar/bsdtar 差异连预防都不需要 |
+| IDE 终端注入 Electron 环境变量 | 从 Electron 系 IDE（Qoder/VSCode）内置终端运行安装版 exe，秒退无窗口、无任何日志——`ELECTRON_RUN_AS_NODE=1` 把 GUI 进程变成纯 Node 进程；打包链路子进程同样中招 | 本机 Windows 打包统一走 [dist-win.bat](../scripts/dist-win.bat)：先清 `ELECTRON_*` 变量再调 npm 脚本，并预检 dist 输出目录文件锁（IDE 索引会 mmap app.asar 导致 electron-builder EBUSY），快速失败带处理指引 |
 | Release 不触发级联 | `GITHUB_TOKEN` 创建的 Release 不会触发其他 workflow | GitHub 防递归的刻意设计；确需级联用 PAT |
 | cron 首跑幻觉 | 上游没有新版本时，值班工作流只走"版本相同→跳过"的快路径，绿色≠完整链路验证过 | 用 workflow_dispatch + 已知旧版本号强制跑一次完整验证 |
 | tag 漂移 | tag 与 manifest 版本不一致，产物命名错乱 | 版本守卫，构建前快速失败 |
 
 ## 成本
 
-公开仓库的 GitHub Actions 免费（含 macOS/Windows runner）。三件套全部用 runner 自带工具（`gh`、`npm`、系统 tar），零第三方 action、零运行时新依赖。
+公开仓库的 GitHub Actions 免费（含 macOS/Windows runner）。CI 全用 runner 自带工具（`gh`、`npm`），零第三方 action；本机 Windows 打包入口是 `scripts/dist-win.bat`（清 IDE 注入的环境变量 + 输出目录锁预检），tar 操作用项目已依赖的 node-tar，不依赖系统 tar。
 
 ## 落地检查清单
 

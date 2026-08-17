@@ -55,7 +55,9 @@
     "productName": "DSH Buddy",
     "files": [
       "**/*",
-      "!docs${/*}"
+      "!docs${/*}",
+      "!dist${/*}",
+      "!dist-*${/*}"
     ],
     "asar": true,
     "asarUnpack": [

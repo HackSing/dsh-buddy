@@ -1,0 +1,32 @@
+> 状态：有效（现行事实）
+<!-- docs-harness:knowledge-document/v1 -->
+
+# 预装插件存量缺口与 CI 安装位污染
+
+- 修订：1
+- 关键符号：`installBundledProfile`、`preinstall-manifest`、`dsh-buddy-ci-install`、`healProfilesModuleFallback`
+- 资产指纹：`sha256:dfa2672a0ed8aaf6d97a96b39cda72343eb0c8447e1db2cada9285ef1e39391b`
+
+## 摘要
+
+幂等解包让预装插件永远到不了存量 profile；NSIS 做 CI 安装验证会改写真实安装位与快捷方式，平铺回退 junction 随之指进 Temp 易失目录
+
+## 事实
+
+### `gap.idempotent-skip`
+
+lib/bundled-profile.js 的幂等解包对已存在的 profile 直接跳过，预装插件只送达全新安装；早于预装机制建立的存量 profile 永远拿不到后续新增插件——用户报『丢失了其他的插件』实为从未送达，需要 roadmap 中的应用层增量升级机制才能根治
+
+证据：`lib/bundled-profile.js`、`plugins/preinstall-manifest.json`、`docs/acceptance/evidence/docs-harness-plugin/c3-live-install.txt`
+
+### `repair.manual-add`
+
+存量修复手法：按 plugins/preinstall-manifest.json 的 packages 清单以 dsh plugin --profile web add 钉版补装（2026-08-17 已为用户本机补齐 @linxin666 六件套 @0.1.16 与 dsh-docs-harness 0.1.1）；本地 tarball 必须存放稳定路径（~/.dsh/local-plugins）而非会话临时目录，否则后续 pnpm 操作会因 file: spec 失效而断
+
+证据：`plugins/preinstall-manifest.json`、`docs/acceptance/evidence/docs-harness-plugin/c3-live-install.txt`
+
+### `lesson.ci-install-pollution`
+
+经验教训：用真实 NSIS 安装器做 CI 安装验证（/D 装入 Temp）会把安装位写进注册表并让开始菜单/桌面快捷方式指向临时目录，用户随后点快捷方式就长期运行 Temp 副本；profiles/node_modules 的平铺回退 junction（healProfilesModuleFallback）随该副本启动被重指到 Temp，一旦临时目录被清理，第三方插件依赖解析全体断链——安装验证要么用隔离环境要么装后立即卸载还原
+
+证据：`docs/acceptance/evidence/docs-harness-plugin/c3-live-install.txt`

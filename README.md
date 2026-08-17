@@ -49,13 +49,34 @@ agent preset(Anchored / Zero-Anchored / Whoami Standard)。应用启动时把它
 `$DSH_HOME/.agent-presets/`——目录已存在则跳过,不覆盖你的本地修改——启动后即可在
 dsh 的 preset 选择器中选用。
 
+### Docs Harness
+
+`dsh-docs-harness` 是本项目自研的治理插件,随 web profile 一起预装:把方案
+(plan)生命周期做成工具族、把项目自己的治理规则注入 agent 提示词、把方案进度做成
+输入框上方的进度气泡,并提供 Docs Harness 引擎在项目里的安装 / 升级 / 移除入口。
+
+三条边界值得先说清楚:
+
+- **写盘只由你发起**。往仓库里写文件的动作只挂在输入框上方的提示条和「设置 → 插件」
+  里,agent 拿不到这类工具;它在没启用的项目里调用方案工具,只会拿到一句「让用户去
+  那两个入口启用」的说明。
+- **总开关默认开,关掉即等于没装**。关掉后不注册工具、不注入提示词、不建投影、不挂
+  路由,会话行为与未安装该插件完全一致。
+- **注入的规则就是项目自己的规则**,取自项目 `AGENTS.md` 的受管块原文,不做删改;
+  只把「怎么调用」从命令行改写为工具名。
+
+源码在同级目录 `../dsh-docs-harness`(尚未发布 npm)。构建时由
+`scripts/build-web-profile.js` 先 `npm pack` 成 tarball,再按 pnpm 的文件 spec 装进
+profile;发布到 npm 后应把它从清单的 `local` 移入 `packages` 并钉死版本。
+
 ## 运行
 
 ```bash
 npm install
 npm start        # 开发态
 npm run dist     # 打包 macOS .app → dist/mac-arm64/DSH Buddy.app
-npm run dist:win # 打包 Windows 安装包 → dist/DSH Buddy Setup <ver>.exe(本机需 Windows;profile 按 win32 实体化分支构建)
+npm run dist:win # 打包 Windows 安装包 → dist/DSH Buddy Setup <ver>.exe(CI/干净终端用)
+scripts\dist-win.bat # 本机 Windows 打包入口:清 IDE 注入的 ELECTRON_* 变量 + dist 锁预检(IDE 终端里务必走它)
 ```
 
 > 打包产物未做代码签名与公证:macOS 首次打开需在「系统设置 → 隐私与安全性」中放行,Windows 安装器会触发 SmartScreen 提示。
@@ -89,8 +110,10 @@ npm run dist:win # 打包 Windows 安装包 → dist/DSH Buddy Setup <ver>.exe(�
 - [x] 应用内更新提示(检查 GitHub Releases,24h 节流)
 - [x] dsh 追新兼容验证(每日自动值班,新版本自动开 issue 报告)
 - [x] Windows 安装包转正(profile 产物改为单独构建经 artifact 分发,绕开 bsdtar × pnpm junction;纯 Node 两遍解包支持无特权普通用户)
+- [x] Docs Harness 插件随包(方案工具族 + 规则注入 + 进度气泡 + 用户发起的项目安装/升级/移除)
 - [ ] 代码签名 + 公证 + 全自动更新(签名就绪后同一发布流升级)
 - [ ] 存量用户随包资产增量更新(版本戳分流;profile:未改动整体替换、有自定义则自动只加不改合并;preset:未改动替换、已改动保留用户版本;均先备份,异常回滚)
+- [ ] Docs Harness 后续:knowledge / acceptance 资产的前端可视化;插件发布 npm 后清单条目从 `local` 转 `packages`;引擎种子版本升级走上面那条随包资产增量更新的同一套语义
 - [ ] 系统托盘、关窗常驻等桌面体验(按用户反馈驱动)
 
 搭建思路见[发布基础设施三件套指南](docs/release-infra-playbook.md)。

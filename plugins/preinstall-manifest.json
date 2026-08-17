@@ -17,6 +17,14 @@
     { "name": "@linxin666/dsh-live-stats", "version": "0.1.16" },
     { "name": "@linxin666/dsh-client-ui-web-ui-settings", "version": "0.1.16" }
   ],
+  "local": [
+    {
+      "name": "dsh-docs-harness",
+      "source": "../dsh-docs-harness",
+      "license": "MIT",
+      "comment": "本仓自研插件,尚未发布 npm:构建时先 npm pack 成 tarball 再按 pnpm file spec 装入 profile。发布到 npm 后应移入 packages 并写死版本,同时删掉这一条。"
+    }
+  ],
   "excluded": [
     { "name": "@linxin666/dsh-ssh", "reason": "SSH 凭据明文存 ~/.dsh/dsh-ssh.json,不默认替用户开启" },
     { "name": "@linxin666/dsh-remote-web-ui", "reason": "依赖 cloudflared 建公网隧道暴露本地 UI,不默认替用户开启" },

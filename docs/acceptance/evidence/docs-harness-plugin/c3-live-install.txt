@@ -1,0 +1,66 @@
+﻿Progress: resolved 0, reused 0, downloaded 1, added 0
+ WARN  Issues with peer dependencies found
+.
+└─┬ dsh-docs-harness 0.1.0
+  ├── ✕ missing peer @deepseek-ai/cordis@^4.0.1
+  ├── ✕ missing peer @deepseek-ai/dsh-session-projection@^0.1.0-rc.6
+  ├── ✕ missing peer @deepseek-ai/dsh-settings@^0.1.0-rc.6
+  ├── ✕ missing peer @deepseek-ai/dsh-system-prompt@^0.1.0-rc.6
+  ├── ✕ missing peer @deepseek-ai/dsh-tools@^0.1.0-rc.6
+  ├── ✕ missing peer @deepseek-ai/dsh-user-questions@^0.1.0-rc.6
+  ├── ✕ missing peer @deepseek-ai/schemastery@^3.18.1
+  ├── ✕ missing peer react@^18.2.0
+  └── ✕ missing peer zod@^4.4.3
+Peer dependencies that should be installed:
+  @deepseek-ai/cordis@^4.0.1
+  @deepseek-ai/dsh-session-projection@^0.1.0-rc.6
+  @deepseek-ai/dsh-settings@^0.1.0-rc.6
+  @deepseek-ai/dsh-system-prompt@^0.1.0-rc.6
+  @deepseek-ai/dsh-tools@^0.1.0-rc.6
+  @deepseek-ai/dsh-user-questions@^0.1.0-rc.6
+  @deepseek-ai/schemastery@^3.18.1
+  react@^18.2.0
+  zod@^4.4.3
+
+dependencies:
++ dsh-docs-harness file:C:/Users/freed/AppData/Local/Temp/claude/D--Project-dsh-buddy/0883e097-e9b1-4977-a13a-116e6cc4b52a/scratchpad/dsh-docs-harness-0.1.0.tgz
+
+Packages: +1
++
+Progress: resolved 1, reused 0, downloaded 1, added 1, done
+Done in 332ms using pnpm v10.33.0
+installed at: C:\Users\freed\.dsh\profiles\web\node_modules\dsh-docs-harness
+package.json: true
+client bundle: true
+vendor seed: true
+spec: file:C:/Users/freed/.dsh/local-plugins/dsh-docs-harness-0.1.0.tgz
+bundles: ["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","dsh-docs-harness"]
+
+## 追记（2026-08-17 下午，v0.1.1 + 预装六件套补装）
+
+1) dsh-docs-harness 升级 0.1.1（设置路由修复）：
+   npm pack --pack-destination ~/.dsh/local-plugins → dsh-docs-harness-0.1.1.tgz
+   dsh plugin --profile web add → Packages: +1, done；spec 指向
+   file:C:/Users/freed/.dsh/local-plugins/dsh-docs-harness-0.1.1.tgz
+
+2) 存量用户缺口修复：按 plugins/preinstall-manifest.json packages 清单补装
+   @linxin666 六件套 @0.1.16（task-board / git-graph / skins / pet / live-stats /
+   web-ui-settings）：Packages: +13, done。
+   bundles 层栈现为 [dsh-base, dsh-web-app, dsh-docs-harness, @linxin666×6]。
+
+3) 打包运行时端到端验证（一次性 DSH_HOME + ci-install 解包产物起服，端口 3179）：
+   POST /docs-harness-settings/read  → {ok:true, value:{value:{governance:true,...}, writable:true}}
+   POST write governance=false → ok；随后 /docs-harness/status 405（项目路由随门禁拆除）
+   POST write governance=true  → ok；/docs-harness/status 恢复 200 信封
+   POST write governance="yes" → {ok:false, error.code=invalid-field}（字段守卫）
+
+## 环境发现（2026-08-17，随问题排查记录）
+
+用户真机运行的 DSH Buddy 进程路径为
+C:\Users\freed\AppData\Local\Temp\dsh-buddy-ci-install\DSH Buddy.exe ——
+即并行会话 CI 安装验证时经 NSIS 装入临时目录的副本（含 Uninstall 入口，
+说明注册表安装位/快捷方式被该次验证改写）。
+~/.dsh/profiles/node_modules 的平铺回退 junction（healProfilesModuleFallback
+所维护）随该副本启动被重指进 Temp 目录（时间戳 15:41 与用户启动时刻一致）；
+Temp 清理即第三方插件依赖解析全体断链。已建议用户重装到正常目录，
+heal 会在下次启动自动重指。

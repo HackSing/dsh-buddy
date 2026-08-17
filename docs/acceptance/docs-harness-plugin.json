@@ -1,0 +1,180 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "Docs Harness 插件化验收",
+  "key_symbols": [
+    "dsh-docs-harness",
+    "harnessPlan",
+    "plan_progress"
+  ],
+  "objective": "验证 dsh-docs-harness 插件与 dsh-buddy 集成满足 docs/plans/docs-harness-plugin.json 的成功标准：双闸激活治理、plan 前端流程（确认卡片/todolist/进度气泡）、用户显式触发的项目安装升级移除",
+  "plan_ref": "docs/plans/docs-harness-plugin.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "架构合同评审：零内核补丁、双闸门禁、逐字注入、无懒启用结构性保证",
+      "acceptance_type": "contract_check",
+      "layer": "L1",
+      "evidence_layer": null,
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260817T073153-25a761aeba",
+          "objective_fingerprint": "sha256:f7317152e31c411479b313b00b2b62c68692cf60ec96b198cbb147fb5145e1fc",
+          "acceptance_type": "contract_check",
+          "status": "passed",
+          "layer": "L1",
+          "evidence_layer": null,
+          "method": "主 agent 独立代码评审：逐项核对门禁、注入、路由安全、投影语义、确认门禁、转圈态、零内核补丁与体量红线，对照冻结方案合同",
+          "evidence_refs": [
+            "docs/acceptance/evidence/docs-harness-plugin/c1-review-notes.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-17T07:31:53+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "插件项目聚焦单测全过（host+client，126 例）",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260817T073153-6cbe067ab3",
+          "objective_fingerprint": "sha256:f7317152e31c411479b313b00b2b62c68692cf60ec96b198cbb147fb5145e1fc",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "在 D:/Project/dsh-docs-harness 独立复跑 npm test（node --test，host+client 全套件），126/126 通过，退出码 0",
+          "evidence_refs": [
+            "docs/acceptance/evidence/docs-harness-plugin/c2-unit-tests.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-17T07:31:53+00:00"
+        },
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260817T082959-4d0183011f",
+          "objective_fingerprint": "sha256:f7317152e31c411479b313b00b2b62c68692cf60ec96b198cbb147fb5145e1fc",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "v0.1.1 设置路由修复后于 D:/Project/dsh-docs-harness @ 72a68e2 复跑 npm test（node --test，host+client 全套件），145/145 通过（新增 settings-routes 10 例 + settings-store 9 例），退出码 0",
+          "evidence_refs": [
+            "docs/acceptance/evidence/docs-harness-plugin/c2-unit-tests.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-17T08:29:59+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "包与安装层：npm pack 产物经 dsh plugin add 装入本机真实 web profile 并进 bundles 层栈",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260817T073153-2c4e595b3b",
+          "objective_fingerprint": "sha256:f7317152e31c411479b313b00b2b62c68692cf60ec96b198cbb147fb5145e1fc",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "npm pack（prepack 构建+自检）产出 tarball，经 dsh plugin --profile web add 装入本机真实 profile（~/.dsh/profiles/web）：package.json/lib/client.js/vendor 种子落位，dsh.profile.bundles 含 dsh-docs-harness，spec 指向稳定路径 ~/.dsh/local-plugins",
+          "evidence_refs": [
+            "docs/acceptance/evidence/docs-harness-plugin/c3-live-install.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-17T07:31:53+00:00"
+        },
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260817T082959-b3a3dd6400",
+          "objective_fingerprint": "sha256:f7317152e31c411479b313b00b2b62c68692cf60ec96b198cbb147fb5145e1fc",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "0.1.1 tarball 经 dsh plugin --profile web add 装入本机真实 profile（spec 稳定路径 ~/.dsh/local-plugins），并补装 @linxin666 六件套 @0.1.16 使 bundles 层栈达到预装清单全量；打包运行时（ci-install 解包产物 + 一次性 DSH_HOME）端到端验证 /docs-harness-settings 读写、总开关实时翻转与字段守卫",
+          "evidence_refs": [
+            "docs/acceptance/evidence/docs-harness-plugin/c3-live-install.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-17T08:29:59+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "本机运行态全流程：启用提示→转圈→方案确认→todolist→气泡实时刷新→关开关回归",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "pending",
+      "records": []
+    },
+    {
+      "id": "c5",
+      "title": "用户真实体验确认（原话记录）",
+      "acceptance_type": "user_acceptance",
+      "layer": "L5",
+      "evidence_layer": null,
+      "status": "pending",
+      "records": []
+    }
+  ],
+  "status": "pending",
+  "revision": 6,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:ab934b8ccfe6c463e7efc1bb42779e4631b4158332da378815daaee2a885fe51",
+      "updated_at": "2026-08-17T07:31:53+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:2f507f10d0dec401f0477829ee4c65e7d9cd97aaa2bab7da4e0057d7c991a451",
+      "updated_at": "2026-08-17T07:31:53+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:6a14450ff8267c91c7216334a6b8c535789f72cc3be58cbdff7948b7d5fe978c",
+      "updated_at": "2026-08-17T07:31:53+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:0ae39998b3d42bcbbc72276e7fd1f7e30e633c2aa86ff929fa40f961d445cb52",
+      "updated_at": "2026-08-17T07:31:53+00:00"
+    },
+    {
+      "revision": 5,
+      "asset_fingerprint": "sha256:417032e076a8ddacdfd38663803948bd177e40f96c93d4daabca817f3f024b18",
+      "updated_at": "2026-08-17T08:29:59+00:00"
+    }
+  ],
+  "created_at": "2026-08-17T07:31:53+00:00",
+  "updated_at": "2026-08-17T08:29:59+00:00",
+  "settled_at": null,
+  "asset_fingerprint": "sha256:d5f525771e62e17a9ef366bd90ef39f3b020e5cda3b0ed88a48c016048406820"
+}

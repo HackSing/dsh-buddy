@@ -1,0 +1,28 @@
+c2 聚焦单测证据（主 agent 独立复跑）
+
+## 第二轮（2026-08-17，v0.1.1 设置路由修复后，当前有效）
+
+命令：npm test（于 D:/Project/dsh-docs-harness @ 72a68e2，node --test，host+client 全部套件）
+退出码：0
+
+输出摘要（末段原文）：
+  ✔ accepts only loopback peers (0.2146ms)
+  ✔ resolves the target directory from the session store, never from the request body (0.1862ms)
+  ✔ reports no directory when the session has no workspace (0.1205ms)
+✔ route guards (0.6234ms)
+ℹ tests 145
+ℹ suites 23
+ℹ pass 145
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 39195.955
+
+相对第一轮新增：settings-routes（10 例：注册/处置、loopback 门、方法与动作白名单、
+read 值与可写性、not-ready 诚实응답、字段守卫、provider 拒绝透传、坏 JSON）与
+settings-store（9 例：快照稳定引用、订阅触发加载、写失败回退、队列串行、dispose）。
+
+## 第一轮（2026-08-17，v0.1.0 @ fa5e1ba，已被第二轮覆盖）
+
+命令：npm test，退出码 0，126/126 通过（21 套件）。
