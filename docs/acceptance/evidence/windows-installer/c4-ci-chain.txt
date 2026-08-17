@@ -1,0 +1,32 @@
+c4 CI 三 job 全链（L4）
+=======================
+run: https://github.com/HackSing/dsh-buddy/actions/runs/31994780984
+tag: v0.1.0-test-win (push 触发, commit db5264b)
+
+三 job 结论(API: repos/HackSing/dsh-buddy/actions/runs/31994780984/jobs):
+  profile  completed success  (ubuntu-latest, needs 链起点)
+  windows  completed success  (windows-latest, needs: profile)
+  macos    completed success  (macos-14, needs: profile)
+
+profile job 步骤全绿(断言门禁生效):
+  Set up job / checkout / setup-node / 启用 pnpm / 安装依赖(npm ci --omit=dev)
+  / 构建 web profile 压缩包 / 打包后断言(链接不逃逸/无平台二进制/入口齐全)
+  / 上传 profile artifact —— 全部 success
+
+Release(API: releases/tags/v0.1.0-test-win):
+  name=v0.1.0-test-win prerelease=True draft=False
+  assets:
+    DSH.Buddy-0.1.0-arm64.dmg          156675692 bytes
+    DSH.Buddy.Setup.0.1.0.exe          142090270 bytes
+  -> needs: profile 链生效(三 job 并行构建前 profile 已先完成),
+     windows job 已无 continue-on-error(失败会红 run),
+     双平台产物挂载同一 Release 且标记 prerelease(不占 releases/latest)。
+
+本机 CI 产物复验(下载 exe 静默安装 + 临时 DSH_HOME 启动):
+  installed; resources/web-profile.tar.gz 4342034 bytes(CI ubuntu POSIX 链接布局产物)
+  stdout: bundled presets installed / bundled profile: installed
+          (CI 产物在 Windows 上纯 Node 解包成功, 实体化无特权依赖)
+          launcher=embedded / dsh web: http://127.0.0.1:3080 / update check: throttled
+  stderr 空; GET :3080 -> 200(len 13705); 窗口 DeepSeek Harness;
+  profiles/web 实体目录(非 symlink), @linxin666 六插件+skin-center 齐全;
+  退出后端口关闭(进程树回收)。

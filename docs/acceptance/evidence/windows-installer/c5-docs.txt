@@ -1,0 +1,15 @@
+c5 文档同步（L1）
+=================
+README.md 三处与 release.yml 行为一致(commit db5264b):
+1. 下载表 Windows 行:由「即将推出」改为 exe 正式入口,含 SmartScreen 未签名提示
+   ——与 release.yml windows job 转正(已无 continue-on-error)一致;
+2. 运行节补 npm run dist:win 说明 —— 与 package.json scripts 及
+   build-web-profile.js win32 实体化分支一致;
+3. Roadmap:发布流水线勾选改为「profile 产物独立构建经 artifact 分发,Windows 已转正」,
+   「Windows 安装包转正」勾选 —— 与 release.yml 三 job(profile/macos/windows)结构一致。
+
+release.yml 校验(与 README 声明对照):
+  - profile job 存在(ubuntu-latest)且为 macos/windows 的 needs 前置 —— README 声明一致
+  - windows job 无 continue-on-error —— 下载表以正式入口呈现
+  - 构建命令 DSH_SKIP_PROFILE=1 —— 与 build-web-profile.js 短路逻辑一致(缺失报错退出,
+    不会静默产出无 profile 安装包,下载表承诺「含随包 profile」成立)

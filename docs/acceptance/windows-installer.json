@@ -1,0 +1,168 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "Windows 安装包转正验收",
+  "key_symbols": [
+    "installBundledProfile",
+    "build-web-profile",
+    "DSH_SKIP_PROFILE",
+    "release.yml"
+  ],
+  "objective": "Windows 正式发布通道:profile 产物独立构建经 artifact 分发,纯 Node 两遍解包支持无特权普通用户,本机与 CI 全链验证,README/Roadmap 转正",
+  "plan_ref": "docs/plans/windows-installer.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "解包器冒烟全绿",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260817T044714-c52d82aec8",
+          "objective_fingerprint": "sha256:c39ddcd592da6fb41d301b02031eaabd34e6c2b19913eda2a851b1f68059bf7c",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "scripts/verify-bundled-profile.js 冒烟:win32 12 条断言全绿(实体化/多层链接链/hardlink/穿越拒绝/契约/staging 清理),绝对与越界链接拒绝,no-tarball 静默;POSIX 分支平台自适应(Windows 无符号链接特权 skip,CI 可补跑)",
+          "evidence_refs": [
+            "docs/acceptance/evidence/windows-installer/c1-unpacker-smoke.txt",
+            "docs/acceptance/evidence/windows-installer/c1-unpacker-smoke.stderr.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-17T04:47:14+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "本机构建与安装冒烟",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260817T044714-1c73144ecd",
+          "objective_fingerprint": "sha256:c39ddcd592da6fb41d301b02031eaabd34e6c2b19913eda2a851b1f68059bf7c",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "npm run dist:win 产出 exe(npmRebuild=false + 19 个 dsh 生态 peer 接口包显式进 dependencies,195 包全进包);nsis /S 静默安装到临时目录;临时 DSH_HOME 真实启动:presets 安装、bundled profile: installed、六插件+skin-center 齐全、web 为实体目录",
+          "evidence_refs": [
+            "docs/acceptance/evidence/windows-installer/c2-c3-install-smoke.txt",
+            "docs/acceptance/evidence/windows-installer/c2-c3-run.stdout.log"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-17T04:47:14+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "本机启动链不回归",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260817T044714-7bc39a851d",
+          "objective_fingerprint": "sha256:c39ddcd592da6fb41d301b02031eaabd34e6c2b19913eda2a851b1f68059bf7c",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "同一次启动取证:ensureBundledAssets(presets+profile 日志)、ensureDsh(launcher=embedded、dsh web 就绪)、createWindow(窗口 DeepSeek Harness)、更新检查出 outcome 不阻塞(throttled/up-to-date)、退出后进程树回收端口关闭",
+          "evidence_refs": [
+            "docs/acceptance/evidence/windows-installer/c2-c3-install-smoke.txt",
+            "docs/acceptance/evidence/windows-installer/c2-c3-run.stdout.log"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-17T04:47:14+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "CI 三 job 全链",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260817T044714-41712fd631",
+          "objective_fingerprint": "sha256:c39ddcd592da6fb41d301b02031eaabd34e6c2b19913eda2a851b1f68059bf7c",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "推 v0.1.0-test-win prerelease tag,run 31994780984 三 job 全绿:profile(ubuntu,含打包后断言门禁 success)→ macos/windows 并行(needs: profile);Release 挂载 dmg+exe 且 prerelease=True;本机下载 CI exe 复验:profile: installed(CI POSIX 链接布局 tar 在 Windows 实体化解包)、HTTP 200、窗口、六插件齐全、进程树回收",
+          "evidence_refs": [
+            "docs/acceptance/evidence/windows-installer/c4-ci-chain.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-17T04:47:14+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c5",
+      "title": "文档同步",
+      "acceptance_type": "contract_check",
+      "layer": "L1",
+      "evidence_layer": null,
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260817T044714-467a7a4b32",
+          "objective_fingerprint": "sha256:c39ddcd592da6fb41d301b02031eaabd34e6c2b19913eda2a851b1f68059bf7c",
+          "acceptance_type": "contract_check",
+          "status": "passed",
+          "layer": "L1",
+          "evidence_layer": null,
+          "method": "README 下载表 Windows 入口转正(exe + SmartScreen 提示)、运行节补 dist:win、Roadmap 两项勾选;与 release.yml(profile job/needs 链/无 continue-on-error/DSH_SKIP_PROFILE=1)逐条对照一致",
+          "evidence_refs": [
+            "docs/acceptance/evidence/windows-installer/c5-docs.txt",
+            "README.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-17T04:47:14+00:00"
+        }
+      ]
+    }
+  ],
+  "status": "passed",
+  "revision": 2,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:50019e13dfde59d1cf591523cffd8fe75e91114beb941bdf04bd41b4b6d6e68f",
+      "updated_at": "2026-08-17T04:46:40+00:00"
+    }
+  ],
+  "created_at": "2026-08-17T04:46:40+00:00",
+  "updated_at": "2026-08-17T04:47:14+00:00",
+  "settled_at": "2026-08-17T04:47:14+00:00",
+  "asset_fingerprint": "sha256:236404271a03c03676b281cbd6609159058359a1805a36fb6dfdf168938fe54a",
+  "replacement": null
+}

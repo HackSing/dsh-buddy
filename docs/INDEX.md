@@ -14,7 +14,8 @@
 - [构建机预装 web profile 随包分发链路](plans/bundled-web-profile.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-16 核对）；关键符号：`build-web-profile`、`installBundledProfile`、`extraResources`、`preinstall-manifest`
 - [发布基础设施:启动更新检查与 dsh rc 追新兼容验证 CI](plans/release-infrastructure.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-16 核对）；关键符号：`checkForUpdate`、`lastNotifiedVersion`、`verify-dsh-compat`、`binEntryFrom`
 - [Release CI:tag 触发双平台构建并发布 GitHub Release](plans/release-ci.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-16 核对）；关键符号：`release.yml`、`dist:win`、`GITHUB_REF_NAME`、`gh release upload`
-- [Windows 安装包转正](plans/windows-installer.md) — 状态：有效（实施中）；关键符号：`installBundledProfile`、`build-web-profile`、`DSH_SKIP_PROFILE`、`release.yml`
+- [Windows 安装包转正](plans/windows-installer.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-17 核对）；关键符号：`installBundledProfile`、`build-web-profile`、`DSH_SKIP_PROFILE`、`release.yml`
+- [Docs Harness 插件化：治理 preset 与 plan 前端流程](plans/docs-harness-plugin.md) — 状态：有效（实施中）；关键符号：`harnessPlan`、`plan_progress`、`dsh-docs-harness`、`installBundledPresets`
 <!-- docs-harness:plans-index:end -->
 
 <!-- docs-harness:knowledge-index:start -->
@@ -23,6 +24,7 @@
 - [bundled agent preset 安装拓扑约束](knowledge/bundled-preset-topology.md) — 状态：有效（现行事实）；关键符号：`BUNDLED_PRESET_DIRS`、`installBundledPresets`、`agent-presets`
 - [插件预装协议门槛(license gate)](knowledge/plugin-license-gate.md) — 状态：有效（现行事实）；关键符号：`license_gate`、`preinstall-manifest`、`copyleft`
 - [dsh-web-ui 协议尽调与预装子集决策](knowledge/dsh-web-ui-license-audit.md) — 状态：有效（现行事实）；关键符号：`preinstall-manifest`、`dsh-web-ui-all`、`cloudflared`、`@linxin666`
+- [Windows 随包 profile 构建与解包约束](knowledge/windows-profile-packaging.md) — 状态：有效（现行事实）；关键符号：`installBundledProfile`、`build-web-profile`、`DSH_SKIP_PROFILE`、`npmRebuild`
 <!-- docs-harness:knowledge-index:end -->
 
 <!-- docs-harness:acceptance-index:start -->
@@ -33,4 +35,5 @@
 - [bundled web profile 链路验收](acceptance/bundled-web-profile.md) — 状态：已验收-仅追溯；关键符号：`build-web-profile`、`installBundledProfile`、`extraResources`
 - [发布基础设施(更新检查 + dsh 追新兼容 CI)验收](acceptance/release-infrastructure.md) — 状态：已验收-仅追溯；关键符号：`checkForUpdate`、`lastNotifiedVersion`、`verify-dsh-compat`
 - [Release CI 验收](acceptance/release-ci.md) — 状态：已验收-仅追溯；关键符号：`release.yml`、`dist:win`、`gh release upload`
+- [Windows 安装包转正验收](acceptance/windows-installer.md) — 状态：已验收-仅追溯；关键符号：`installBundledProfile`、`build-web-profile`、`DSH_SKIP_PROFILE`、`release.yml`
 <!-- docs-harness:acceptance-index:end -->

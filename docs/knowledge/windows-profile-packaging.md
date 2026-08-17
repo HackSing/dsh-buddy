@@ -1,0 +1,44 @@
+> 状态：有效（现行事实）
+<!-- docs-harness:knowledge-document/v1 -->
+
+# Windows 随包 profile 构建与解包约束
+
+- 修订：1
+- 关键符号：`installBundledProfile`、`build-web-profile`、`DSH_SKIP_PROFILE`、`npmRebuild`
+- 资产指纹：`sha256:dfdec62af04bcef6bc553da42913710a2f1dfb827699036bf5e282ab4cf4d419`
+
+## 摘要
+
+Windows 上 pnpm junction 布局使 bsdtar 打包/解包不可用,须 POSIX 构建 tar + 纯 Node 两遍解包(win32 实体化),CI 经 artifact 分发并用 DSH_SKIP_PROFILE 短路
+
+## 事实
+
+### `win32.pnpm-junction-bsdtar-unusable`
+
+Windows 上 pnpm 用 junction 布局,node_modules 链接的 linkname 为指向 pnpm store 的绝对路径,系统 bsdtar 打包后链接失真产物不可用;且普通用户默认无 SeCreateSymbolicLinkPrivilege,解包 symlink 条目会失败——随包 profile 不得在本机 Windows 用系统 tar 打包,须在 POSIX(CI ubuntu)构建
+
+证据：`scripts/build-web-profile.js`、`lib/bundled-profile.js`
+
+### `profile.two-pass-node-extract`
+
+installBundledProfile 用 tar@7.5.22 同步两遍解包:第一遍 tar.t 收集链接元数据,第二遍 tar.x filter 排除链接只解实体(保留 mode/mtime),链接按条目所在目录解析且必须落在 staging 内(绝对/越界一律抛错);win32 分支用 fs.cpSync dereference 实体化,POSIX 分支保持 fs.symlinkSync/fs.linkSync 语义
+
+证据：`lib/bundled-profile.js`
+
+### `profile.ci-artifact-skip`
+
+CI 中 profile 由独立 ubuntu job 构建并经 download-artifact 落位 build/web-profile.tar.gz,消费方(macos/windows dist job)以 DSH_SKIP_PROFILE=1 短路跳过本地重建:tar 存在→skip exit 0,缺失→报错 exit 1,防止漏拉 artifact 后静默产出无 profile 安装包;落地路径与短路共用 build-web-profile.js 的 OUTPUT_PATH 单一常量
+
+证据：`scripts/build-web-profile.js`、`.github/workflows/release.yml`
+
+### `electron-builder.peer-deps-not-collected`
+
+electron-builder 只打包 package.json dependencies 可达树,peerDependencies 树不收集:dsh 生态 19 个接口包(如 cordis-plugin-group、dsh-fs、dsh-shell 等)运行时由 dsh 动态 require,必须显式声明进本应用 dependencies 否则打包态启动 ERR_MODULE_NOT_FOUND(本机安装冒烟实证)
+
+证据：`package.json`
+
+### `node-pty.napi-prebuild-no-rebuild`
+
+node-pty 1.1.0 为 N-API 模块(node-addon-api),prebuilds/win32-x64 预编译二进制可被 Electron 38 直接加载;其 binding.gyp 显式开启 SpectreMitigation,源码编译需 Spectre 库(本机与 windows-latest 均无,MSB8040),故 electron-builder 配置 npmRebuild:false 跳过 rebuild,Electron 运行时加载 prebuild 已实证可用
+
+证据：`package.json`

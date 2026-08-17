@@ -1,0 +1,61 @@
+{
+  "schema_version": "docs-harness/plan/v3",
+  "plan_level": "full",
+  "plan_profile": "architecture",
+  "secondary_profiles": [
+    "frontend_ui"
+  ],
+  "template_versions": [
+    "level/full@2.8.0",
+    "profile/architecture@2.8.0",
+    "profile/frontend_ui@2.8.0"
+  ],
+  "selection_fingerprint": "sha256:78f0093ebac58139b2073c9f5a37f68836f28936b7050e0fa4252043d566d7ba",
+  "content": {
+    "title": "Docs Harness 插件化：治理 preset 与 plan 前端流程",
+    "key_symbols": [
+      "harnessPlan",
+      "plan_progress",
+      "dsh-docs-harness",
+      "installBundledPresets"
+    ],
+    "background": "dsh-buddy 是薄 Electron 壳 + 内嵌 dsh 服务 + dsh React 前端，UI 与行为扩展全部走 dsh 插件体系（slot / 会话投影 / 工具 / agent preset）。Docs Harness 目前以 `scripts/harness.py`（Python，plan/knowledge/acceptance 生命周期）+ AGENTS.md 治理规则的形式存在于本仓库开发流，应用终端用户无法获得。需求：把 Docs Harness 包装为随 dsh-buddy 分发的插件；智能体触发 plan 时提供前端流程——方案经用户确认后，消息流显示 todolist 控件，输入区悬浮进度气泡（完成数/总数 + 代码增删行数），hover 展开详细清单，执行中实时更新；项目未启用/版本落后时提供应用内启用与升级通道。",
+    "objective": "交付 `dsh-docs-harness` 双半边插件包（host 工具/投影 + client 卡片/气泡/提示条）与治理规则 preset，经预装链路随安装包分发；在启用 Harness 的项目中，plan 触发→用户确认→执行进度的全流程在前端可视化；项目启用与升级提供'检测自动、落盘有确认、可设全自动'的应用内流程。",
+    "non_goals": "不把 harness.py 移植为 Node（引擎保持 Python 单源）；不修改 dsh 内核或 @deepseek-ai 包（只用公开扩展点）；不做 knowledge/acceptance 的前端可视化；不改动现有 dsh-anchored-standard preset 行为；不在本次实现应用层资产（profile/preset）的存量增量升级机制（路线图另案承接，本方案仅记录 bundled 插件版本戳例外的修订建议）——项目层 Harness 的检测与升级在本方案范围内。",
+    "success_criteria": "1) 全新安装 dsh-buddy 后，$DSH_HOME/.agent-presets 含治理 preset，web profile 含 `dsh-docs-harness` 插件；2) 选用该 preset 的智能体在启用 Harness 的项目触发复杂任务时，方案生成后前端出现确认卡片，未批准不进入实施；3) 批准后消息流出现方案 todolist 卡片，输入区出现进度气泡，格式“进度 n/m · +a -d”；4) hover/点击气泡显示逐条任务状态清单；5) 条目状态与增删行数随执行实时刷新；6) 未启用项目开新会话出现一键启用提示，批准后项目获得完整 Harness 资产；项目版本落后时出现升级提示；全自动开关开启后静默执行；同项目拒绝后不再提示；7) 未选该 preset 的会话无治理工具与前端流程，行为与现状一致；8) 聚焦测试与真实运行态验收全部通过。",
+    "execution_scope": "新增 plugins/dsh-docs-harness/（host 半边 src/：工具族、投影、启用检测；client 半边 src/client/：卡片、气泡、提示条、设置区；preset/ 治理规则；vendor/harness/ 内置 harness.py 及其模块作种子；client 构建脚本）；修改 plugins/preinstall-manifest.json（本地包条目）、scripts/build-web-profile.js（npm pack 本地插件后以 file spec 安装）、lib/bundled-presets.js（`installBundledPresets` 支持多插件来源）、根 package.json（构建钩子）、README 路线图（记录 bundled 插件版本戳例外修订建议）。不触碰 main.js 启动链路与现有 preset 内容。",
+    "implementation": "批1 host 半边：harness 工具族经 preset 的 agent 组合挂载（`harness_plan_select`/`harness_plan_create`/`harness_plan_settle`/`harness_project_init`/`harness_project_upgrade`/`plan_progress`），未选 preset 的会话不可见；工具 spawn python 优先调用项目自己的 scripts/harness.py（--json 边界，错误向上传递，缺 Python 明确报错），内置种子仅用于 init/upgrade 拷贝源；会话建立时轻量检测项目启用态与版本戳（仅 stat .docs-harness/config.json），产出投影 `harnessProject`{enabled,projectVersion,seedVersion,prompt}；新增投影 `harnessPlan`{status,items,done,total,diff:{added,removed}}；折叠 fs 写入/编辑工具结果的 FsDiffMeta hunk 统计增删行数累入投影；plan create 成功后经 ctx.userQuestions（plan-review intent）发起确认，批准前投影停在 awaiting-approval。批2 client 半边：tool.call.toolview 注册 harness plan 工具卡片与 `plan_progress` todolist 卡片；`conversation.input.dock` 注册进度气泡（居中 pill，useProjection('harnessPlan')，HoverCard 展开详细清单）与启用/升级非阻塞提示条（读 harnessProject，一键触发 init/upgrade 并走 dsh 原生审批，同项目拒绝后记住）；插件设置面板注册“新项目自动启用/版本差自动升级”开关（默认关闭即询问档，开启后检测到即静默执行、变更保持 git 可见）；client 产物构建链（esbuild，产物布局以 @linxin666 已发布包实物为参照）。批3 preset 与分发：preset/ 治理规则（精简核心规则 + 工具使用指引 + 懒启用兜底——用户忽略提示直接下任务时，首次需要 plan 由智能体自行发起 init 并过审批）；build-web-profile.js 增加本地插件 pack + file spec 安装；`installBundledPresets` 来源表扩展；verify 脚本与 README/Roadmap 更新。",
+    "acceptance_plan": "分层验收：1) node --test 单测——python wrapper 参数与错误传递、diff 行数折叠、`harnessPlan`/`harnessProject` 投影状态迁移、plan_progress 输入校验、启用检测与拒绝记忆、全自动开关分支；2) 构建层——构建 web-profile tar 并断言插件与 client 产物在内（verify 脚本）；3) 运行态——本机启动 dsh-buddy：未启用项目走 提示→审批→落盘 启用流程，再走完 触发→确认→todolist→气泡→完成 全流程并截图存证；4) acceptance 资产逐条 record，用户确认后 settle。",
+    "acceptance_required": true,
+    "knowledge_impact": "updated",
+    "constraints": "构建机需 pnpm；用户机运行 harness 工具需 Python 3（缺失时工具明确报错并给出安装指引，不静默降级）；新插件入 preinstall 清单须过协议门（本插件为仓库自有代码，许可可控）；harness_project_init/upgrade 均为写盘动作，必须经 dsh 原生审批，不建第二套授权。",
+    "risks_and_rollback": "风险：dsh.client 构建契约（字段与产物布局）文档不全，需以已发布 client 包实物为参照逐项核对；终端用户缺 Python 时 harness 工具族不可用，前端流程随之不激活；存量用户在增量更新机制落地前吃不到插件（已知，路线图承接）。回滚：从 preinstall-manifest 移除条目并回退 build 脚本与 preset 来源表即可，不影响既有功能。",
+    "current_constraints": "bundled-profile 解包与 bundled-presets 安装均为“已存在即跳过”的幂等语义，老安装不会自动获得新资产（存量增量更新机制在路线图，已设计未实现）；`installBundledPresets` 目前硬编码单一来源 dsh-anchored-standard；profile 安装依赖 pnpm 且 Windows 打 tar 需 dereference 实体化；dsh 壳与前端无 IPC，状态只能走会话投影/事件下行；todo_write 是整表替换且条目形状最小（无 id）。",
+    "alternatives": "A. 引擎边界：内置 harness.py 种子 + 项目副本为真源（选）/ 仅编排检测已装项目 / 核心逻辑移植 Node。B. 规则注入：治理 preset（选）/ host 插件 systemPrompt.section 常驻注入 / 沿用 instruction-hint 只提示读文件。C. 气泡座位：conversation.input.dock 内居中 pill（选）/ shell.overlay 全局浮层 / conversation.composer.dock 读数带。D. 工具注册位置：preset agent 组合挂载（选）/ host 插件全局注册。E. 项目启用交互：默认询问 + 设置开关全自动 + 懒启用兜底（选）/ 完全静默自动 / 仅懒启用。",
+    "tradeoffs": "内置 Python 引擎换取全功能与单源，代价是终端用户需 Python 3；preset 承载规则与工具换取按会话选择的激活粒度和普通会话零 token 开销，代价是未选 preset 的会话只能靠项目 AGENTS.md 软生效（终端直跑 harness，无前端流程与门禁）；默认询问档尊重用户仓库的 git 可见变更，代价是全自动体验需显式开启；input.dock 座位换取会话内定位与零 CSS hack，代价是它是文档流内的整行而非真浮层，悬浮 pill 视觉靠样式实现。",
+    "decision": "采用“内置 harness.py 种子的双半边插件 + 治理 preset”组合：插件包 `dsh-docs-harness` 提供工具/投影/前端控件，preset 提供治理规则与工具使用指引并挂载工具族，经 preinstall 链路随包分发；项目层为真源，插件种子只作 init/upgrade 拷贝源；项目启用与升级采用“会话建立轻量检测 + 非阻塞提示 + 审批落盘 + 设置开关全自动 + 懒启用兜底”；进度气泡落位 conversation.input.dock；数据一律走 `harnessPlan`/`harnessProject` 投影，前端不自建订阅。",
+    "boundaries_interfaces": "对外面：工具 `harness_plan_select`/`harness_plan_create`/`harness_plan_settle`/`harness_project_init`/`harness_project_upgrade`/`plan_progress`（均经 preset agent 组合挂载）；投影键 `harnessPlan`（{status: null|'awaiting-approval'|'running'|'done', items:[{content,status}], done, total, diff:{added,removed}}）与 `harnessProject`（{enabled,projectVersion,seedVersion,prompt:'none'|'enable'|'upgrade'}）；插件设置命名空间（自动启用/自动升级开关、按项目拒绝记忆）；preset id docs-harness-standard；包名 dsh-docs-harness（package.json 声明 dsh.bundle.patch + dsh.client 双清单）。内部边界：Python 引擎只经 --json 子进程边界通信；client 只读投影。",
+    "compatibility_migration": "升级分三条链：①插件包、②治理 preset 随路线图的存量资产增量更新机制承接（profile 未改动整体替换/自定义只加不改，preset 改动保留用户版；本方案在 README 记录修订建议——preinstall-manifest 管辖的 bundled 插件应允许版本戳升级，用户自装插件才是不碰对象，不在本方案实现）；③项目内 Harness 与应用解耦，由本插件会话检测版本差、经 project upgrade 单向迁移，默认提示确认、可设全自动。新安装自动获得全部资产；preset 目录不与现有三个重名，遵守 ../preset/ 相对路径共享约束不破坏既有链接。",
+    "rollback_strategy": "分发层：preinstall-manifest 去掉条目 + `installBundledPresets` 来源表回退，重建 profile tar 即回滚；会话层：用户改选其他 preset 即完全退出治理流程；项目层：init/upgrade 落盘均为 git 可见变更，可经 git 回退；插件注册均为 Cordis 可逆 effect，fiber dispose 无残留（docs/ 资产属项目数据，不随插件卸载删除）。",
+    "architecture_acceptance": "验证零内核补丁（插件仅经 dsh.bundle/dsh.client/预装链路接入，grep 无对 @deepseek-ai 包的 patch）；双半边契约测试（两个投影 shape 与 client 消费一致）；Python 子进程边界的错误传递测试；profile 组合加载后插件可发现、preset 挂载后工具可发现、未选 preset 时工具不可见。",
+    "adr_decision": "决策记录由本方案的候选方案/真实取舍/最终决策三段承载，不另立 ADR。",
+    "user_scenario": "dsh-buddy 终端用户（开发者）在项目中让智能体执行复杂/跨模块任务；用户关心：方案动手前可审、执行进度与代码改动量随时可见、不必在消息流里逐条翻找；新项目希望低摩擦启用治理，且落盘动作可控可回退。",
+    "user_flow": "第0步：新会话选择 Docs Harness preset（未选则无规则无工具，前端流程不激活）。第1步（每项目一次）：会话建立时轻量检测——未启用 → 输入区非阻塞提示“一键启用”，点击后智能体调 `harness_project_init` 经 dsh 原生审批落盘；版本落后 → 同位提示“可升级”走 harness_project_upgrade；用户忽略提示直接下任务 → 治理规则驱动智能体首次需要 plan 时自行发起 init（懒启用兜底）；设置开启全自动后检测到即静默执行；同项目拒绝过则记住不再提示。第2步：简单任务直接执行无额外流程；复杂任务 → harness plan 工具冻结方案到项目 docs/plans/ → 前端确认卡片（批准/拒绝/继续讨论），未批准不动手。第3步：批准后消息流插入方案 todolist 卡片，输入区上方出现进度气泡“进度 n/m · +a -d”，智能体经 `plan_progress` 更新条目状态，增删行数随文件改动自动累计，卡片与气泡实时刷新。第4步：收尾走 acceptance 记录与 plan settle，气泡进入完成态；全部资产落在项目 docs/ 随项目提交。",
+    "state_matrix": "`harnessProject` 投影：{enabled:false, prompt:'enable'}（提示条渲染启用档）/{enabled:true, 版本落后, prompt:'upgrade'}（提示条渲染升级档）/{enabled:true, 最新, prompt:'none'}（不渲染）；同项目拒绝记忆或全自动开关命中后 prompt:'none'（全自动直接执行）。`harnessPlan` 投影：null（无活动方案，气泡不渲染）→ awaiting-approval（确认卡片占据输入区，气泡不渲染）→ running（气泡渲染 n/m 与 ±行数；条目各自 pending/in_progress/completed，允许并行 in_progress）→ done（全部 completed，完成态）；用户拒绝方案→回 null。会话切换/页面刷新：投影随 history 首帧恢复，状态不丢；跨 turn 保持（standing plan 语义，区别于 todos 投影的 turn 清空）。异常：python 失败→工具报错、投影不变；`plan_progress` 条目形状不合法 loud fail；缺 Python → 工具报错并附安装指引，提示条与气泡不进入不可恢复状态。",
+    "components_interactions": "PlanToolCard（tool.call.toolview keyed，渲染方案 todolist 与批次分组）；PlanProgressRow（plan_progress 工具行，摘要复用 planSummary 算法）；PlanBubble（conversation.input.dock 条目，居中 pill，hover/点击触发展开）；PlanHoverList（逐条状态：完成灰勾/进行中高亮/待办空心圆）；EnableNoticeBar（input.dock 提示条：一键启用/可升级/忽略并记住，动作经审批执行）；HarnessSettingsSection（插件设置面板：自动启用与自动升级开关）。卡片与气泡同源读 useProjection('harnessPlan')，提示条读 useProjection('harnessProject')，无第二数据通道。",
+    "visual_responsive": "pill 居中悬浮样式（圆角/阴影/主题 token --dsw-alias-*），窄窗降级只显 n/m；hover 列表限高内滚动；提示条为单行非阻塞样式，与现有 dock 条目（GoalBar/QueueDock）视觉一致；明暗主题随 dsh 主题体系自动适配，不硬编码颜色。",
+    "accessibility": "气泡为 button 语义，aria-label 含进度与增删行数全文；清单可键盘触发（focus 展开、Esc 收起）；提示条按钮键盘可达且有明确文案；状态不只靠颜色区分（图标+文字）；触屏以点击代替 hover。",
+    "design_system_reuse": "复用 @deepseek-ai/dsh-client-ui-primitives 的 HoverCard/Pill/StateDot/DisclosureRow；todolist 视觉对齐现有 TodoPanel/TodoRow；进度摘要复用 planSummary；设置区复用现有插件设置扩展点；不引入新 UI 第三方依赖。",
+    "runtime_acceptance": "本机启动 dsh-buddy（npm start），选 docs-harness preset：在未启用 Harness 的真实项目走 提示→审批→init 落盘 启用流程；随后触发复杂任务走完 确认→执行→完成 全流程；再验证版本落后项目的升级提示与全自动开关行为；全程截图存证 docs/acceptance/evidence/；npm run dist 安装包冒烟：装后检查 $DSH_HOME 中插件与 preset 落位。"
+  },
+  "acceptance_refs": [],
+  "governance": {
+    "acceptance_required": true,
+    "knowledge_impact": "updated",
+    "updated_knowledge_refs": [],
+    "unchanged_reason": null,
+    "governance_settled_at": null
+  },
+  "frozen_at": "2026-08-17T04:49:44+00:00",
+  "plan_fingerprint": "sha256:a9b79924ad3c7888c8a740cdb231f477bde9df2e273db0ccb39853e97d49fee0"
+}

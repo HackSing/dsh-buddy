@@ -1,9 +1,9 @@
-> 状态：有效（实施中）
+> 状态：已实施-仅追溯（代码已是真源，2026-08-17 核对）
 <!-- docs-harness:plan-document/v1 -->
 
 # Windows 安装包转正
 
-- 冻结合同：`sha256:189a30ffae641157f1c5319694f74f8534b4ddc48b3154a24697ee4dc93b800f`
+- 冻结合同：`sha256:46ceb3679be5bb7a79dff39ab0b4a6f6c93adf31e559fe0673bc6e13955cb356`
 - 关键符号：`installBundledProfile`、`build-web-profile`、`DSH_SKIP_PROFILE`、`release.yml`
 
 ## 背景
@@ -83,7 +83,7 @@ L1 文档：README 下载表/Roadmap 同步（c5）；L2 单元冒烟：解包�
 <!-- docs-harness:plan-governance:start -->
 ## 资产治理
 
-- 关联验收：无
+- 关联验收：`docs/acceptance/windows-installer.json`
 - 需要 Acceptance：true
 - Knowledge 影响：updated
 <!-- docs-harness:plan-governance:end -->
