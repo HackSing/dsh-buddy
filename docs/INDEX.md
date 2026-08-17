@@ -14,6 +14,7 @@
 - [构建机预装 web profile 随包分发链路](plans/bundled-web-profile.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-16 核对）；关键符号：`build-web-profile`、`installBundledProfile`、`extraResources`、`preinstall-manifest`
 - [发布基础设施:启动更新检查与 dsh rc 追新兼容验证 CI](plans/release-infrastructure.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-16 核对）；关键符号：`checkForUpdate`、`lastNotifiedVersion`、`verify-dsh-compat`、`binEntryFrom`
 - [Release CI:tag 触发双平台构建并发布 GitHub Release](plans/release-ci.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-16 核对）；关键符号：`release.yml`、`dist:win`、`GITHUB_REF_NAME`、`gh release upload`
+- [Windows 安装包转正](plans/windows-installer.md) — 状态：有效（实施中）；关键符号：`installBundledProfile`、`build-web-profile`、`DSH_SKIP_PROFILE`、`release.yml`
 <!-- docs-harness:plans-index:end -->
 
 <!-- docs-harness:knowledge-index:start -->

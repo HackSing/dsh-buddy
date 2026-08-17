@@ -1,0 +1,30 @@
+c2 本机构建与安装冒烟 / c3 本机启动链不回归（L3）
+=====================================================
+环境: Windows 25H2(10.0.26200), Node 24, npm ci 后第三次 npm run dist:win
+构建: electron-builder 26.15.3, electron 38.8.6, npmRebuild=false(已实证
+      node-pty 为 N-API, prebuilds/win32-x64 预编译二进制可直接被 Electron 加载)
+      -> dist\DSH Buddy Setup 0.1.0.exe (nsis x64, oneClick perUser)
+进包校验: app.asar.unpacked/node_modules/@deepseek-ai 195 包 == node_modules 195 包
+      (此前 peer 接口包不被收集, dsh 启动 ERR_MODULE_NOT_FOUND; 修复后 ALL PACKAGES PRESENT)
+安装:  %TEMP%\dsh-buddy-install-test\ 下静默安装 /S /D= 成功
+      resources 含 web-profile.tar.gz (纯 Node 两遍解包输入, 本机 win32 实体化构建产物)
+启动取证(临时 DSH_HOME=%TEMP%\dsh-buddy-home-test, 不碰 ~/.dsh):
+  stdout:
+    [dsh-buddy] installed bundled presets: preset, zero-anchored-standard, whoami-standard
+    [dsh-buddy] bundled profile: installed          <- 纯 Node 解包器在打包态生效
+    [dsh-buddy] launcher=embedded entry=...app.asar.unpacked\node_modules\@deepseek-ai\dsh\lib\bin.js
+    dsh web: http://127.0.0.1:3080                   <- 内嵌 dsh 就绪日志
+    [dsh-buddy] update check: up-to-date (0.1.0)     <- 更新检查出 outcome, 不阻塞启动链
+  stderr: (空)                                        <- 19 包修复后无 ERR_MODULE_NOT_FOUND
+  服务:  GET http://127.0.0.1:3080 -> 200 (len 13705)
+  窗口:  存在, 标题 DeepSeek Harness (dsh 页面), MainWindowHandle != 0
+  DSH_HOME 结构: .agent-presets / profiles / storages / pet.json / settings.yaml
+  profiles/web: 实体目录(非 symlink/junction, 实体化解包实证), 其下 node_modules/@linxin666
+      = dsh-client-ui-git-graph, dsh-client-ui-skin-center, dsh-client-ui-task-board,
+        dsh-client-ui-web-ui-settings, dsh-live-stats, dsh-pet, dsh-skins (六插件+skin-center)
+退出:  Stop-Process 后 127.0.0.1:3080 关闭, 无 DSH Buddy 进程残留 (dsh 子进程随壳回收)
+
+对比基线: 19 包修复前第二次构建 exe 同流程启动, dsh 因缺 cordis-plugin-group
+      ERR_MODULE_NOT_FOUND 崩溃(本证据同时覆盖修复前后差异)。
+
+原始运行日志: c2-c3-run.stdout.log (同目录)

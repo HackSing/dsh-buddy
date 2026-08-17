@@ -1,7 +1,10 @@
-# 发布流水线:推送 v* tag → 双平台并行构建安装包 → 挂到同名 GitHub Release。
+# 发布流水线:推送 v* tag → profile 独立 job 先行,双平台并行打包 → 挂到同名 GitHub Release。
 # tag 含 - 后缀(如 v0.1.0-test1)自动标记为 prerelease:不占 /releases/latest,
 # 应用内更新检查不会把它推给用户,可放心用来试流水线。
-# Windows 侧为实验性(continue-on-error):打不出包不阻塞 macOS 发布。
+# profile 产物由独立 job(ubuntu)构建经 artifact 分发:Windows 上 pnpm 用 junction
+# 布局(链接指向 store 绝对路径),bsdtar 打包后链接失真、解包还需符号链接特权;
+# POSIX 构建产物为相对链接,解包器两分支(win32 实体化/POSIX symlink)均可处理,
+# 双平台消费方以 DSH_SKIP_PROFILE=1 跳过本地重建。
 name: release
 
 on:
@@ -13,9 +16,67 @@ permissions:
   contents: write
 
 jobs:
+  # profile 先行:macos/windows 通过 needs 依赖它,download-artifact 跨 job 拉取
+  # 必须等 artifact 上传完,否则首跑必挂。打包后断言把平台二进制与链接逃逸风险
+  # 从后期实证前移为 CI 门禁。
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      # dsh plugin 子命令把插件安装转发给 pnpm
+      - name: 启用 pnpm
+        run: corepack enable
+
+      # 构建 profile 只需 @deepseek-ai/dsh 的生产树,不装 electron-builder
+      - name: 安装依赖
+        run: npm ci --omit=dev
+
+      - name: 构建 web profile 压缩包
+        run: node scripts/build-web-profile.js
+
+      - name: 打包后断言(链接不逃逸/无平台二进制/入口齐全)
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/profile-check && mkdir -p /tmp/profile-check
+          tar -xzf build/web-profile.tar.gz -C /tmp/profile-check
+          root="$(realpath /tmp/profile-check)"
+          # 1. 无绝对 linkname
+          if find "$root" -type l -printf '%l\n' | grep -q '^/'; then
+            echo "FAIL: 存在绝对 linkname"; exit 1
+          fi
+          # 2. 符号链接解析后必须仍在 profile 根内(防逃逸构建机 pnpm store)
+          while IFS= read -r l; do
+            tgt="$(realpath -m "$l")"
+            case "$tgt" in
+              "$root"|"$root"/*) ;;
+              *) echo "FAIL: 链接逃逸 $l -> $tgt"; exit 1 ;;
+            esac
+          done < <(find "$root" -type l)
+          # 3. 无平台二进制(原生模块/可执行文件)
+          if find "$root" -type f | grep -qE '\.(node|dll|exe|dylib|so)$'; then
+            echo "FAIL: 存在平台二进制"; exit 1
+          fi
+          # 4. profile 根存在
+          [ -d "$root/web" ] || { echo "FAIL: profile 根缺失"; exit 1; }
+          echo "PROFILE ASSERT PASS: links=$(find "$root" -type l | wc -l) files=$(find "$root" -type f | wc -l)"
+
+      - name: 上传 profile artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: web-profile
+          path: build/web-profile.tar.gz
+          if-no-files-found: error
+
   macos:
     runs-on: macos-14
     timeout-minutes: 30
+    needs: profile
     defaults:
       run:
         shell: bash
@@ -26,9 +87,12 @@ jobs:
         with:
           node-version: 24
 
-      # predist 的 profile 构建要把插件装进临时 profile,dsh plugin 转发给 pnpm
-      - name: 启用 pnpm
-        run: corepack enable
+      # 拉取 profile job 产物,落位 build/web-profile.tar.gz(与脚本 OUTPUT_PATH 单一常量一致)
+      - name: 拉取 profile artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: web-profile
+          path: build
 
       - name: 校验 tag 与 package.json 版本一致
         run: |
@@ -43,8 +107,9 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
-      - name: 构建 dmg(含 predist 预装 profile)
-        run: npm run dist
+      # profile 由独立 job 分发,DSH_SKIP_PROFILE=1 跳过 predist 重建(缺失会报错)
+      - name: 构建 dmg(使用分发的 profile)
+        run: DSH_SKIP_PROFILE=1 npm run dist
 
       - name: 创建 Release 并上传 dmg
         env:
@@ -61,8 +126,7 @@ jobs:
   windows:
     runs-on: windows-latest
     timeout-minutes: 40
-    # 实验性:Windows 打包路径尚未在真机验证,失败不阻塞 macOS 发布
-    continue-on-error: true
+    needs: profile
     defaults:
       run:
         shell: bash
@@ -73,8 +137,11 @@ jobs:
         with:
           node-version: 24
 
-      - name: 启用 pnpm
-        run: corepack enable
+      - name: 拉取 profile artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: web-profile
+          path: build
 
       - name: 校验 tag 与 package.json 版本一致
         run: |
@@ -89,8 +156,8 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
-      - name: 构建 Windows 安装包(nsis x64)
-        run: npm run dist:win
+      - name: 构建 Windows 安装包(nsis x64,使用分发的 profile)
+        run: DSH_SKIP_PROFILE=1 npm run dist:win
 
       - name: 上传安装包到 Release
         env:

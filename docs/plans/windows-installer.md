@@ -1,0 +1,89 @@
+> 状态：有效（实施中）
+<!-- docs-harness:plan-document/v1 -->
+
+# Windows 安装包转正
+
+- 冻结合同：`sha256:189a30ffae641157f1c5319694f74f8534b4ddc48b3154a24697ee4dc93b800f`
+- 关键符号：`installBundledProfile`、`build-web-profile`、`DSH_SKIP_PROFILE`、`release.yml`
+
+## 背景
+
+macOS dmg 已转正，Windows 侧仍停留在实验性：release.yml 的 windows job 带 continue-on-error，README 标记「即将推出」。Roadmap 已明确转正方向——「profile 产物改为单独构建经 artifact 分发，绕开 bsdtar × pnpm junction」。三个已实证/已知事实：1) 构建侧：Windows 上 pnpm 用 junction 布局，linkname 为绝对路径（指向 pnpm store），bsdtar 打包后链接失真，产物不可用；POSIX 上 pnpm 用相对 symlink + 硬链接，bsdtar 打包可用。2) 运行侧：Windows 普通用户默认无 SeCreateSymbolicLinkPrivilege（除非管理员/开发者模式），系统 bsdtar 解包 symlink 条目会失败——installBundledProfile 目前用 spawnSync('tar')，双击即用的承诺在 Windows 上会破。3) main.js 的 Windows 适配已完成（npx .cmd 走 shell、taskkill /T 进程树回收、detached 仅 POSIX、immersive-titlebar 仅 darwin），无需改动。
+
+## 目标
+
+1) Windows 正式发布通道：push v* tag 后 CI 并行产出 dmg + nsis exe 挂载同一 Release，windows job 去掉 continue-on-error；2) 本机（Windows）npm run dist:win 全链可用：产出含六插件 profile 的 exe，安装冒烟通过；3) 普通 Windows 用户无需 Node、无需管理员/开发者模式即可安装并完整使用（含随包 profile）；4) README/Roadmap 同步转正。
+
+## 非目标
+
+不做代码签名/公证与自动更新安装（README 已排二期）；不做 Linux 通道；不改 preset 安装链（fs.cpSync 已跨平台）；不做 NSIS 高级配置（保持 electron-builder 默认 perUser 一键安装）；不改 main.js 启动链路语义。
+
+## 成功标准
+
+1) 解包器冒烟全绿：fixture tar（symlink/hardlink/多层相对链接/绝对链接/路径穿越）在 win32 与 POSIX 分支逐条断言；2) 本机 npm run dist:win 产出 exe，静默安装到临时目录后真实启动：窗口出现、内嵌 dsh 拉起、preset 安装、profile 解包为 installed、更新检查不阻塞；3) 推 prerelease tag 后 CI 三 job（profile/macos/windows，needs: profile 依赖链）全绿，profile job 打包后断言通过，Release 挂载 dmg + exe，windows job 无 continue-on-error；4) macOS 侧 dmg 构建与解包行为不回归（POSIX 分支保留 fs.symlink 语义）；5) README 下载表 Windows 入口转正、Roadmap 勾选。
+
+## 执行范围
+
+lib/bundled-profile.js：installBundledProfile 从系统 tar 改为纯 Node 两遍解包；scripts/build-web-profile.js：win32 实体化分支 + DSH_SKIP_PROFILE=1 跳过（供 CI artifact 分发）；package.json：tar@7.5.22 从 dev 提升为 dependencies（已确认）、build.win.icon 指向 assets/icon.png（1024x1024，electron-builder 自动转 ico）；.github/workflows/release.yml：新增独立 profile job（ubuntu-latest）构建 tar + 打包后断言 + upload-artifact，macos/windows job 显式 needs: profile、download-artifact 钉 path: build 落位 build/web-profile.tar.gz、以 DSH_SKIP_PROFILE=1 跳过 predist，windows job 转正；README.md：下载表、运行节、Roadmap；新增解包器冒烟脚本（临时脚本，输出入 acceptance evidence，不新增仓库常驻测试框架）。
+
+## 执行内容
+
+批1（解包器重写，纯 Node 两遍解包）：tar@7.5.22（已在 lock 的 dev 树，electron-builder 传递依赖）提升为直接 dependencies，钉死版本；installBundledProfile 保持同步契约（installed/skipped/no-tarball 返回与 staging+rename 语义不变，main.js 调用点零改动），优先用 tar.x 同步用法（sync:true）两遍执行——第一遍 filter 排除 symlink/link 条目只解实体（File/Directory，mode 与 mtime 由 tar.x 保留，macOS 可执行位不丢），onentry 收集链接元数据；第二遍处理收集的链接：win32 分支 symlink 条目用 fs.cpSync(目标, 位置, {recursive:true, dereference:true}) 实体化复制（第一遍已完成全部实体，cpSync 可跟随任意深度链接链落到实体），hardlink 条目 fs.linkSync 失败则复制；POSIX 分支 fs.symlinkSync / fs.linkSync（与 bsdtar 行为一致）；链接语义：linkpath 相对条目所在目录解析（不是 staging 根），解析后必须落在 staging 内，绝对 linkpath 或越界一律抛错；未知条目类型跳过并 console.warn；若实证发现 tar.x 同步用法覆盖不了场景，再降级手写 Parse 流并同步改造 main.js 调用点。冒烟脚本：构造 fixture tar（symlink/hardlink/多层相对链接/绝对链接/路径穿越）断言两分支行为与返回契约。批2（构建侧 + 本机全链验证）：build-web-profile.js win32 时先 fs.cpSync(profileDir, 实体化副本, {recursive:true, dereference:true})（junction 在 Node fs 中表现为 symlink，dereference 跟随）再对副本打 tar——链接全部实体化，无链接条目、无特权依赖、跨平台可解（代价：仅 Windows 本机构建的 tar 体积翻倍，CI 产物不受影响）；脚本开头加 DSH_SKIP_PROFILE=1 短路：tar 已存在 → 打印 skip 退出 0，不存在 → 报错退出 1（防止 CI 漏 download 静默产出无 profile 的包）；本机（Windows 25H2）全链：npm ci → npm run dist:win → nsis 静默安装（/S /D=临时目录）→ 临时 DSH_HOME 真实启动 → 取证：窗口、dsh 就绪日志、preset 目录、profiles/web 六插件目录、更新检查 outcome 日志；build.win.icon 配置。批3（CI 重构 + README + 收尾）：release.yml 新增 profile job（ubuntu-latest：corepack pnpm → node scripts/build-web-profile.js → 打包后断言 → upload-artifact）；macos/windows job 显式 needs: profile（download-artifact 跨 job 拉取必须等 artifact 上传完，否则首跑必挂），download-artifact 钉 path: build（落位 build/web-profile.tar.gz，与 build-web-profile.js 的 OUTPUT_PATH 单一常量一致），构建命令改 DSH_SKIP_PROFILE=1 npm run dist / DSH_SKIP_PROFILE=1 npm run dist:win；windows job 删除 continue-on-error 与实验性注释；profile job 新增打包后断言步（CI 门禁，把平台二进制与链接逃逸风险从后期实证前移）：tar -tzvf 检查无绝对 linkname、无逃逸 profile 根的相对链接、无 .node/.dll 等平台二进制，断言失败即 job 失败不出 artifact；推 v0.1.0-test-win prerelease tag 全链实测：三 job 全绿、Release 挂 dmg+exe、标记 prerelease，本机下载 exe 再装一遍冒烟，清理测试 tag 与 Release；README：下载表 Windows 入口（下载 exe、SmartScreen 未签名提示、安装说明）、运行节补 npm run dist:win、Roadmap 勾选「Windows 安装包转正」；收尾：plan settle、acceptance 逐条 record/settle、knowledge 更新、assets-check。
+
+## 验收方案
+
+acceptance 资产五条（先 acceptance create，逐条 record，全部 passed 后 settle）：c1 解包器冒烟全绿（L2）：fixture 五类链接场景两分支断言 + 防穿越/绝对链接拒绝；c2 本机构建与安装冒烟（L3）：npm run dist:win 出 exe，静默安装 + 临时 DSH_HOME 真实启动，六插件 profile 就位；c3 本机启动链不回归（L3）：真实启动覆盖 ensureBundledAssets/ensureDsh/createWindow 与更新检查不阻塞（与 c2 同一次启动取证）；c4 CI 三 job 全链（L4）：needs: profile 链生效、profile job 打包后断言通过、Release 挂双平台产物、windows 无 continue-on-error（profile job 断言步兼作后续改动的自动化回归防线）；c5 文档同步（L1）：README 下载表/Roadmap 与 release.yml 行为一致。
+
+## 是否需要 Acceptance 资产闭环
+
+```json
+true
+```
+
+## Knowledge 影响
+
+updated
+
+## 约束
+
+不新增第三方 action（仅官方 checkout/setup-node/upload-artifact/download-artifact 与 runner 自带 gh）；tar@7.5.22 提升为直接依赖（用户已确认），版本钉死；不改 main.js 启动链路语义；错误不吞：解包失败抛错走现有 dialog 呈现，防穿越拒绝必须报错；不碰 ~/.dsh，验证一律临时 DSH_HOME；防御代码准入：两遍解包与实体化由 Windows 无符号链接特权的已知事实驱动，不为未实证状态加兜底；CI artifact 落地路径与 skip 短路共用 build-web-profile.js 的 OUTPUT_PATH 单一常量，不在 workflow 中重复硬编码。
+
+## 风险与回滚
+
+风险：1) profile 依赖树若含平台二进制（esbuild 等）则 POSIX 构建的 tar 在 Windows 缺文件，且 ubuntu 临时 HOME 的 pnpm 相对链接若逃逸 profile 根指向构建机 store，防穿越抛错会让全部终端用户安装失败——两者均前移为 profile job 打包后断言门禁（批3）加批2 本机安装冒烟实证，发现即拆双平台各自构建 profile；2) 解包器替换 bsdtar 后 macOS 行为差异——POSIX 分支保留 fs.symlink 语义，CI mac job 构建层回归 + 解包器单测覆盖；3) tar 库 Parse 流 API 细节——实施时以 fixture 实证为准；4) Windows 本机构建 tar 体积翻倍（仅本机，CI 不受影响）；5) nsis 未签名 SmartScreen 提示——README 说明；6) artifact 分发首次跑通需人工看首跑日志。回滚：保留批1 解包器（独立可用），回退 release.yml 恢复 continue-on-error 即回到现状；整体回退则 revert 全部三批改动。
+
+## 源与目标
+
+源：release.yml windows job 为 continue-on-error 实验性分支、README 下载表 Windows 入口「即将推出」、bundled-profile.js 依赖系统 bsdtar 解包、本机 Windows 无 profile 构建能力。目标：windows job 转正为正式发布通道（needs: profile 依赖链）、README 提供 exe 正式下载入口、installBundledProfile 纯 Node 两遍解包（win32 实体化、无特权依赖）、本机 npm run dist:win 产出含六插件 profile 的完整 exe。
+
+## 版本与产物
+
+版本：DSH Buddy 0.1.0 与钉住 dsh 0.1.0-rc.6 均不变；tar@7.5.22 从 dev 树提升为直接 dependencies 钉死（不升级）。产物：DSH Buddy Setup 0.1.0.exe（nsis x64，electron-builder 默认命名）、DSH Buddy-0.1.0-arm64.dmg、build/web-profile.tar.gz（CI artifact 与随包 extraResources 同一文件）。
+
+## 兼容与灰度
+
+灰度：先推 v0.1.0-test-win prerelease tag 全链实测（prerelease 不占 releases/latest、不触发应用内更新提示），全绿后再由正式 tag 转正；macOS 侧行为不回归（POSIX 分支保留 fs.symlink 语义，dmg 构建链不变）；profile 已存在跳过、no-tarball 静默跳过等既有幂等语义保持不变；Windows 安装包走 electron-builder 默认 perUser 一键安装，卸载路径由 NSIS 托管。
+
+## 数据安全
+
+不碰 ~/.dsh，验证一律临时 DSH_HOME；解包保持 staging 后 rename 语义，进程中断只留点号开头 staging 目录且不匹配 dsh preset id 规则；防穿越校验拒绝条目名与 linkpath 越界，绝对链接一律抛错不落盘；用户已有 profiles/web 时跳过不覆盖。
+
+## 监控与停止条件
+
+profile job 打包后断言步为自动门禁（无绝对 linkname、无逃逸链接、无平台二进制），失败即阻断发布；CI 三 job 首跑人工看日志确认 artifact 链；停止条件：本机安装冒烟失败、Windows 解包报错或 CI 断言红，即停并回归排查。
+
+## 回滚
+
+回滚：保留批1 解包器（独立可用），回退 release.yml 恢复 continue-on-error 即回到现状；整体回退则 revert 全部三批改动；已发布 Release 可删除资产重新上传旧 dmg 或标记废弃。
+
+## 交付层分离
+
+L1 文档：README 下载表/Roadmap 同步（c5）；L2 单元冒烟：解包器 fixture 断言（c1）；L3 本机集成：dist:win 构建 + 静默安装 + 临时 DSH_HOME 真实启动（c2/c3）；L4 发布链：prerelease tag 三 job 全链 + Release 挂载（c4）。
+
+<!-- docs-harness:plan-governance:start -->
+## 资产治理
+
+- 关联验收：无
+- 需要 Acceptance：true
+- Knowledge 影响：updated
+<!-- docs-harness:plan-governance:end -->

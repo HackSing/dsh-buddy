@@ -12,7 +12,7 @@ dsh 是一个强大且快速演进的 agent harness;DSH Buddy 把它变成双击
 | 平台 | 入口 | 说明 |
 |---|---|---|
 | **macOS**(Apple Silicon) | [下载最新版 dmg](https://github.com/HackSing/dsh-buddy/releases/latest) | 拖入「应用程序」即完成安装。产物暂未签名公证,首次打开请右键 → 打开(或在「系统设置 → 隐私与安全性」放行) |
-| **Windows** | 即将推出 | Star 本仓库或关注 [Releases](https://github.com/HackSing/dsh-buddy/releases) 获取上线通知 |
+| **Windows**(x64) | [下载最新版 exe](https://github.com/HackSing/dsh-buddy/releases/latest) | 双击运行安装器即完成安装,无需 Node、无需管理员/开发者模式。产物未签名,SmartScreen 可能提示「Windows 已保护你的电脑」→ 更多信息 → 仍要运行;启动后首次连接会提示允许访问网络 |
 
 ## 发行版的四个职能
 
@@ -55,9 +55,10 @@ dsh 的 preset 选择器中选用。
 npm install
 npm start        # 开发态
 npm run dist     # 打包 macOS .app → dist/mac-arm64/DSH Buddy.app
+npm run dist:win # 打包 Windows 安装包 → dist/DSH Buddy Setup <ver>.exe(本机需 Windows;profile 按 win32 实体化分支构建)
 ```
 
-> 打包产物未做代码签名与公证,首次打开可能需要在「系统设置 → 隐私与安全性」中放行。
+> 打包产物未做代码签名与公证:macOS 首次打开需在「系统设置 → 隐私与安全性」中放行,Windows 安装器会触发 SmartScreen 提示。
 
 ## 启动器解析顺序
 
@@ -84,10 +85,10 @@ npm run dist     # 打包 macOS .app → dist/mac-arm64/DSH Buddy.app
 
 - [x] 打包分发(electron-builder,macOS arm64 dmg)
 - [x] 随包资产:精选 agent preset 预装 + 插件 profile 随包
-- [x] 发布流水线(推 tag 即自动构建并发 Release;Windows 侧实验性)
+- [x] 发布流水线(推 tag 即自动构建并发 Release;profile 产物独立构建经 artifact 分发,Windows 已转正)
 - [x] 应用内更新提示(检查 GitHub Releases,24h 节流)
 - [x] dsh 追新兼容验证(每日自动值班,新版本自动开 issue 报告)
-- [ ] Windows 安装包转正(profile 产物改为单独构建经 artifact 分发,绕开 bsdtar × pnpm junction)
+- [x] Windows 安装包转正(profile 产物改为单独构建经 artifact 分发,绕开 bsdtar × pnpm junction;纯 Node 两遍解包支持无特权普通用户)
 - [ ] 代码签名 + 公证 + 全自动更新(签名就绪后同一发布流升级)
 - [ ] 存量用户随包资产增量更新(版本戳分流;profile:未改动整体替换、有自定义则自动只加不改合并;preset:未改动替换、已改动保留用户版本;均先备份,异常回滚)
 - [ ] 系统托盘、关窗常驻等桌面体验(按用户反馈驱动)

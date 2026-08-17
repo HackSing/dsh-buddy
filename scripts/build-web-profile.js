@@ -17,6 +17,19 @@ const OUTPUT_PATH = path.join(REPO_ROOT, 'build', 'web-profile.tar.gz');
 const DSH_PKG_DIR = path.join(REPO_ROOT, 'node_modules', '@deepseek-ai', 'dsh');
 const { binEntryFrom } = require('../lib/dsh-entry');
 
+// CI artifact 分发:profile 产物由独立 job 构建后经 download-artifact 落到
+// build/web-profile.tar.gz,消费方(macos/windows dist job)以 DSH_SKIP_PROFILE=1
+// 跳过本步,避免重复构建与平台差异。tar 缺失时直接报错退出,防止 CI 漏拉
+// artifact 后静默产出无 profile 的安装包。
+if (process.env.DSH_SKIP_PROFILE === '1') {
+  if (fs.existsSync(OUTPUT_PATH)) {
+    console.log(`[build-web-profile] DSH_SKIP_PROFILE=1, tar exists, skip: ${OUTPUT_PATH}`);
+    process.exit(0);
+  }
+  console.error(`[build-web-profile] DSH_SKIP_PROFILE=1 but ${OUTPUT_PATH} missing (CI download-artifact 漏拉?); refusing to build`);
+  process.exit(1);
+}
+
 // 本脚本自身就运行在 Node 里,用同一个运行时(process.execPath)拉起 dsh 即可:
 // 跨平台一致(Windows 上没有 .bin/electron 这个 POSIX 路径),也少一层间接。
 function dshPlugin(dshHome, profile, args) {
@@ -46,11 +59,27 @@ function main() {
 
     fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
     fs.rmSync(OUTPUT_PATH, { force: true });
-    // -C profiles 下打包 <profile>/ 顶层目录;bsdtar 保留符号链接,硬链接落地实体
-    execFileSync('tar', ['-czf', OUTPUT_PATH, '-C', path.join(home, 'profiles'), manifest.profile], {
+    // tar 顶层目录名必须等于 profile 名(解包器按 staging/<profileName> rename)。
+    // Windows 上 pnpm 用 junction 布局(Node 视为 symlink,linkname 为指向 store
+    // 的绝对路径),系统 tar 打包后链接失真、终端解包还需符号链接特权;先
+    // dereference 实体化副本再打包,产物无链接条目、跨平台可解。
+    // 代价:仅 Windows 本机构建的 tar 体积翻倍,CI(ubuntu)产物不受影响。
+    let tarCwd;
+    if (process.platform === 'win32') {
+      const materialized = path.join(home, 'materialized');
+      fs.cpSync(profileDir, path.join(materialized, manifest.profile), {
+        recursive: true,
+        dereference: true,
+      });
+      tarCwd = materialized;
+    } else {
+      tarCwd = path.join(home, 'profiles');
+    }
+    // bsdtar 保留符号链接(POSIX 相对链接),硬链接落地实体
+    execFileSync('tar', ['-czf', OUTPUT_PATH, '-C', tarCwd, manifest.profile], {
       stdio: 'inherit',
     });
-    console.log(`[build-web-profile] wrote ${OUTPUT_PATH}`);
+    console.log(`[build-web-profile] wrote ${OUTPUT_PATH} (platform=${process.platform})`);
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
   }
