@@ -3,7 +3,7 @@ const { spawn } = require('child_process');
 const os = require('os');
 const path = require('path');
 const { installBundledPresets, defaultDshHome } = require('./lib/bundled-presets');
-const { installBundledProfile } = require('./lib/bundled-profile');
+const { installBundledProfile, patchBundledProfileUi } = require('./lib/bundled-profile');
 const { createFramelessWindow } = require('./lib/frameless-window');
 const { attachDragStrip } = require('./lib/immersive-titlebar');
 const { binEntryFrom } = require('./lib/dsh-entry');
@@ -172,6 +172,10 @@ function ensureBundledAssets() {
       profileName: preinstallManifest.profile,
     });
     console.log(`[dsh-buddy] bundled profile: ${profileResult}`);
+      const uiPatched = patchBundledProfileUi({ dshHome, profileName: preinstallManifest.profile });
+      if (uiPatched) {
+        console.log('[dsh-buddy] patched llm-pi-ai multimodal settings UI');
+      }
   } catch (err) {
     dialog.showErrorBox(
       'DSH Buddy',

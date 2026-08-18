@@ -11,6 +11,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const tar = require('tar');
+const { patchProfileUi } = require('../lib/patch-multimodal-ui');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const MANIFEST_PATH = path.join(REPO_ROOT, 'plugins', 'preinstall-manifest.json');
@@ -64,6 +65,25 @@ function main() {
     // 因此是显式 env 开关而非默认。
     if (process.env.DSH_PICKER_BROWSE === '1') {
       console.log(`[build-web-profile] browse picker: ${applyBrowsePicker(profileDir)}`);
+    }
+
+    // Apply the DSH Buddy multimodal UI patch to the bundled Models settings
+    // page before packing the profile. Fail the build if the upstream bundle
+    // shape changed and the patch cannot be applied cleanly.
+    const modelsUiPath = path.join(
+      profileDir,
+      'node_modules',
+      '@deepseek-ai',
+      'dsh-client-ui-settings-models',
+      'lib',
+      'client.js'
+    );
+    if (!fs.existsSync(modelsUiPath)) {
+      throw new Error(`models settings UI missing: ${modelsUiPath}`);
+    }
+    const uiPatched = patchProfileUi({ dshHome: home, profileName: manifest.profile });
+    if (uiPatched) {
+      console.log('[build-web-profile] patched llm-pi-ai multimodal settings UI');
     }
 
     fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
