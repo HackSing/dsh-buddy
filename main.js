@@ -81,7 +81,11 @@ function resolveLauncher() {
       cmd: process.execPath, // Electron 二进制 + ELECTRON_RUN_AS_NODE = 纯 Node 进程
       args: [entry, 'web', '--host', TARGET.host, '--port', TARGET.port],
       env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
-      timeoutMs: 60000,
+      // 内嵌 dsh 免下载,但要 require/import profile 里全部插件的依赖树(实测
+      // 2万+文件);首次覆盖安装后这批文件对 Windows Defender 实时防护而言都是
+      // "从未扫描过",逐文件扫描开销叠加起来实测能顶近 60s,原值把这一次性成本
+      // 算作了故障。120s 与下面 npx 路径的冷启动宽容度对齐同一量级。
+      timeoutMs: 120000,
       detail: entry,
     };
   }
