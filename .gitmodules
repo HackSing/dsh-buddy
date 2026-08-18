@@ -1,0 +1,3 @@
+[submodule "vendor/docs-harness"]
+	path = vendor/docs-harness
+	url = https://github.com/HackSing/docs-harness.git

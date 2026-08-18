@@ -65,13 +65,17 @@ dsh 的 preset 选择器中选用。
 - **注入的规则就是项目自己的规则**,取自项目 `AGENTS.md` 的受管块原文,不做删改;
   只把「怎么调用」从命令行改写为工具名。
 
-源码在同级目录 `../dsh-docs-harness`(尚未发布 npm)。构建时由
-`scripts/build-web-profile.js` 先 `npm pack` 成 tarball,再按 pnpm 的文件 spec 装进
-profile;发布到 npm 后应把它从清单的 `local` 移入 `packages` 并钉死版本。
+源码唯一真源是 [docs-harness](https://github.com/HackSing/docs-harness) 仓库,经
+`vendor/docs-harness` 的 git submodule 自包含消费(尚未发布 npm)。构建时
+`scripts/build-web-profile.js` 先在子模块内的 `dsh-plugin/` 目录 `npm ci`,再
+`npm pack` 成 tarball,按 pnpm 的文件 spec 装进 profile;发布到 npm 后应把它从清单的
+`local` 移入 `packages` 并钉死版本。
 
 ## 运行
 
 ```bash
+git clone --recurse-submodules https://github.com/HackSing/dsh-buddy.git
+# 已经 clone 过、忘了带子模块参数:git submodule update --init --recursive
 npm install
 npm start        # 开发态
 npm run dist     # 打包 macOS .app → dist/mac-arm64/DSH Buddy.app

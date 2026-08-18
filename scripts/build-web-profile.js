@@ -59,19 +59,26 @@ function npmCliEntry() {
   throw new Error('cannot locate npm-cli.js next to the current Node runtime');
 }
 
-// 本仓自研、尚未发布 npm 的插件:先在源码目录 npm pack 成 tarball,再按
-// pnpm 的文件 spec 装进 profile。pack 会跑该包的 prepack(构建 client bundle +
-// 自检),所以进 tar 的一定是完整产物,不会是只剩 src 的半成品。
-// 打到空目录里再读文件名:npm pack 的 stdout 混有 lifecycle 脚本输出,解析
-// 它不如直接看落地产物可靠。
+// 本仓自研、尚未发布 npm 的插件:源码唯一真源在 docs-harness 仓库,经
+// entry.submodule 指向的 git submodule 自包含消费。全新子模块签出没有
+// node_modules,先 npm ci 落地 prepack 需要的 devDependencies(esbuild 等),
+// 再 npm pack 成 tarball 按 pnpm 的文件 spec 装进 profile。pack 会跑该包的
+// prepack(构建 client bundle + 自检),所以进 tar 的一定是完整产物,不会是
+// 只剩 src 的半成品。打到空目录里再读文件名:npm pack 的 stdout 混有
+// lifecycle 脚本输出,解析它不如直接看落地产物可靠。
 function packLocal(entry) {
   const src = path.resolve(REPO_ROOT, entry.source);
   if (!fs.existsSync(path.join(src, 'package.json'))) {
-    throw new Error(
-      `local plugin source missing: ${entry.name} expected at ${src}. `
-      + '需要该仓库与 dsh-buddy 同级检出;插件发布 npm 后请把它移到 manifest.packages 并删除 local 条目。'
-    );
+    const submodulePath = entry.submodule ? path.resolve(REPO_ROOT, entry.submodule) : null;
+    if (submodulePath && !fs.existsSync(path.join(submodulePath, '.git'))) {
+      throw new Error(
+        `local plugin source missing: ${entry.name} expected at ${src}. `
+        + `子模块 ${entry.submodule} 未初始化,请先运行: git submodule update --init --recursive`
+      );
+    }
+    throw new Error(`local plugin source missing: ${entry.name} expected at ${src}.`);
   }
+  execFileSync(process.execPath, [npmCliEntry(), 'ci'], { cwd: src, stdio: 'inherit' });
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-buddy-pack-'));
   execFileSync(process.execPath, [npmCliEntry(), 'pack', '--pack-destination', out], {
     cwd: src,

@@ -20,9 +20,10 @@
   "local": [
     {
       "name": "dsh-docs-harness",
-      "source": "../dsh-docs-harness",
+      "source": "vendor/docs-harness/dsh-plugin",
+      "submodule": "vendor/docs-harness",
       "license": "MIT",
-      "comment": "本仓自研插件,尚未发布 npm:构建时先 npm pack 成 tarball 再按 pnpm file spec 装入 profile。发布到 npm 后应移入 packages 并写死版本,同时删掉这一条。"
+      "comment": "本仓自研插件,源码唯一真源在 docs-harness 仓库,经本仓 git submodule 自包含消费:构建时子模块目录内先 npm ci 再 npm pack 成 tarball,按 pnpm file spec 装入 profile。发布到 npm 后应移入 packages 并写死版本,同时删掉这一条。"
     }
   ],
   "excluded": [
