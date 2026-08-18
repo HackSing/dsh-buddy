@@ -50,10 +50,18 @@ from acceptance_assets import (
     record as record_acceptance_asset,
     settle as settle_acceptance_asset,
 )
-VERSION = "2.8.0"
-CONFIG_SCHEMA = "docs-harness/project-config/v9"
+from adr_assets import (
+    ADR_INPUT_SCHEMA,
+    ADR_SETTLE_STATUSES,
+    ADR_SPEC,
+    check as check_adr_assets,
+    create as create_adr_asset,
+    settle as settle_adr_asset,
+)
+VERSION = "2.8.1"
+CONFIG_SCHEMA = "docs-harness/project-config/v10"
 KNOWN_LEGACY_CONFIG_SCHEMAS = {
-    f"docs-harness/project-config/v{version}" for version in range(1, 9)
+    f"docs-harness/project-config/v{version}" for version in range(1, 10)
 }
 PLAN_TEMPLATE_SCHEMA = "docs-harness/plan-template/v3"
 PLAN_SELECTION_SCHEMA = "docs-harness/plan-selection/v2"
@@ -80,6 +88,7 @@ MANAGED_MODULE_RELATIVE_FILES = (
     "plan_governance.py",
     "knowledge_assets.py",
     "acceptance_assets.py",
+    "adr_assets.py",
 )
 PLAN_DOCS_RELATIVE = "docs/plans"
 PLAN_ARCHIVE_RELATIVE = "docs/plans/archive"
@@ -150,6 +159,19 @@ PLAN_INDEX_SCAFFOLD = """# 项目文档索引
 
 项目文档从这里进入；Docs Harness 只维护下方任务方案区块。
 """
+PROJECT_CHANGELOG_SCAFFOLD = """# Changelog
+
+本项目所有显著变更记录于此；版本号遵循语义化版本，新条目置顶。
+"""
+PROJECT_TODO_SCAFFOLD = """# TODO
+
+条目格式：`- [ ] 事项（owner，YYYY-MM-DD）`；完成后改为 `- [x]` 并保留在「已完成」。
+
+## 待办
+
+## 已完成
+"""
+TODO_ENTRY_PATTERN = re.compile(r"^- \[[ x]\] .+（\S+，\d{4}-\d{2}-\d{2}）\s*$")
 class HarnessError(Exception):
     def __init__(
         self,
@@ -435,10 +457,10 @@ Docs Harness 当前版本：{VERSION}
 - 复杂任务在 Plan 后创建 Acceptance 目标，执行中逐条记录真实证据并结项；简单任务仍可直接验证，不强制创建资产。
 - 验收以真实功能为中心：能运行聚焦测试、接口、页面、应用、构建或安装流程时运行最小充分流程；不能独立判断时准备最低成本环境，再交给用户做最短确认。
 - 高风险动作使用原生授权与沙箱，不建立第二套 Harness Gate 或授权协议。
-- Plan/Knowledge/Acceptance 输入 JSON 必须携带各自 schema_version 与注册字段（输入形状与示例见 python3 scripts/harness.py <cmd> --help）；校验失败报错直接附期望形状。
+- Plan/Knowledge/Acceptance/ADR 输入 JSON 必须携带各自 schema_version 与注册字段（输入形状与示例见 python3 scripts/harness.py <cmd> --help）；校验失败报错直接附期望形状。
 {knowledge_line}
 - pre-2.0 项目只通过 project upgrade 单向迁移；迁移后不保留旧运行能力。
-- 不在没有证据或没有明确维护任务时自动更新 Knowledge、ADR、Changelog、TODO 或质量账本。ADR 由主 agent 编写，复杂决策可选只读子智能体复审。
+- 不在没有证据或没有明确维护任务时自动更新 Knowledge、Changelog、TODO 或质量账本。架构决策由主 agent 通过 adr create 登记（定稿不可改，复杂决策可选只读子智能体复审）；决策失效时用 adr settle 废弃或标记被替代。
 {_GENERIC_STANDARDS}"""
 
 
@@ -621,7 +643,7 @@ def managed_module_fingerprints(root: Path) -> dict[str, str]:
 
 def asset_structure_changes(target: Path) -> list[dict[str, str]]:
     changes: list[dict[str, str]] = []
-    for spec in (KNOWLEDGE_SPEC, ACCEPTANCE_SPEC):
+    for spec in (KNOWLEDGE_SPEC, ACCEPTANCE_SPEC, ADR_SPEC):
         try:
             changes.extend(structure_changes(target, spec))
         except AssetError as exc:
@@ -631,12 +653,39 @@ def asset_structure_changes(target: Path) -> list[dict[str, str]]:
 
 def apply_asset_structures(target: Path) -> list[str]:
     changed: list[str] = []
-    for spec in (KNOWLEDGE_SPEC, ACCEPTANCE_SPEC):
+    for spec in (KNOWLEDGE_SPEC, ACCEPTANCE_SPEC, ADR_SPEC):
         try:
             changed.extend(apply_structure(target, spec))
         except AssetError as exc:
             raise translate_asset_error(exc) from exc
     return list(dict.fromkeys(changed))
+
+
+def project_doc_scaffolds(target: Path) -> dict[str, str]:
+    """项目级文档骨架；README 取目录名，其余为固定模板。"""
+    return {
+        "CHANGELOG.md": PROJECT_CHANGELOG_SCAFFOLD,
+        "TODO.md": PROJECT_TODO_SCAFFOLD,
+        "README.md": f"# {target.resolve().name}\n\n（项目简介占位：一句话说明这个项目是什么。）\n",
+    }
+
+
+def project_doc_changes(target: Path) -> list[dict[str, str]]:
+    return [
+        {"path": relative, "action": "create"}
+        for relative in project_doc_scaffolds(target)
+        if not (target / relative).is_file()
+    ]
+
+
+def apply_project_doc_scaffolds(target: Path) -> list[str]:
+    changed: list[str] = []
+    for relative, content in project_doc_scaffolds(target).items():
+        path = target / relative
+        if not path.is_file():
+            atomic_write_text(path, content)
+            changed.append(relative)
+    return changed
 
 
 def validate_project_source(source_root: Path) -> None:
@@ -1967,6 +2016,51 @@ def acceptance_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     return (0 if payload["status"] == "passed" else 1), payload
 
 
+# adr create --input 的 --help 示例（校验在 adr_assets；改 schema 同步此处）。
+ADR_INPUT_EXAMPLE = {
+    "schema_version": ADR_INPUT_SCHEMA,
+    "title": "决策标题",
+    "key_symbols": ["2-4 个唯一符号，不含反引号"],
+    "context": "决策背景与约束",
+    "decision": "采取的方案",
+    "consequences": "影响与代价",
+    "supersedes": ["可选：被取代的既有 ADR 路径 docs/adr/<name>.json"],
+}
+
+
+def adr_create(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
+    if not args.input or not args.output:
+        raise HarnessError("adr create 必须提供 --input 与 --output", code="missing_adr_input")
+    target = safe_target(args.target)
+    value = read_json(project_input_path(target, args.input, code="invalid_adr_input"))
+    try:
+        return 0, create_adr_asset(target, value, args.output, utc_now())
+    except AssetError as exc:
+        raise translate_asset_error(exc) from exc
+
+
+def adr_settle(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
+    if not args.adr or not args.status:
+        raise HarnessError("adr settle 必须提供 --adr 与 --status", code="missing_adr_input")
+    target = safe_target(args.target)
+    try:
+        payload = settle_adr_asset(
+            target, args.adr, args.status, args.replacement, utc_now(), plan_check_markdown_files(target)
+        )
+    except AssetError as exc:
+        raise translate_asset_error(exc) from exc
+    return 0, payload
+
+
+def adr_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
+    target = safe_target(args.target)
+    try:
+        payload = check_adr_assets(target)
+    except AssetError as exc:
+        raise translate_asset_error(exc) from exc
+    return (0 if payload["status"] == "passed" else 1), payload
+
+
 def migration_display_path(target: Path, path: Path) -> str:
     with contextlib.suppress(ValueError):
         return path.resolve(strict=False).relative_to(target.resolve()).as_posix()
@@ -2475,6 +2569,7 @@ def project_changes(target: Path, source_root: Path) -> list[dict[str, Any]]:
             )
     changes.extend(plan_docs_structure_changes(target))
     changes.extend(asset_structure_changes(target))
+    changes.extend(project_doc_changes(target))
     cleanup = legacy_cleanup_plan(target)
     changes.extend(
         {"path": path, "action": "remove_owned_legacy"}
@@ -2534,6 +2629,7 @@ def apply_project_install(
     changed: list[str] = []
     changed.extend(apply_plan_docs_structure(target))
     changed.extend(apply_asset_structures(target))
+    changed.extend(apply_project_doc_scaffolds(target))
     target_script = target / "scripts" / "harness.py"
     target_script.parent.mkdir(parents=True, exist_ok=True)
     if (
@@ -2766,6 +2862,7 @@ def project_findings(target: Path) -> list[dict[str, str]]:
             for code, label, checker in (
                 ("knowledge_assets_invalid", "Knowledge", check_knowledge_assets),
                 ("acceptance_assets_invalid", "Acceptance", check_acceptance_assets),
+                ("adr_assets_invalid", "ADR", check_adr_assets),
             ):
                 try:
                     result = checker(target)
@@ -2779,6 +2876,33 @@ def project_findings(target: Path) -> list[dict[str, str]]:
                             "message": f"{label} 资产检查失败：" + "; ".join(result["failures"]),
                         }
                     )
+    for relative, code, label in (
+        ("CHANGELOG.md", "project_changelog_missing", "CHANGELOG.md 缺失"),
+        ("TODO.md", "project_todo_missing", "TODO.md 缺失"),
+    ):
+        if not (target / relative).is_file():
+            findings.append(
+                {"severity": "red", "code": code, "message": f"{label}（init/upgrade 会生成骨架）"}
+            )
+    todo_path = target / "TODO.md"
+    if todo_path.is_file():
+        try:
+            todo_lines = todo_path.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeDecodeError):
+            todo_lines = []
+        malformed = [
+            line.strip()
+            for line in todo_lines
+            if line.strip().startswith("- [") and not TODO_ENTRY_PATTERN.match(line.strip())
+        ]
+        if malformed:
+            findings.append(
+                {
+                    "severity": "yellow",
+                    "code": "project_todo_format",
+                    "message": f"TODO.md 有 {len(malformed)} 条格式不符（应为 `- [ ] 事项（owner，YYYY-MM-DD）`）",
+                }
+            )
     cleanup = legacy_cleanup_plan(target)
     if cleanup["conflicts"]:
         findings.append(
@@ -3275,6 +3399,10 @@ def command_release(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         "changelog_top_version": changelog_top_version(target),
     }
     if not args.apply:
+        changelog_top = payload["changelog_top_version"]
+        strict_changelog_fail = (
+            bool(getattr(args, "strict", False)) and changelog_top != truth
+        )
         payload.update(
             {
                 "mode": "check",
@@ -3282,14 +3410,18 @@ def command_release(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                     "unreadable"
                     if missing
                     else "inconsistent"
-                    if diffs
+                    if diffs or strict_changelog_fail
                     else "consistent"
                 ),
             }
         )
         if missing:
             payload["missing_sources"] = missing
-        return (1 if missing else 2 if diffs else 0), payload
+        if strict_changelog_fail:
+            payload["strict_failures"] = [
+                f"CHANGELOG 顶部版本 {changelog_top or '(缺失)'} 与 VERSION {truth} 不一致"
+            ]
+        return (1 if missing or strict_changelog_fail else 2 if diffs else 0), payload
     if missing:
         raise HarnessError(
             "版本真源缺失",
@@ -3334,6 +3466,14 @@ def command_release(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             changed.append(relative)
     if writes:
         apply_release_writes(writes)
+    strict_changelog_fail = (
+        bool(getattr(args, "strict", False))
+        and payload["changelog_top_version"] != truth
+    )
+    if strict_changelog_fail:
+        payload["strict_failures"] = [
+            f"CHANGELOG 顶部版本 {payload['changelog_top_version'] or '(缺失)'} 与 VERSION {truth} 不一致"
+        ]
     payload.update(
         {
             "mode": "apply",
@@ -3341,7 +3481,7 @@ def command_release(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             "changed": changed,
         }
     )
-    return 0, payload
+    return (1 if strict_changelog_fail else 0), payload
 
 
 def plan_check_banner(path: Path) -> str | None:
@@ -3581,7 +3721,7 @@ def command_plan_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
 
 
 def command_assets_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
-    """统一编排三类资产检查；是否启用资产不由本命令推断。"""
+    """统一编排四类资产检查；是否启用资产不由本命令推断。"""
     target = safe_target(args.target)
     payload = run_assets_check(
         target,
@@ -3592,6 +3732,7 @@ def command_assets_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]
         ))[1],
         knowledge_checker=check_knowledge_assets,
         acceptance_checker=check_acceptance_assets,
+        adr_checker=check_adr_assets,
     )
     return (0 if payload["status"] == "passed" else 1), payload
 
@@ -3627,7 +3768,7 @@ def command_self_test(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         "script_version": script_version_valid,
         "command_parser": all(
             name in build_parser().format_help()
-            for name in ("knowledge", "plan", "acceptance", "project", "release", "assets-check", "self-test")
+            for name in ("knowledge", "plan", "acceptance", "adr", "project", "release", "assets-check", "self-test")
         ),
         "asset_check_flags": strict_parse_ok,
         "direct_mode_default": (
@@ -3655,6 +3796,7 @@ def command_self_test(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         ),
         "knowledge_lifecycle_v1": KNOWLEDGE_SPEC.schema.endswith("/v1"),
         "acceptance_lifecycle_v1": ACCEPTANCE_SPEC.schema.endswith("/v1"),
+        "adr_lifecycle_v1": ADR_SPEC.schema.endswith("/v1"),
     }
     passed = all(checks.values())
     return (0 if passed else 1), {
@@ -3725,6 +3867,12 @@ ACCEPTANCE_EPILOG = _EPILOG_INTRO + "\n\n" + "\n\n".join((
         ACCEPTANCE_SETTLE_INPUT_NOTES,
     ),
 ))
+
+ADR_EPILOG = _EPILOG_INTRO + "\n\n" + _schema_example_block(
+    f"adr create --input（{ADR_INPUT_SCHEMA}）：",
+    ADR_INPUT_EXAMPLE,
+    ("ADR 定稿后不可更新；失效时 adr settle --status deprecated|superseded（superseded 需 --replacement）。",),
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -3799,6 +3947,20 @@ def build_parser() -> argparse.ArgumentParser:
     acceptance.add_argument("--user-confirmed", action="store_true")
     acceptance.add_argument("--reaccept", action="store_true")
 
+    adr = commands.add_parser(
+        "adr",
+        help="创建并维护架构决策记录（定稿不可改）",
+        epilog=ADR_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    adr.add_argument("action", choices=("create", "settle", "check"))
+    add_target(adr)
+    adr.add_argument("--input")
+    adr.add_argument("--output")
+    adr.add_argument("--adr")
+    adr.add_argument("--status", choices=ADR_SETTLE_STATUSES)
+    adr.add_argument("--replacement")
+
     project = commands.add_parser(
         "project",
         help=f"{VERSION} 安装、单向升级、检查和卸载",
@@ -3820,13 +3982,16 @@ def build_parser() -> argparse.ArgumentParser:
     add_target(release)
     release.add_argument("--apply", action="store_true")
     release.add_argument("--target-version")
+    release.add_argument(
+        "--strict", action="store_true", help="CHANGELOG 顶部版本与 VERSION 不一致时退出码非 0"
+    )
 
     self_test = commands.add_parser("self-test", help=f"运行 {VERSION} 内置自检")
     add_target(self_test)
 
     assets_check = commands.add_parser(
         "assets-check",
-        help="统一检查 Plan、Knowledge、Acceptance 与跨资产关系",
+        help="统一检查 Plan、Knowledge、Acceptance、ADR 与跨资产关系",
     )
     add_check_options(assets_check)
     return parser
@@ -3876,6 +4041,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "check": acceptance_check,
             }
             code, payload = acceptance_handlers[args.action](args)
+        elif args.command == "adr":
+            adr_handlers = {
+                "create": adr_create,
+                "settle": adr_settle,
+                "check": adr_check,
+            }
+            code, payload = adr_handlers[args.action](args)
         elif args.command == "project":
             code, payload = command_project(args)
         elif args.command == "release":

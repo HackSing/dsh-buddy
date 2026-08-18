@@ -169,14 +169,16 @@ def run_assets_check(
     plan_checker: PlanChecker,
     knowledge_checker: AssetChecker,
     acceptance_checker: AssetChecker,
+    adr_checker: AssetChecker,
 ) -> dict[str, Any]:
     plans = plan_checker(target, fast)
     knowledge = _run_asset_checker(target, "Knowledge", knowledge_checker)
     acceptance = _run_asset_checker(target, "Acceptance", acceptance_checker)
+    adr = _run_asset_checker(target, "ADR", adr_checker)
     cross = check_cross_asset_relations(target)
     failures = list(plans.get("failures", []))
     warnings = list(plans.get("warnings", []))
-    for label, payload in (("Knowledge", knowledge), ("Acceptance", acceptance)):
+    for label, payload in (("Knowledge", knowledge), ("Acceptance", acceptance), ("ADR", adr)):
         failures.extend(f"FAIL: {label}: {item}" for item in payload.get("failures", []))
         warnings.extend(f"WARN: {label}: {item}" for item in payload.get("warnings", []))
     failures.extend(cross["failures"])
@@ -191,12 +193,13 @@ def run_assets_check(
             "plans": plans.get("checked", {}),
             "knowledge": knowledge.get("checked", 0),
             "acceptance": acceptance.get("checked", 0),
+            "adr": adr.get("checked", 0),
             "cross": cross.get("checked", 0),
         },
         "failures": failures,
         "warnings": warnings,
         "summary": (
-            f"assets-check {status}：Plan/Knowledge/Acceptance 已检查，"
+            f"assets-check {status}：Plan/Knowledge/Acceptance/ADR 已检查，"
             f"违规 {len(failures)} 条、警告 {len(warnings)} 条"
         ),
     }

@@ -46,3 +46,8 @@
 - [对标通用桌面产品的安装/更新/卸载流程](acceptance/desktop-lifecycle.md) — 状态：有效（待验收）；关键符号：`auto-update`、`deleteAppDataOnUninstall`、`checkForUpdate`、`quitAndInstall`
 - [Anchored 预设相位化开放 prompt section 与插件发现的验收](acceptance/anchored-phased-prompt.md) — 状态：已验收-仅追溯；关键符号：`sealSectionsUntilPromotion`、`extraIndex`、`installBundledPresets`、`createEpochPromotion`
 <!-- docs-harness:acceptance-index:end -->
+
+<!-- docs-harness:adr-index:start -->
+## 架构决策
+
+<!-- docs-harness:adr-index:end -->

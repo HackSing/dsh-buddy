@@ -1,5 +1,5 @@
 #!/bin/sh
-# Docs Harness pre-commit：三类资产的快速机械完整性检查。
+# Docs Harness pre-commit：四类资产的快速机械完整性检查。
 # 结构不具备（无 scripts/harness.py 或 docs）时静默放行；
 # python 不可用时不锁死提交，但打印醒目警告。
 
@@ -15,7 +15,7 @@ elif command -v python3 >/dev/null 2>&1; then
 else
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2
     echo "!! WARNING: 未找到 python/python3，已跳过 assets-check 检查 !!" >&2
-    echo "!! 三类文档资产未验证，请尽快补跑：                         !!" >&2
+    echo "!! 四类文档资产未验证，请尽快补跑：                         !!" >&2
     echo "!!   python scripts/harness.py assets-check --fast          !!" >&2
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2
     exit 0

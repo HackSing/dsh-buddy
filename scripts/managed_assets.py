@@ -32,6 +32,9 @@ class AssetSpec:
     marker: str
     schema: str
     readme: str
+    # True 时只治理带 projection marker 的 Markdown（目录可能与用户既有文档共存，
+    # 如 docs/adr/）；False 时目录内全部 JSON/MD 都必须成对（Harness 专有目录）。
+    marker_scoped: bool = False
 
     @property
     def archive(self) -> str:
@@ -275,11 +278,18 @@ def check_assets(target: Path, spec: AssetSpec, validate: Callable[[dict[str, An
     roots = ((target / spec.root, False), (target / spec.archive, True))
     for root, archived in roots:
         json_files = {path.stem: path for path in root.glob("*.json")}
-        markdown_files = {
-            path.stem: path
-            for path in root.glob("*.md")
-            if path.name != "README.md"
-        }
+        markdown_files = {}
+        for path in root.glob("*.md"):
+            if path.name == "README.md":
+                continue
+            if spec.marker_scoped:
+                try:
+                    head = path.read_text(encoding="utf-8").splitlines()[:3]
+                except (OSError, UnicodeDecodeError):
+                    continue
+                if spec.marker not in head:
+                    continue
+            markdown_files[path.stem] = path
         for basename in sorted(set(json_files) | set(markdown_files)):
             path = json_files.get(basename)
             document = markdown_files.get(basename)

@@ -443,6 +443,9 @@ def _validate_live_refs(target: Path, asset: dict[str, Any]) -> None:
         _project_file(target, asset["plan_ref"], PLAN_SCHEMAS)
     for ref in asset.get("knowledge_refs", []):
         _project_file(target, ref, "docs-harness/knowledge-asset/v1")
+    # 已结项资产是封存的历史记录：证据目录（output/、docs/testing/logs/ 等）
+    # 按规约不入库，证据存在性只能在结项前要求，否则干净克隆永远无法通过检查。
+    settled = bool(asset.get("settled_at"))
     for criterion in asset["criteria"]:
         for record_value in criterion["records"]:
             if (
@@ -451,6 +454,8 @@ def _validate_live_refs(target: Path, asset: dict[str, Any]) -> None:
                 and record_value.get("user_confirmation", {}).get("confirmed_by") != "user"
             ):
                 raise AssetError("用户验收记录缺少明确确认", "acceptance_user_confirmation_missing")
+            if settled:
+                continue
             if record_value["status"] == "passed":
                 for ref in record_value.get("evidence_refs", []):
                     _project_file(target, ref)
