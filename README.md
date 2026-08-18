@@ -73,6 +73,14 @@ dsh 的 preset 选择器中选用。
 
 ## 运行
 
+前置依赖(仅从源码构建需要;下载「## 下载」里的安装包不需要以下任何一项):
+
+- **Node.js 24**(CI 固定此版本;`npm install`/`npm run dist*` 都要用)
+- **pnpm**(全局装好;`dsh plugin` 子命令把插件安装转发给它,`npm install` 不会带出它)
+- **Python 3.10+ 且在 PATH 上**(构建期用,不只是运行期:`dsh-plugin` 的 `prepack` 会拉起 Python
+  跑一遍 Docs Harness 引擎来抽取受管文本,缺 Python 会在这一步报错退出)
+- 能访问 npm registry 与 GitHub(拉预装的 6 个公开插件包 + `vendor/docs-harness` 子模块)
+
 ```bash
 git clone --recurse-submodules https://github.com/HackSing/dsh-buddy.git
 # 已经 clone 过、忘了带子模块参数:git submodule update --init --recursive
