@@ -4,10 +4,10 @@
   "key_symbols": [
     "installBundledProfile",
     "preinstall-manifest",
-    "dsh-buddy-ci-install",
+    "virtualStoreDir",
     "healProfilesModuleFallback"
   ],
-  "summary": "幂等解包让预装插件永远到不了存量 profile；NSIS 做 CI 安装验证会改写真实安装位与快捷方式，平铺回退 junction 随之指进 Temp 易失目录",
+  "summary": "幂等解包让预装插件永远到不了存量 profile；解包出的 profile 带着构建机 pnpm 元数据导致用户机上插件增删被挡死；NSIS 做 CI 安装验证会改写真实安装位与快捷方式，平铺回退 junction 随之指进 Temp 易失目录",
   "facts": [
     {
       "id": "gap.idempotent-skip",
@@ -19,10 +19,20 @@
       ]
     },
     {
+      "id": "gap.virtual-store-drift",
+      "statement": "随包 tar 解包出的 profile 带着构建机的 pnpm 元数据：node_modules/.modules.yaml 的 virtualStoreDir 指向构建期临时目录（dsh-buddy-profile-*），该目录被清理后用户机上任何 pnpm add/remove 都被 ERR_PNPM_UNEXPECTED_VIRTUAL_STORE 挡死；因 Windows 分支打包前做过 dereference 实体化，node_modules 内容完整、运行态无感，坏的只有维护通道——2026-08-18 实测修法：改 profile 的 package.json（dependencies 与 dsh.profile.bundles 两处）→ 删 node_modules → dsh plugin --profile web install 重建，virtualStoreDir 回落本地后起 web 探测 HTTP 200",
+      "source_refs": [
+        "scripts/build-web-profile.js",
+        "lib/bundled-profile.js",
+        "plugins/preinstall-manifest.json"
+      ]
+    },
+    {
       "id": "repair.manual-add",
-      "statement": "存量修复手法：按 plugins/preinstall-manifest.json 的 packages 清单以 dsh plugin --profile web add 钉版补装（2026-08-17 已为用户本机补齐 @linxin666 六件套 @0.1.16 与 dsh-docs-harness 0.1.1）；本地 tarball 必须存放稳定路径（~/.dsh/local-plugins）而非会话临时目录，否则后续 pnpm 操作会因 file: spec 失效而断",
+      "statement": "存量修复手法：按 plugins/preinstall-manifest.json 的 packages 清单以 dsh plugin --profile web add 钉版补装七个包（@linxin666 六件套 @0.1.16 与 @aiwaretop/dsh-docs-harness@0.1.1），全部为 registry spec 不再涉及本地 tarball；2026-08-17 曾以本地 tarball 装过非 scoped 旧名 dsh-docs-harness 的存量 profile（含用户本机，2026-08-18 已迁移完毕）必须先去掉旧名再装 scoped 名，否则同功能插件双份注册且旧名的 file: spec 会在后续 pnpm 操作中断裂",
       "source_refs": [
         "plugins/preinstall-manifest.json",
+        "scripts/build-web-profile.js",
         "docs/acceptance/evidence/docs-harness-plugin/c3-live-install.txt"
       ]
     },
@@ -35,9 +45,20 @@
     }
   ],
   "status": "active",
-  "revision": 1,
-  "revision_history": [],
+  "revision": 3,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:dfa2672a0ed8aaf6d97a96b39cda72343eb0c8447e1db2cada9285ef1e39391b",
+      "updated_at": "2026-08-17T08:38:29+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:f4b2835942353fde582aac8a91d9457352692abeaf0b8cd7cda875c0ebbd73e5",
+      "updated_at": "2026-08-18T07:57:26+00:00"
+    }
+  ],
   "created_at": "2026-08-17T08:38:29+00:00",
-  "updated_at": "2026-08-17T08:38:29+00:00",
-  "asset_fingerprint": "sha256:dfa2672a0ed8aaf6d97a96b39cda72343eb0c8447e1db2cada9285ef1e39391b"
+  "updated_at": "2026-08-18T08:10:54+00:00",
+  "asset_fingerprint": "sha256:6d9b951c561dc7911c908d777995e70a89c03b37f2107d81b9858fab18768fc8"
 }

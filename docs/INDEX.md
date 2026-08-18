@@ -26,7 +26,8 @@
 - [dsh-web-ui 协议尽调与预装子集决策](knowledge/dsh-web-ui-license-audit.md) — 状态：有效（现行事实）；关键符号：`preinstall-manifest`、`dsh-web-ui-all`、`cloudflared`、`@linxin666`
 - [Windows 随包 profile 构建与解包约束](knowledge/windows-profile-packaging.md) — 状态：有效（现行事实）；关键符号：`installBundledProfile`、`build-web-profile`、`DSH_SKIP_PROFILE`、`npmRebuild`
 - [dsh 网关 settings 白名单：第三方插件设置面必须自建路由](knowledge/dsh-settings-gateway-allowlist.md) — 状态：有效（现行事实）；关键符号：`WEB_SETTINGS_NAMESPACES`、`settings.describe`、`docs-harness-settings`、`HarnessSettingsStore`
-- [预装插件存量缺口与 CI 安装位污染](knowledge/preinstall-existing-user-gap.md) — 状态：有效（现行事实）；关键符号：`installBundledProfile`、`preinstall-manifest`、`dsh-buddy-ci-install`、`healProfilesModuleFallback`
+- [Electron 当 Node 跑内嵌 dsh 的原生能力边界：external buffer 被禁](knowledge/electron-external-buffer-limit.md) — 状态：有效（现行事实）；关键符号：`readUtf16`、`patch-dsh-picker`、`DSH_PICKER_BROWSE`、`browse-picker-patch`
+- [预装插件存量缺口与 CI 安装位污染](knowledge/preinstall-existing-user-gap.md) — 状态：有效（现行事实）；关键符号：`installBundledProfile`、`preinstall-manifest`、`virtualStoreDir`、`healProfilesModuleFallback`
 <!-- docs-harness:knowledge-index:end -->
 
 <!-- docs-harness:acceptance-index:start -->

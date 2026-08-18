@@ -51,7 +51,7 @@ dsh 的 preset 选择器中选用。
 
 ### Docs Harness
 
-`dsh-docs-harness` 是本项目自研的治理插件,随 web profile 一起预装:把方案
+`@aiwaretop/dsh-docs-harness` 是本项目自研的治理插件,随 web profile 一起预装:把方案
 (plan)生命周期做成工具族、把项目自己的治理规则注入 agent 提示词、把方案进度做成
 输入框上方的进度气泡,并提供 Docs Harness 引擎在项目里的安装 / 升级 / 移除入口。
 
@@ -65,11 +65,10 @@ dsh 的 preset 选择器中选用。
 - **注入的规则就是项目自己的规则**,取自项目 `AGENTS.md` 的受管块原文,不做删改;
   只把「怎么调用」从命令行改写为工具名。
 
-源码唯一真源是 [docs-harness](https://github.com/HackSing/docs-harness) 仓库,经
-`vendor/docs-harness` 的 git submodule 自包含消费(尚未发布 npm)。构建时
-`scripts/build-web-profile.js` 先在子模块内的 `dsh-plugin/` 目录 `npm ci`,再
-`npm pack` 成 tarball,按 pnpm 的文件 spec 装进 profile;发布到 npm 后应把它从清单的
-`local` 移入 `packages` 并钉死版本。
+源码唯一真源是 [docs-harness](https://github.com/HackSing/docs-harness) 仓库,已发布为 npm 包
+`@aiwaretop/dsh-docs-harness`,与其余六个预装插件走同一条链路:构建时
+`scripts/build-web-profile.js` 按 `plugins/preinstall-manifest.json` 的 `packages` 清单钉版
+从 registry 装进 profile。
 
 ## 运行
 
@@ -77,13 +76,10 @@ dsh 的 preset 选择器中选用。
 
 - **Node.js 24**(CI 固定此版本;`npm install`/`npm run dist*` 都要用)
 - **pnpm**(全局装好;`dsh plugin` 子命令把插件安装转发给它,`npm install` 不会带出它)
-- **Python 3.10+ 且在 PATH 上**(构建期用,不只是运行期:`dsh-plugin` 的 `prepack` 会拉起 Python
-  跑一遍 Docs Harness 引擎来抽取受管文本,缺 Python 会在这一步报错退出)
-- 能访问 npm registry 与 GitHub(拉预装的 6 个公开插件包 + `vendor/docs-harness` 子模块)
+- 能访问 npm registry(拉内嵌 dsh 与预装的 7 个插件包)
 
 ```bash
-git clone --recurse-submodules https://github.com/HackSing/dsh-buddy.git
-# 已经 clone 过、忘了带子模块参数:git submodule update --init --recursive
+git clone https://github.com/HackSing/dsh-buddy.git
 npm install
 npm start        # 开发态
 npm run dist     # 打包 macOS .app → dist/mac-arm64/DSH Buddy.app

@@ -2,7 +2,7 @@
 // dsh 追新兼容验证:给定一个候选 @deepseek-ai/dsh 版本,在系统临时目录建干净工作区,
 // 依次验证四件事——① 装包并按 bin 字段解析入口;② 随包 preset 的单测在新环境仍通过;
 // ③ 装上随包 preset 后新版 dsh 的 web 能起来且没有 preset 装载错误;
-// ④ 按 preinstall-manifest 装六个插件后 web 仍能起来。
+// ④ 按 preinstall-manifest 装全部预装插件后 web 仍能起来。
 //
 // 四步各自独立 try:一步失败继续跑后面的,把全部结论汇总成 markdown 报告;
 // 只要有一步失败就非零退出。本脚本只报告,绝不改动仓库里钉住的版本。
@@ -180,7 +180,7 @@ const STEPS = [
   { id: 'install', title: '① npm install 与 bin 入口解析', run: stepInstall },
   { id: 'preset-test', title: '② 随包 preset 单元测试', run: stepPresetTest },
   { id: 'preset-boot', title: '③ 随包 preset 装载后 web 启动', run: stepPresetBoot },
-  { id: 'plugin-install', title: '④ manifest 六插件安装后 web 启动', run: stepPluginInstall },
+  { id: 'plugin-install', title: '④ manifest 预装插件安装后 web 启动', run: stepPluginInstall },
 ];
 
 async function runSteps(ctx) {

@@ -3,13 +3,13 @@
 
 # 预装插件存量缺口与 CI 安装位污染
 
-- 修订：1
-- 关键符号：`installBundledProfile`、`preinstall-manifest`、`dsh-buddy-ci-install`、`healProfilesModuleFallback`
-- 资产指纹：`sha256:dfa2672a0ed8aaf6d97a96b39cda72343eb0c8447e1db2cada9285ef1e39391b`
+- 修订：3
+- 关键符号：`installBundledProfile`、`preinstall-manifest`、`virtualStoreDir`、`healProfilesModuleFallback`
+- 资产指纹：`sha256:6d9b951c561dc7911c908d777995e70a89c03b37f2107d81b9858fab18768fc8`
 
 ## 摘要
 
-幂等解包让预装插件永远到不了存量 profile；NSIS 做 CI 安装验证会改写真实安装位与快捷方式，平铺回退 junction 随之指进 Temp 易失目录
+幂等解包让预装插件永远到不了存量 profile；解包出的 profile 带着构建机 pnpm 元数据导致用户机上插件增删被挡死；NSIS 做 CI 安装验证会改写真实安装位与快捷方式，平铺回退 junction 随之指进 Temp 易失目录
 
 ## 事实
 
@@ -19,11 +19,17 @@ lib/bundled-profile.js 的幂等解包对已存在的 profile 直接跳过，预
 
 证据：`lib/bundled-profile.js`、`plugins/preinstall-manifest.json`、`docs/acceptance/evidence/docs-harness-plugin/c3-live-install.txt`
 
+### `gap.virtual-store-drift`
+
+随包 tar 解包出的 profile 带着构建机的 pnpm 元数据：node_modules/.modules.yaml 的 virtualStoreDir 指向构建期临时目录（dsh-buddy-profile-*），该目录被清理后用户机上任何 pnpm add/remove 都被 ERR_PNPM_UNEXPECTED_VIRTUAL_STORE 挡死；因 Windows 分支打包前做过 dereference 实体化，node_modules 内容完整、运行态无感，坏的只有维护通道——2026-08-18 实测修法：改 profile 的 package.json（dependencies 与 dsh.profile.bundles 两处）→ 删 node_modules → dsh plugin --profile web install 重建，virtualStoreDir 回落本地后起 web 探测 HTTP 200
+
+证据：`scripts/build-web-profile.js`、`lib/bundled-profile.js`、`plugins/preinstall-manifest.json`
+
 ### `repair.manual-add`
 
-存量修复手法：按 plugins/preinstall-manifest.json 的 packages 清单以 dsh plugin --profile web add 钉版补装（2026-08-17 已为用户本机补齐 @linxin666 六件套 @0.1.16 与 dsh-docs-harness 0.1.1）；本地 tarball 必须存放稳定路径（~/.dsh/local-plugins）而非会话临时目录，否则后续 pnpm 操作会因 file: spec 失效而断
+存量修复手法：按 plugins/preinstall-manifest.json 的 packages 清单以 dsh plugin --profile web add 钉版补装七个包（@linxin666 六件套 @0.1.16 与 @aiwaretop/dsh-docs-harness@0.1.1），全部为 registry spec 不再涉及本地 tarball；2026-08-17 曾以本地 tarball 装过非 scoped 旧名 dsh-docs-harness 的存量 profile（含用户本机，2026-08-18 已迁移完毕）必须先去掉旧名再装 scoped 名，否则同功能插件双份注册且旧名的 file: spec 会在后续 pnpm 操作中断裂
 
-证据：`plugins/preinstall-manifest.json`、`docs/acceptance/evidence/docs-harness-plugin/c3-live-install.txt`
+证据：`plugins/preinstall-manifest.json`、`scripts/build-web-profile.js`、`docs/acceptance/evidence/docs-harness-plugin/c3-live-install.txt`
 
 ### `lesson.ci-install-pollution`
 

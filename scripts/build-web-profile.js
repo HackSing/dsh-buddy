@@ -17,6 +17,7 @@ const MANIFEST_PATH = path.join(REPO_ROOT, 'plugins', 'preinstall-manifest.json'
 const OUTPUT_PATH = path.join(REPO_ROOT, 'build', 'web-profile.tar.gz');
 const DSH_PKG_DIR = path.join(REPO_ROOT, 'node_modules', '@deepseek-ai', 'dsh');
 const { binEntryFrom } = require('../lib/dsh-entry');
+const { applyBrowsePicker } = require('../lib/browse-picker-patch');
 
 // CI artifact 分发:profile 产物由独立 job 构建后经 download-artifact 落到
 // build/web-profile.tar.gz,消费方(macos/windows dist job)以 DSH_SKIP_PROFILE=1
@@ -42,79 +43,27 @@ function dshPlugin(dshHome, profile, args) {
   });
 }
 
-// npm 的 JS 入口。和上面拉起 dsh 同一个套路(process.execPath + 入口文件),
-// 不走 npm/npm.cmd:Node 20 起 spawn 一个 .cmd 不带 shell 直接 EINVAL,带
-// shell 又要自己处理路径引号。npm_execpath 只在 npm 生命周期里有值(predist
-// 走这条),直接 node 跑脚本时回落到与当前 Node 同装的那份 npm。
-function npmCliEntry() {
-  const nodeDir = path.dirname(process.execPath);
-  const candidates = [
-    process.env.npm_execpath,
-    path.join(nodeDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-    path.join(nodeDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-  ];
-  for (const c of candidates) {
-    if (c && c.endsWith('.js') && fs.existsSync(c)) return c;
-  }
-  throw new Error('cannot locate npm-cli.js next to the current Node runtime');
-}
-
-// 本仓自研、尚未发布 npm 的插件:源码唯一真源在 docs-harness 仓库,经
-// entry.submodule 指向的 git submodule 自包含消费。全新子模块签出没有
-// node_modules,先 npm ci 落地 prepack 需要的 devDependencies(esbuild 等),
-// 再 npm pack 成 tarball 按 pnpm 的文件 spec 装进 profile。pack 会跑该包的
-// prepack(构建 client bundle + 自检),所以进 tar 的一定是完整产物,不会是
-// 只剩 src 的半成品。打到空目录里再读文件名:npm pack 的 stdout 混有
-// lifecycle 脚本输出,解析它不如直接看落地产物可靠。
-function packLocal(entry) {
-  const src = path.resolve(REPO_ROOT, entry.source);
-  if (!fs.existsSync(path.join(src, 'package.json'))) {
-    const submodulePath = entry.submodule ? path.resolve(REPO_ROOT, entry.submodule) : null;
-    if (submodulePath && !fs.existsSync(path.join(submodulePath, '.git'))) {
-      throw new Error(
-        `local plugin source missing: ${entry.name} expected at ${src}. `
-        + `子模块 ${entry.submodule} 未初始化,请先运行: git submodule update --init --recursive`
-      );
-    }
-    throw new Error(`local plugin source missing: ${entry.name} expected at ${src}.`);
-  }
-  execFileSync(process.execPath, [npmCliEntry(), 'ci'], { cwd: src, stdio: 'inherit' });
-  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-buddy-pack-'));
-  execFileSync(process.execPath, [npmCliEntry(), 'pack', '--pack-destination', out], {
-    cwd: src,
-    stdio: 'inherit',
-  });
-  const tarballs = fs.readdirSync(out).filter((f) => f.endsWith('.tgz'));
-  if (tarballs.length !== 1) {
-    throw new Error(`npm pack produced ${tarballs.length} tarballs for ${entry.name}, expected 1`);
-  }
-  return path.join(out, tarballs[0]);
-}
-
 function main() {
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
   const specs = manifest.packages.map((p) => `${p.name}@${p.version}`);
   if (specs.length === 0) throw new Error('preinstall-manifest packages is empty');
-  const local = manifest.local || [];
-  const localTarballs = local.map((entry) => packLocal(entry));
 
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-buddy-profile-'));
   try {
     // 初始化 + 安装:dsh plugin 子命令对空 HOME 会自动初始化 profile(已实证)
-    dshPlugin(home, manifest.profile, ['add', ...specs, ...localTarballs]);
+    dshPlugin(home, manifest.profile, ['add', ...specs]);
 
     const profileDir = path.join(home, 'profiles', manifest.profile);
     for (const p of manifest.packages) {
       const dir = path.join(profileDir, 'node_modules', ...p.name.split('/'));
       if (!fs.existsSync(dir)) throw new Error(`installed package missing: ${p.name}`);
     }
-    // 自研插件多查一层 client 产物:它是 npm pack 时才生成的,漏了就是装了个
-    // 只有 host 半边的插件,界面一片空白而进程不报错。
-    for (const entry of local) {
-      const dir = path.join(profileDir, 'node_modules', ...entry.name.split('/'));
-      if (!fs.existsSync(dir)) throw new Error(`installed local package missing: ${entry.name}`);
-      const clientBundle = path.join(dir, 'lib', 'client.js');
-      if (!fs.existsSync(clientBundle)) throw new Error(`local package client bundle missing: ${clientBundle}`);
+
+    // 降级出包:把目录选择钉在 browse 交互上,随包 profile 自带该 patch 层。
+    // 只在原生对话框那条路走不通时使用(见 scripts/patch-dsh-picker.js 的失败提示),
+    // 因此是显式 env 开关而非默认。
+    if (process.env.DSH_PICKER_BROWSE === '1') {
+      console.log(`[build-web-profile] browse picker: ${applyBrowsePicker(profileDir)}`);
     }
 
     fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
