@@ -64,6 +64,20 @@
  * reload keep them. read/write/edit/glob/grep/todo/ask are deliberately NOT
  * resident: bash + str_replace_editor cover file work.
  *
+ * PROMPT SEAL (local addition, 2026-08-18): a preset that anchors on the
+ * Minimal persona previously sealed the system prompt with dsh-persona's
+ * `complete: true` — a scope-STATIC registration that suppresses every other
+ * prompt section for the whole session, so prompt-injecting plugins (e.g.
+ * dsh-docs-harness governance rules) never reach the model and fail silently.
+ * `sealSectionsUntilPromotion` and `sealContextsUntilPromotion` move that seal
+ * into this assembly filter, keyed by the SAME epoch promotion state as the
+ * tool catalog: an unpromoted session sees only the sealed sections (the
+ * persona) and no contexts — request #1 stays byte-identical to the old
+ * `complete` behavior — and from the first promoted request on, every
+ * registered section and context flows again. Both keys default to OFF, so
+ * presets that do not opt in (the zero/whoami evaluation variants) keep their
+ * existing behavior byte for byte.
+ *
  * COMPACTION (local addition): a compaction rewrites the whole surface, so the
  * first post-compaction request is a "second first request". Promotion is
  * epoch-aware (see compaction-epoch.mjs): after `compaction/end` the session
@@ -113,7 +127,7 @@ const PROMOTE_EVENTS = {
 }
 
 /** Every config key this plugin accepts — anything else is a typo. */
-const ALLOWED_KEYS = new Set(['bootstrapTools', 'promoteOn', 'bootstrapMaxTokens', 'suppressedContextSources', 'compactionTools'])
+const ALLOWED_KEYS = new Set(['bootstrapTools', 'promoteOn', 'bootstrapMaxTokens', 'suppressedContextSources', 'compactionTools', 'sealSectionsUntilPromotion', 'sealContextsUntilPromotion'])
 
 /**
  * Context sources stripped from the first request by default. Both are
@@ -179,6 +193,28 @@ function optionalPositiveInt(value, field) {
   return value
 }
 
+/**
+ * Validate the seal keep-list. `undefined` (key absent) means NO prompt seal;
+ * an explicitly empty array disables the seal while keeping the key visible,
+ * mirroring `suppressedContextSources`.
+ */
+function optionalSealList(value, field) {
+  if (value === undefined) return undefined
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string' || item.length === 0)) {
+    throw new TypeError(`${name}: ${field} must be an array of non-empty strings`)
+  }
+  return value.length === 0 ? undefined : new Set(value)
+}
+
+/** Validate the contexts seal flag. Absent means contexts flow unsealed. */
+function optionalBoolean(value, field) {
+  if (value === undefined) return false
+  if (typeof value !== 'boolean') {
+    throw new TypeError(`${name}: ${field} must be a boolean`)
+  }
+  return value
+}
+
 /** Register the per-session bootstrap filters. */
 export function apply(ctx, config) {
   const source = config === undefined ? {} : config
@@ -199,6 +235,11 @@ export function apply(ctx, config) {
   // means "no compaction recovery catalog": the session stays on the
   // bootstrap pair until a new promotion signal.
   const compactionTools = stringListOrEmpty(source.compactionTools, 'compactionTools')
+  // Prompt seal keep-list: while the session is unpromoted, only these
+  // sections survive the assembly filter (the main preset seals to the persona
+  // alone). Absent means no section sealing at all.
+  const sealedSections = optionalSealList(source.sealSectionsUntilPromotion, 'sealSectionsUntilPromotion')
+  const sealContexts = optionalBoolean(source.sealContextsUntilPromotion, 'sealContextsUntilPromotion')
 
   const promotion = createEpochPromotion(promoteEvents)
   ctx.on('session/event', (session, event) => promotion.observe(session, event))
@@ -256,6 +297,39 @@ export function apply(ctx, config) {
     }
   }
 
+  /**
+   * Narrow the assembled prompt to the sealed surface while a session is
+   * unpromoted: only the keep-list sections survive, and contexts are cleared
+   * when sealed. This is the phase-aware replacement for a static
+   * `complete: true` persona — same fail-open discipline as keepTools: a
+   * filter bug or a composition drift must expose the full prompt, never eat
+   * it, and a missing sealed section disables the seal with one warning.
+   */
+  const sealPrompt = (assembled) => {
+    if (sealedSections === undefined && !sealContexts) return assembled
+    if (!Array.isArray(assembled.sections)) {
+      warnOnce(`${name}: assembly carries no sections array — prompt seal disabled, full prompt exposed`)
+      return assembled
+    }
+    let sealed = assembled
+    if (sealedSections !== undefined) {
+      const present = new Set(assembled.sections.map((section) => section?.name))
+      const missing = [...sealedSections].filter((sectionName) => !present.has(sectionName))
+      if (missing.length > 0) {
+        warnOnce(
+          `${name}: sealed section(s) ${JSON.stringify(missing)} absent from the assembly — `
+          + 'prompt seal disabled, full prompt exposed',
+        )
+        return assembled
+      }
+      sealed = { ...sealed, sections: assembled.sections.filter((section) => sealedSections.has(section?.name)) }
+    }
+    if (sealContexts && Array.isArray(sealed.contexts)) {
+      sealed = { ...sealed, contexts: [] }
+    }
+    return sealed
+  }
+
   ctx.on('system-prompt/assemble', async (_assembly, context, next) => {
     // Downstream errors propagate untouched; only this filter's own logic is guarded.
     const assembled = await next()
@@ -270,11 +344,12 @@ export function apply(ctx, config) {
         return keepTools(assembled, keep, false)
       }
       // Controlled phase: the bootstrap pair; after a compaction, plus the
-      // compaction work set so mid-task work can continue.
+      // compaction work set so mid-task work can continue. The prompt surface
+      // is sealed to the configured sections for exactly the same phase.
       const { boundary } = status
       const keep = new Set(bootstrapTools)
       if (boundary >= 0) for (const toolName of compactionTools) keep.add(toolName)
-      return keepTools(assembled, keep, true)
+      return keepTools(sealPrompt(assembled), keep, true)
     } catch (error) {
       // A filter bug must never brick a session: degrade to the full catalog.
       warnOnce(`${name}: bootstrap filter failed, exposing the full catalog: ${String((error && error.message) || error)}`)

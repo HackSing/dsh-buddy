@@ -29,7 +29,7 @@
     },
     {
       "id": "repair.manual-add",
-      "statement": "存量修复手法：按 plugins/preinstall-manifest.json 的 packages 清单以 dsh plugin --profile web add 钉版补装七个包（@linxin666 六件套 @0.1.16 与 @aiwaretop/dsh-docs-harness@0.1.1），全部为 registry spec 不再涉及本地 tarball；2026-08-17 曾以本地 tarball 装过非 scoped 旧名 dsh-docs-harness 的存量 profile（含用户本机，2026-08-18 已迁移完毕）必须先去掉旧名再装 scoped 名，否则同功能插件双份注册且旧名的 file: spec 会在后续 pnpm 操作中断裂",
+      "statement": "存量修复手法：按 plugins/preinstall-manifest.json 的 packages 清单以 dsh plugin --profile web add 钉版补装八个包（@linxin666 六件套 @0.1.16、@aiwaretop/dsh-docs-harness@0.1.1、dsh-better-sidebar@0.13.0），全部为 registry spec 不再涉及本地 tarball；2026-08-17 曾以本地 tarball 装过非 scoped 旧名 dsh-docs-harness 的存量 profile（含用户本机，2026-08-18 已迁移完毕）必须先去掉旧名再装 scoped 名，否则同功能插件双份注册且旧名的 file: spec 会在后续 pnpm 操作中断裂",
       "source_refs": [
         "plugins/preinstall-manifest.json",
         "scripts/build-web-profile.js",
@@ -45,7 +45,7 @@
     }
   ],
   "status": "active",
-  "revision": 3,
+  "revision": 4,
   "revision_history": [
     {
       "revision": 1,
@@ -56,9 +56,14 @@
       "revision": 2,
       "asset_fingerprint": "sha256:f4b2835942353fde582aac8a91d9457352692abeaf0b8cd7cda875c0ebbd73e5",
       "updated_at": "2026-08-18T07:57:26+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:6d9b951c561dc7911c908d777995e70a89c03b37f2107d81b9858fab18768fc8",
+      "updated_at": "2026-08-18T08:10:54+00:00"
     }
   ],
   "created_at": "2026-08-17T08:38:29+00:00",
-  "updated_at": "2026-08-18T08:10:54+00:00",
-  "asset_fingerprint": "sha256:6d9b951c561dc7911c908d777995e70a89c03b37f2107d81b9858fab18768fc8"
+  "updated_at": "2026-08-18T09:53:52+00:00",
+  "asset_fingerprint": "sha256:b4313327bdd3984d4dac3c4f5c8f20e21b337f4174e6d9f13af60a753c82c64f"
 }

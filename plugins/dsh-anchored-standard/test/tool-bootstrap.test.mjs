@@ -355,3 +355,96 @@ test('unknown config keys reject at apply time', () => {
   assert.throws(() => register(null), /config must be an object/)
   assert.throws(() => register([]), /config must be an object/)
 })
+
+
+// ── local addition: phase-aware prompt seal (2026-08-18) ────────────────────
+
+const PERSONA = { name: 'deployment:persona', text: 'You are a helpful software engineer assistant.' }
+const IDENTITY = { name: 'harness:identity', text: 'You are an AI agent powered by DeepSeek Harness.' }
+const GOVERNANCE = { name: 'docs-harness:governance', text: '## Docs Harness rules' }
+const RUNTIME_CONTEXT = { name: 'runtime-context', text: 'cwd: D:/project' }
+
+const sealedConfig = {
+  ...config,
+  sealSectionsUntilPromotion: ['deployment:persona'],
+  sealContextsUntilPromotion: true,
+}
+
+function assemblePrompt(listener, events, id = 's') {
+  return listener(undefined, { agent: agent(events, id) }, async () => ({
+    sections: [IDENTITY, PERSONA, GOVERNANCE],
+    contexts: [RUNTIME_CONTEXT],
+    tools: [{ name: 'bash' }, { name: 'str_replace_editor' }],
+  }))
+}
+
+test('unpromoted sessions are sealed to the persona section with no contexts', async () => {
+  const { listeners } = register(sealedConfig)
+  const result = await assemblePrompt(listeners['system-prompt/assemble'], [])
+  // Byte-equivalent to the old `complete: true` enforcement: exactly the
+  // persona entry survives, contexts are empty.
+  assert.deepEqual(result.sections, [PERSONA])
+  assert.deepEqual(result.contexts, [])
+  assert.deepEqual(result.tools.map((tool) => tool.name), ['bash', 'str_replace_editor'])
+})
+
+test('promoted sessions receive every section and context again', async () => {
+  const { listeners } = register(sealedConfig)
+  const result = await assemblePrompt(listeners['system-prompt/assemble'], [{ type: 'assistant/message', data: {} }])
+  assert.deepEqual(result.sections, [IDENTITY, PERSONA, GOVERNANCE])
+  assert.deepEqual(result.contexts, [RUNTIME_CONTEXT])
+})
+
+test('a compaction re-seals the prompt until a new promotion signal', async () => {
+  const { listeners } = register(sealedConfig)
+  const events = [
+    { type: 'assistant/message', seq: 1, data: {} },
+    { type: 'compaction/end', seq: 2 },
+  ]
+  const sealed = await assemblePrompt(listeners['system-prompt/assemble'], events)
+  assert.deepEqual(sealed.sections, [PERSONA])
+  assert.deepEqual(sealed.contexts, [])
+  listeners['session/event']({ id: 's', events }, { type: 'tool/call', seq: 3, data: { name: 'bash' } })
+  const opened = await assemblePrompt(listeners['system-prompt/assemble'], events)
+  assert.deepEqual(opened.sections, [IDENTITY, PERSONA, GOVERNANCE])
+  assert.deepEqual(opened.contexts, [RUNTIME_CONTEXT])
+})
+
+test('without the seal keys the prompt passes through untouched (variant presets unchanged)', async () => {
+  const { listeners } = register()
+  const result = await assemblePrompt(listeners['system-prompt/assemble'], [])
+  assert.deepEqual(result.sections, [IDENTITY, PERSONA, GOVERNANCE])
+  assert.deepEqual(result.contexts, [RUNTIME_CONTEXT])
+})
+
+test('an explicitly empty sealSectionsUntilPromotion disables the section seal', async () => {
+  const { listeners } = register({ ...config, sealSectionsUntilPromotion: [], sealContextsUntilPromotion: true })
+  const result = await assemblePrompt(listeners['system-prompt/assemble'], [])
+  assert.deepEqual(result.sections, [IDENTITY, PERSONA, GOVERNANCE])
+  assert.deepEqual(result.contexts, [])
+})
+
+test('a missing sealed section disables the seal with one warning (fail-open)', async () => {
+  const { listeners, warns } = register(sealedConfig)
+  const result = await listeners['system-prompt/assemble'](undefined, { agent: agent([], 's') }, async () => ({
+    sections: [IDENTITY, GOVERNANCE],
+    contexts: [RUNTIME_CONTEXT],
+    tools: [{ name: 'bash' }, { name: 'str_replace_editor' }],
+  }))
+  assert.deepEqual(result.sections, [IDENTITY, GOVERNANCE])
+  assert.deepEqual(result.contexts, [RUNTIME_CONTEXT])
+  assert.ok(warns.some((message) => message.includes('deployment:persona')))
+})
+
+test('assemblies without a sections array pass through with one warning', async () => {
+  const { listeners, warns } = register(sealedConfig)
+  const result = await assemble(listeners['system-prompt/assemble'], [], [{ name: 'bash' }, { name: 'str_replace_editor' }])
+  assert.deepEqual(result.tools.map((tool) => tool.name), ['bash', 'str_replace_editor'])
+  assert.ok(warns.some((message) => message.includes('no sections array')))
+})
+
+test('invalid seal config values fail at apply time', () => {
+  assert.throws(() => register({ ...config, sealSectionsUntilPromotion: 'persona' }), /sealSectionsUntilPromotion/)
+  assert.throws(() => register({ ...config, sealSectionsUntilPromotion: ['persona', 42] }), /sealSectionsUntilPromotion/)
+  assert.throws(() => register({ ...config, sealContextsUntilPromotion: 'yes' }), /sealContextsUntilPromotion/)
+})

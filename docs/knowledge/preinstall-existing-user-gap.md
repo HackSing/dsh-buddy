@@ -3,9 +3,9 @@
 
 # 预装插件存量缺口与 CI 安装位污染
 
-- 修订：3
+- 修订：4
 - 关键符号：`installBundledProfile`、`preinstall-manifest`、`virtualStoreDir`、`healProfilesModuleFallback`
-- 资产指纹：`sha256:6d9b951c561dc7911c908d777995e70a89c03b37f2107d81b9858fab18768fc8`
+- 资产指纹：`sha256:b4313327bdd3984d4dac3c4f5c8f20e21b337f4174e6d9f13af60a753c82c64f`
 
 ## 摘要
 
@@ -27,7 +27,7 @@ lib/bundled-profile.js 的幂等解包对已存在的 profile 直接跳过，预
 
 ### `repair.manual-add`
 
-存量修复手法：按 plugins/preinstall-manifest.json 的 packages 清单以 dsh plugin --profile web add 钉版补装七个包（@linxin666 六件套 @0.1.16 与 @aiwaretop/dsh-docs-harness@0.1.1），全部为 registry spec 不再涉及本地 tarball；2026-08-17 曾以本地 tarball 装过非 scoped 旧名 dsh-docs-harness 的存量 profile（含用户本机，2026-08-18 已迁移完毕）必须先去掉旧名再装 scoped 名，否则同功能插件双份注册且旧名的 file: spec 会在后续 pnpm 操作中断裂
+存量修复手法：按 plugins/preinstall-manifest.json 的 packages 清单以 dsh plugin --profile web add 钉版补装八个包（@linxin666 六件套 @0.1.16、@aiwaretop/dsh-docs-harness@0.1.1、dsh-better-sidebar@0.13.0），全部为 registry spec 不再涉及本地 tarball；2026-08-17 曾以本地 tarball 装过非 scoped 旧名 dsh-docs-harness 的存量 profile（含用户本机，2026-08-18 已迁移完毕）必须先去掉旧名再装 scoped 名，否则同功能插件双份注册且旧名的 file: spec 会在后续 pnpm 操作中断裂
 
 证据：`plugins/preinstall-manifest.json`、`scripts/build-web-profile.js`、`docs/acceptance/evidence/docs-harness-plugin/c3-live-install.txt`
 

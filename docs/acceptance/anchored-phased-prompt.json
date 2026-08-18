@@ -1,0 +1,164 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "Anchored 预设相位化开放 prompt section 与插件发现的验收",
+  "key_symbols": [
+    "sealSectionsUntilPromotion",
+    "extraIndex",
+    "installBundledPresets",
+    "createEpochPromotion"
+  ],
+  "objective": "让 Anchored Standard 预设在保持首轮请求 Minimal 逐字节精确的前提下，锚定建立后开放全部 prompt section 与常规注入，插件工具可被发现和解锁，且修复经指纹化同步到达存量用户。",
+  "plan_ref": "docs/plans/anchored-phased-prompt.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "批1-3 模块单测全过（tool-bootstrap 相位矩阵、dev-tool-search extraIndex、bundled-presets 指纹三分支）",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260818T105827-647d3dab73",
+          "objective_fingerprint": "sha256:b95f44c9d8eeca7f58649170560a70b2beb2910483734ac777353c73c531d2bf",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "批1-3 单测全过：(1) plugins/dsh-anchored-standard 运行 npm test，123 pass / 0 fail，exit 0——含 tool-bootstrap 密封相位 8 用例（密封/晋升开放/compaction 重密封/默认不过滤/fail-open/配置校验/字节等值）与 dev-tool-search extraIndex 4 用例（索引注入/描述追加/校验拒绝/缺省不变）；(2) 仓库根运行 npm test（node --test，覆盖 lib 与各插件），244 pass / 0 fail，exit 0——含 lib/bundled-presets 指纹三分支 10 用例（全新安装/幂等/未动过即更新/用户改过保留/无更新静默/旧版无指纹全保留/指纹损坏兜底/新增文件落地/删除恢复/手动同步回归更新轨道）。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/anchored-phased-prompt/batch1-3-node-test.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-18T10:58:27+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "首轮请求 system 与改造前逐字节等值（字节等值单测断言）",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260818T104657-35e0ab685f",
+          "objective_fingerprint": "sha256:b95f44c9d8eeca7f58649170560a70b2beb2910483734ac777353c73c531d2bf",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "plugins/dsh-anchored-standard 运行 npm test（node --test）：用例 'unpromoted sessions are sealed to the persona section with no contexts' 断言未晋升装配结果 sections 深度等于 [persona]、contexts 为 []——与旧 complete enforcement 产出的装配数组逐项相同，经同一 renderPrompt 路径渲染，首轮 system 字节等值；另 7 个密封相位用例（晋升开放/compaction 重密封/默认不过滤/fail-open/配置校验）全部通过，总计 119 pass / 0 fail，exit 0",
+          "evidence_refs": [
+            "docs/acceptance/evidence/anchored-phased-prompt/batch1-node-test.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-18T10:46:57+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "真实会话日志取证：第 1 请求单行 persona 不变，第 2 请求起 system 含治理段，harness_plan_* 可解锁并产生工具事件",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260818T110839-653cbf69d4",
+          "objective_fingerprint": "sha256:b95f44c9d8eeca7f58649170560a70b2beb2910483734ac777353c73c531d2bf",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "真实链路取证：以仓库内嵌 @deepseek-ai/dsh@0.1.0-rc.6 起 dsh web（与桌面 app 嵌入路径同一入口），用户真实 ~/.dsh（preset 副本已按批1/2 手动迁移，与随包版仅差 bashPath），AIGlasses 工作区 + Anchored Standard (experimental) + DeepSeek-V4-Flash 真实会话三连发。会话日志逐帧解压取证：(1) 第 1 请求 system 逐字为单行 persona，tools 恰为 [bash, str_replace_editor]；(2) 第 2 请求 system 12188 字符含完整 Docs Harness 治理段与工具适配段，工具目录开放；(3) dev_tool_search(query=harness_plan) 命中 harness_plan_select/create/settle（extraIndex 生效）；(4) dev_tool_search(toolNames=[harness_plan_select]) 解锁成功，第 3 请求 tools 含 harness_plan_select。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/anchored-phased-prompt/batch4-real-link.md",
+            "docs/acceptance/evidence/anchored-phased-prompt/real-session.jsonl"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-18T11:08:39+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "用户可见层：plan create 弹原生确认卡、PlanBubble 出现，用户确认",
+      "acceptance_type": "user_acceptance",
+      "layer": "L5",
+      "evidence_layer": null,
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260818T120929-c84faf9cca",
+          "objective_fingerprint": "sha256:b95f44c9d8eeca7f58649170560a70b2beb2910483734ac777353c73c531d2bf",
+          "acceptance_type": "user_acceptance",
+          "status": "passed",
+          "layer": "L5",
+          "evidence_layer": null,
+          "method": "用户在真实桌面链路（dsh web + Anchored Standard + AIGlasses 工作区）亲眼确认：harness_plan_create 弹原生确认卡、批准后 PlanBubble 出现并展示条目浮层；两处 UI 缺陷修复后经用户刷新页面亲手复测通过。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/anchored-phased-prompt/batch4-real-link.md",
+            "docs/acceptance/evidence/anchored-phased-prompt/user-session-aiot.jsonl",
+            "docs/acceptance/evidence/anchored-phased-prompt/ui-fix-popover-hover.png"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-18T12:09:29+00:00",
+          "user_confirmation": {
+            "confirmed_by": "user",
+            "confirmation": "用户原话：「正常了，现在将doc harness 和doc buddy都提交并推送到github」（2026-08-18，浮层修复复测通过后）。此前用户已在真实会话中亲自经历 harness_plan_create 原生确认卡并批准（会话日志 tool/result 含 approved: true）、看到 PlanBubble（进度 0/5 气泡与条目浮层），并实测确认了空条目卡片与浮层 hover 两处 UI 修复。"
+          }
+        }
+      ]
+    }
+  ],
+  "status": "passed",
+  "revision": 6,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:1f4c409328c4566a535227ed44a2bf23fe3de0d761006d0ae9f3f9c74eaf7b26",
+      "updated_at": "2026-08-18T10:38:14+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:69e21aa0065243ce7122d17c355e46416bbb3c6a58031f22424d578ac41b9beb",
+      "updated_at": "2026-08-18T10:46:57+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:f22f96ebbf96be336f4b8dd0d324fd6877351ff7d48bd70cf45aac8121017983",
+      "updated_at": "2026-08-18T10:58:27+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:12d508b1429dd439c020637a54b0905a58fa701779611c829d80922b16b0287b",
+      "updated_at": "2026-08-18T11:08:39+00:00"
+    },
+    {
+      "revision": 5,
+      "asset_fingerprint": "sha256:ad638e6a4f4a71b5be2811e95692b4018301ea0b5053e5bc37f8ebe13654aae4",
+      "updated_at": "2026-08-18T12:09:29+00:00"
+    }
+  ],
+  "created_at": "2026-08-18T10:38:14+00:00",
+  "updated_at": "2026-08-18T12:09:36+00:00",
+  "settled_at": "2026-08-18T12:09:36+00:00",
+  "asset_fingerprint": "sha256:ba28db8870be28e62658ca8b1b7f0b6312959ebf6baf83e4b05d6d009dcf5de9",
+  "replacement": null
+}

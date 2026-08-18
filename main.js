@@ -10,7 +10,14 @@ const { binEntryFrom } = require('./lib/dsh-entry');
 const { probeHttp, waitForHttp } = require('./lib/http-probe');
 const { killProcessTree } = require('./lib/process-tree');
 const { createDshLogger } = require('./lib/dsh-log');
-const { checkForUpdate } = require('./lib/update-check');
+const { checkForUpdate, UPDATE_OUTCOME, RELEASES_PAGE_URL } = require('./lib/update-check');
+const {
+  AUTO_UPDATE_OUTCOME,
+  isAutoUpdateSupported,
+  scheduleAutoUpdate,
+  checkForUpdateManually,
+  quitAndInstall,
+} = require('./lib/auto-update');
 const preinstallManifest = require('./plugins/preinstall-manifest.json');
 
 // ---- 配置区 ----
@@ -136,9 +143,28 @@ function resolveProfileTarball() {
 function ensureBundledAssets() {
   const dshHome = defaultDshHome(process.env, os.homedir());
   try {
-    const summary = installBundledPresets({ pluginsRoot: resolvePluginsRoot(), dshHome });
+    const summary = installBundledPresets({
+      pluginsRoot: resolvePluginsRoot(),
+      dshHome,
+      version: app.getVersion(),
+    });
     if (summary.installed.length > 0) {
       console.log(`[dsh-buddy] installed bundled presets: ${summary.installed.join(', ')}`);
+    }
+    if (summary.updated.length > 0) {
+      console.log(`[dsh-buddy] updated bundled preset files: ${summary.updated.join(', ')}`);
+    }
+    if (summary.preserved.length > 0) {
+      // 随包有更新但用户改过这些文件:保留用户版并告知如何手动接收更新。
+      console.warn(`[dsh-buddy] bundled preset update held by local modifications: ${summary.preserved.join(', ')}`);
+      dialog.showMessageBox({
+        type: 'info',
+        title: 'DSH Buddy',
+        message: '内置 agent preset 有更新,但以下文件存在本地修改,已保留原样:',
+        detail: `${summary.preserved.join('\n')}\n\n如需接收更新:备份改动后删除对应文件,重启应用即会写入新版。`,
+        buttons: ['OK'],
+        noLink: true,
+      });
     }
     const profileResult = installBundledProfile({
       tarballPath: resolveProfileTarball(),
@@ -239,12 +265,83 @@ async function notifyUpdate({ version, url }) {
   if (response === 0) await shell.openExternal(url); // 只开下载页,不自动下载安装
 }
 
+// Windows 自动更新通道的用户可见出口:新版本已后台下载完毕,询问是否立即重启安装。
+async function notifyUpdateReady({ version }) {
+  const { response } = await dialog.showMessageBox({
+    type: 'info',
+    title: 'DSH Buddy',
+    message: `新版本 ${version} 已就绪`,
+    detail: `当前版本 ${app.getVersion()}。重启应用完成安装?`,
+    buttons: ['立即重启安装', '稍后'],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  });
+  if (response === 0) quitAndInstall(); // 退出时 before-quit 的 dsh 进程树回收照常执行
+}
+
+// 手动检查(菜单「检查更新」)的信息弹窗:三态反馈共用一个入口。
+function showCheckResult(message, detail) {
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'DSH Buddy',
+    message,
+    detail,
+    buttons: ['OK'],
+    noLink: true,
+  });
+}
+
+// 菜单「检查更新」:显式用户意图,绕过 24h 节流立即查,并按平台分流——
+// Windows 打包态走应用内自动更新(发现新版即后台下载,就绪后弹重启安装);
+// 其余(macOS / 开发态)走提示式通道,有新版本时复用 notifyUpdate 引导下载。
+async function checkUpdateManually() {
+  if (isAutoUpdateSupported({ isPackaged: app.isPackaged })) {
+    const { outcome, detail } = await checkForUpdateManually({ isPackaged: app.isPackaged });
+    if (outcome === AUTO_UPDATE_OUTCOME.downloading) {
+      showCheckResult(`发现新版本 ${detail}`, '正在后台下载,完成后将提示安装。');
+    } else if (outcome === AUTO_UPDATE_OUTCOME.upToDate) {
+      showCheckResult('已是最新版本', `当前版本 ${app.getVersion()}。`);
+    } else if (outcome === AUTO_UPDATE_OUTCOME.failed) {
+      showCheckResult('检查更新失败', `网络或服务不可用(${detail}),请稍后重试。`);
+    }
+    return;
+  }
+  try {
+    const { outcome, detail } = await checkForUpdate({
+      currentVersion: app.getVersion(),
+      stateDir: app.getPath('userData'),
+      notify: notifyUpdate,
+      force: true,
+    });
+    if (outcome === UPDATE_OUTCOME.upToDate) {
+      showCheckResult('已是最新版本', `当前版本 ${app.getVersion()}。`);
+    } else if (outcome === UPDATE_OUTCOME.alreadyNotified) {
+      // 启动时提示过但被忽略;显式点击就该再提示一次,直接复用提示弹窗
+      await notifyUpdate({ version: detail, url: RELEASES_PAGE_URL });
+    } else if (outcome !== UPDATE_OUTCOME.notified) {
+      showCheckResult('检查更新失败', `网络或服务不可用(${detail || outcome}),请稍后重试。`);
+    }
+  } catch (err) {
+    showCheckResult('检查更新失败', `${err.message},请稍后重试。`);
+  }
+}
+
 // 启动后的更新检查:刻意不 await,不进启动链,也不因失败影响任何既有流程。
-// 节流跳过、仓库还没发过 release、离线/超时/限流都是可预期状态,
+// 平台分流:Windows 打包态走应用内自动更新(后台下载,就绪后提示重启安装);
+// 其余走提示式通道——节流跳过、仓库还没发过 release、离线/超时/限流都是可预期状态,
 // 由 checkForUpdate 折叠成具名 outcome,这里只落一行日志。
-// 末尾的 catch 是这条链路唯一的错误边界:更新提示是纯增强项,
+// 提示式路径末尾的 catch 是该链路唯一的错误边界:更新提示是纯增强项,
 // 非预期错误(如 userData 不可写)也只记录,绝不弹窗、绝不影响 dsh 使用。
 function scheduleUpdateCheck() {
+  if (isAutoUpdateSupported({ isPackaged: app.isPackaged })) {
+    const { outcome } = scheduleAutoUpdate({
+      isPackaged: app.isPackaged,
+      notifyReady: notifyUpdateReady,
+    });
+    console.log(`[dsh-buddy] update check: ${outcome}`);
+    return;
+  }
   checkForUpdate({
     currentVersion: app.getVersion(),
     stateDir: app.getPath('userData'),
@@ -265,7 +362,11 @@ function createWindow() {
   if (!immersive) {
     // Windows/Linux:无边框 + 壳自绘标题栏视图(图标/前进后退/菜单/窗口控制),
     // 见 lib/frameless-window.js
-    win = createFramelessWindow({ dshUrl: DSH_URL, version: app.getVersion() });
+    win = createFramelessWindow({
+      dshUrl: DSH_URL,
+      version: app.getVersion(),
+      onCheckUpdate: checkUpdateManually,
+    });
     win.on('closed', () => (win = null));
     return;
   }

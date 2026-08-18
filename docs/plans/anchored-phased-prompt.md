@@ -1,0 +1,97 @@
+> 状态：已实施-仅追溯（代码已是真源，2026-08-18 核对）
+<!-- docs-harness:plan-document/v1 -->
+
+# Anchored Standard 预设：锚定后开放 prompt section 与插件工具发现
+
+- 冻结合同：`sha256:348e89382b637433b2352e95c4e4a4dc2c42670401b44d52102a9e34f24ad732`
+- 关键符号：`createEpochPromotion`、`sealSectionsUntilPromotion`、`UNLOCKABLE_INDEX`、`installBundledPresets`
+
+## 背景
+
+实证根因链（2026-08-18，AIGlasses 项目会话 a5eeab49 日志取证）：Anchored Standard 预设的 persona 行配置 complete: true + includeRuntimeContext: false，而 dsh-persona 的 complete 是挂载时静态注册、无相位逻辑；dsh-system-prompt 的 assemble() 在 waterfall 之后执行 complete enforcement，把 complete section 恢复为唯一 prompt section——任何监听器都无法把其他 section 加回来。后果：靠 systemPrompt.section 注入的插件（dsh-docs-harness 治理段等）在该预设下全程静默失效；会话 260 步 3 个 request/header 的 system 始终是 46 字符静态 persona（连宿主 identity section 都没有）。工具侧锚定后确实切换到解锁模式（实证：请求 1 为 [bash, str_replace_editor]，请求 2 起加三个发现工具，turn 3 模型自行解锁 pwsh），harness_plan_* 在 ctx.tools.schemas(agent) 全量目录中可解锁，但 dev-tool-search.mjs 的 UNLOCKABLE_INDEX 是硬编码内置清单，模型没有任何信号知道插件工具存在，从未搜索。第三层问题：lib/bundled-presets.js 的 installBundledPresets 是"目标已存在即跳过"，preset 修复后到不了存量用户的 .agent-presets（本机实测用户副本与随包副本仅差 bashPath 一行本地修改）。npm 对比确认 @deepseek-ai/dsh-persona 与 dsh-system-prompt 的 rc.7 与 rc.6 逐字节相同，上游没有也不会短期内改变该语义。
+
+## 目标
+
+让 Anchored Standard 预设在保持首轮请求 Minimal 逐字节精确（persona 单行 + bash/str_replace_editor 双工具 + 无注入）的前提下，锚定（promotion）建立后开放全部 prompt section 与常规注入，并让部署方注册的插件工具可被发现和解锁；同时建立随包 preset 的指纹化升级通道，使修复能到达存量用户且不覆盖其本地修改。
+
+## 非目标
+
+不修改上游 @deepseek-ai/* 包（dsh-persona/dsh-system-prompt 语义不变，方案在装配期过滤层闭合）；不改变 zero-anchored-standard 与 whoami-standard 两个评估变体的行为（它们保持全程密封，基线轨迹不受污染）；不改变首轮请求的任何字节（工具目录、persona 文本、注入抑制全部保持）；不要求 dsh-docs-harness 等插件为适配本预设修改注入机制；不做 preset 市场的通用版本管理 UI。
+
+## 成功标准
+
+1) 首轮请求 system 与改造前逐字节一致（单测断言 joinContextSections 输出等值）；2) 晋升后请求 system 包含全部已注册 section（含 docs-harness:governance），contexts 恢复流动；3) compaction 后回落密封直至新晋升信号（epoch 语义与工具目录一致）；4) dev_tool_search 描述索引包含 extraIndex 配置的插件工具，模型可据此解锁 harness_plan_*；5) 存量用户升级：未修改文件被替换、已修改文件（如 bashPath 单行差异）保留且用户被告知；6) 真实桌面会话取证：Anchored Standard 下跑 harness 任务，第 2 请求起 header 的 system 含治理段文本，plan create 弹原生确认卡，PlanBubble 出现。
+
+## 执行范围
+
+plugins/dsh-anchored-standard/preset/tool-bootstrap.mjs（装配过滤器扩展 sections/contexts 相位密封）；plugins/dsh-anchored-standard/preset/agent.cordis.yml（persona 行去 complete/includeRuntimeContext，bootstrap 行加密封配置，dev-tool-search 行加 extraIndex）；plugins/dsh-anchored-standard/preset/dev-tool-search.mjs（索引配置化）；lib/bundled-presets.js（指纹化幂等升级）；main.js（升级保留通知复用既有非致命对话框通道）；plugins/dsh-anchored-standard/test/（tool-bootstrap/dev-tool-search 用例扩展）与 lib 侧测试；plugins/dsh-anchored-standard/README*.md（行为说明同步）。
+
+## 执行内容
+
+批1（相位密封）：tool-bootstrap.mjs 的 system-prompt/assemble 监听器扩展——未晋升时将 assembled.sections 收窄为密封保留名单（新配置 sealSectionsUntilPromotion，默认缺省=不过滤，保持 zero/whoami 零行为变化；主预设配置 ['deployment:persona']）并按 sealContextsUntilPromotion 清空 contexts；晋升后全量放行。复用同一 createEpochPromotion tracker 实例，相位判定与工具目录完全一致；persona section 缺失时 warn-once 并放行（与 keepTools 相同的 fail-open 防御）。主 preset 的 agent.cordis.yml：persona 行删除 complete: true 与 includeRuntimeContext: false（密封语义由过滤器接管且相位化），persona 文本逐字节不动。单测钉死：未晋升仅剩 persona、晋升后全量、compaction 重新密封、缺失 fail-open、resume 重建、首轮 joinContextSections 输出与改造前等值。批2（可发现性）：dev-tool-search.mjs 的 UNLOCKABLE_INDEX 改为内置常量 + 配置 extraIndex（字符串数组，ALLOWED_KEYS 风格校验），主预设 yml 的 extraIndex 列入 harness_plan_select/create/settle/plan_progress 四工具（dsh-docs-harness 在预装清单内）；描述文案补一句"部署方插件可能注册更多工具，可按关键词搜索"。批3（同步通道）：lib/bundled-presets.js 安装时写 .bundled-fingerprint.json（文件名→sha256）；启动时逐文件三路比对——与旧指纹一致则更新为新随包内容，不一致（用户修改）则保留并收集进既有非致命对话框通知（附手动迁移指引），新增文件直接落地；单测覆盖替换/保留/新增三分支与幂等。批4（真实链路验收）：ELECTRON_RUN_AS_NODE 或重打包起真实 web，Anchored Standard 会话跑一个 harness 复杂任务，从 session 日志 request/header 取证（第 1 请求单行 persona 不变；第 2 请求起 system 含治理段；解锁 harness_plan_* 后 plan create 出原生确认卡、PlanBubble 出现），用户可见层交用户最短确认。
+
+## 验收方案
+
+acceptance 资产逐条 record：A1 批1-3 单测输出与退出码（node --test，plugins/dsh-anchored-standard 与 lib 两侧）；A2 首轮字节等值断言（改造前后 joinContextSections 输出对比用例）；A3 真实会话日志取证（header system 内容、工具解锁、harness_plan_* 调用事件）；A4 用户可见层（确认卡片与 PlanBubble 出现）由用户最短确认后 --user-confirmed 记录；全部通过后 acceptance settle 再 plan settle。
+
+## 是否需要 Acceptance 资产闭环
+
+```json
+true
+```
+
+## Knowledge 影响
+
+updated
+
+## 约束
+
+复用 createEpochPromotion，不建第二套相位状态机（先复用后新写）；过滤器 fail-open 风格与现有 keepTools/pre-step 护栏一致（filter bug 不得吃掉 section）；配置键走 ALLOWED_KEYS 显式校验、未知键挂载期报错；评估变体 zero/whoami 不使用新配置键，行为逐字节不变；首轮请求任何字节的改变都视为回归。
+
+## 风险与回滚
+
+风险1：晋升后 system prompt 变化导致每会话一次 prompt cache 失效——晋升时工具目录本就变化、header 本就更换，边际成本已存在，接受。风险2：晋升后注入治理段会改变第 2 轮起轨迹——这正是目标行为；评估基线由 zero/whoami 变体承担且不变。风险3：密封正确性从宿主 complete 语义转移到过滤器逻辑——用字节等值单测与真实 header 取证双层钉死。风险4：指纹同步误判用户修改——三路比对只替换与旧指纹逐字节一致的文件，保守侧是保留+通知，不会丢用户修改。回滚：主预设 yml 移除两个新配置键并恢复 persona 行 complete/includeRuntimeContext 即回到全程密封；bundled-presets 指纹逻辑可整体回退到 skip-if-exists。
+
+## 当前约束
+
+宿主 assemble() 的 complete enforcement 在 waterfall 之后执行且 complete 是注册静态属性，而 promotion 是逐会话状态、section 注册是逐 scope 共享——因此不能用"晋升后重注册 persona"（scope 级注册无法按会话分流，且重注册与 standing scope 模型冲突），只能在装配期按 context.agent 过滤，与现有 keepTools 工具过滤同构。
+
+## 候选方案
+
+A) 上游 dsh-system-prompt 支持 complete 动态化：语义最干净但需跨仓协调 @deepseek-ai 包，rc.7 实测未变，周期不可控——否决。B) 经 agent.ctx 逐会话注册/重注册 persona：可实现逐会话相位，但与预设 standing scope 挂载模型冲突，生命周期管理复杂——否决。C) 装配期相位过滤（选中）：与工具过滤同一监听器、同一 tracker、同一 fail-open 风格，零上游依赖。D) 插件侧改走 user-message 注入绕开 complete：破坏预设评估纯净性前提——否决。
+
+## 真实取舍
+
+过滤器方案在每次装配多一次 O(sections) 收窄，成本可忽略；首轮纯净性的保证机制从宿主 complete 语义转移到本过滤器，正确性必须由字节等值测试兜底而非宿主语义兜底；extraIndex 是配置而非自动发现，新增插件需登记一行——换取描述索引的确定性与可审计性。
+
+## 最终决策
+
+采用装配期相位密封（方案 C）：tool-bootstrap 过滤器在晋升前把 sections 收窄到 persona、contexts 清空，晋升后全量开放；persona 行去掉静态 complete；dev-tool-search 索引配置化并登记 harness 四工具；bundled-presets 增加指纹化升级让修复到达存量用户。
+
+## 边界与接口
+
+tool-bootstrap.mjs 新增配置键 sealSectionsUntilPromotion（字符串数组，缺省=不过滤）与 sealContextsUntilPromotion（布尔，缺省 false）；dev-tool-search.mjs 新增配置键 extraIndex（字符串数组，缺省 []）；lib/bundled-presets.js 新增 .bundled-fingerprint.json（{version, files: {path: sha256}}）写在每个已安装 preset 目录内；main.js 复用既有非致命对话框通道展示保留文件清单。均为预设/壳内部接口，不触碰上游包 API。
+
+## 兼容与迁移
+
+存量用户：升级应用后 bundled-presets 指纹同步自动更新未修改文件；修改过 agent.cordis.yml 的用户（如本机 bashPath 差异）该文件被保留，通知中给出两行手动迁移指引（删除 complete: true 与 includeRuntimeContext: false，给 tool-bootstrap 行加密封配置）。评估变体 zero/whoami 不使用新配置键，行为不变。docs-harness 插件侧零迁移：section 开放后其现有注入机制直接生效。
+
+## 回滚或替代路径
+
+代码回滚：git revert 四个批次即全部还原；运行期回滚：主预设 yml 移除 sealSectionsUntilPromotion/sealContextsUntilPromotion/extraIndex 三个配置键并恢复 persona 行两个标志，即回到当前全程密封行为，无需动代码；用户侧已同步的 preset 目录可整目录删除后由安装器按旧逻辑重装。
+
+## 架构验收
+
+分层验收：L1 模块单测（过滤器相位矩阵、索引配置、指纹同步三分支）；L2 契约等值（首轮请求 system 字节等值用例）；L3 真实流程（桌面 app 真实会话的 session 日志 header 取证：system 内容、工具解锁链、harness_plan_* 工具事件）；L4 用户可见层（原生确认卡与 PlanBubble，用户确认原话）。L3/L4 不可替代 L1/L2，聚焦优先不跑仓库级全量。
+
+## ADR 处理
+
+实施完成、验收通过后由主 agent 用 adr create 登记决策："Anchored 预设的 prompt 密封从宿主 complete 静态语义改为装配期相位过滤"，备选方案 A/B/D 的否决理由随 ADR 归档。
+
+<!-- docs-harness:plan-governance:start -->
+## 资产治理
+
+- 关联验收：`docs/acceptance/anchored-phased-prompt.json`
+- 需要 Acceptance：true
+- Knowledge 影响：updated
+<!-- docs-harness:plan-governance:end -->

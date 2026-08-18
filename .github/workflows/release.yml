@@ -169,3 +169,6 @@ jobs:
           case "$tag" in *-*) prerelease="--prerelease" ;; esac
           gh release create "$tag" --title "$tag" --generate-notes $prerelease || true
           gh release upload "$tag" dist/*.exe --clobber
+          # 应用内自动更新(electron-updater)的元数据:latest.yml 记录版本与 sha512,
+          # blockmap 供差量下载;缺了它们应用内更新查不到新包
+          gh release upload "$tag" dist/latest.yml dist/*.exe.blockmap --clobber

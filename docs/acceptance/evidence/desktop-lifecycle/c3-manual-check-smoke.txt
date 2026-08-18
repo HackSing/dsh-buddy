@@ -1,0 +1,28 @@
+c3 手动检查更新:force 绕过节流 + 三态分支 + 自动通道判定（L2 focused_test）
+=====================================================================
+环境: Windows 25H2, Node 24, 仓库根纯 node 冒烟(不加载 electron)
+日期: 2026-08-18
+
+1) 语法检查
+  node --check main.js lib/auto-update.js lib/frameless-window.js lib/update-check.js
+  -> SYNTAX OK
+
+2) force 语义冒烟(临时 stateDir,预置 lastCheckedAt=now 的「刚查过」状态)
+  非 force: outcome=throttled        <- 24h 节流语义不回归
+  force:   outcome=up-to-date (0.1.0) <- 绕过节流真实查询 api.github.com,
+           releases/latest 返回 v0.1.0,与当前版本相同判定 up-to-date
+  断言: force 路径仍刷新 lastCheckedAt(状态落盘语义不变),notify 未被误调
+
+3) auto-update 通道判定(isAutoUpdateSupported / scheduleAutoUpdate)
+  win32+packaged -> true   (通道启用)
+  win32+dev      -> false  (开发态不启用)
+  darwin+packaged-> false  (mac 未签名天花板,走提示式通道)
+  scheduleAutoUpdate(isPackaged:false) -> outcome=skipped,
+           且未 require electron-updater(顶层无 electron 依赖,纯 node 可驱动)
+
+三态反馈分支(main.js checkUpdateManually, 静态核对):
+  downloading -> 「发现新版本 X,正在后台下载」
+  upToDate    -> 「已是最新版本 vX」
+  failed/其他 -> 「检查更新失败,请稍后重试」
+  提示式通道(mac/开发态): notified 复用 notifyUpdate 弹窗;
+  alreadyNotified 时显式点击再提示一次;upToDate/失败同上两态。

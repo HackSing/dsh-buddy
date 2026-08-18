@@ -97,3 +97,51 @@ test('schemas() is queried with the executing agent as the viewing scope (issue 
   assert.equal(calls[0], agent, 'the executing agent is the viewing scope, so agent-scoped preset tools are visible')
   assert.match(result.text, /pwsh: Execute a PowerShell command/)
 })
+
+
+// ── local addition: deployment plugin index via extraIndex (2026-08-18) ─────
+
+function registerWithConfig(config, schemas = []) {
+  const registered = []
+  const ctx = {
+    tools: {
+      schemas() {
+        return schemas
+      },
+      register(tool) {
+        registered.push(tool)
+      },
+    },
+  }
+  apply(ctx, config)
+  return { registered, ctx }
+}
+
+test('extraIndex lines appear in the description under a plugin-tools heading', () => {
+  const { registered } = registerWithConfig({
+    extraIndex: ['harness_plan_select / harness_plan_create — Docs Harness plan lifecycle'],
+  })
+  const tool = registered.find((t) => t.name === 'dev_tool_search')
+  assert.match(tool.description, /Deployment-registered plugin tools:/)
+  assert.match(tool.description, /harness_plan_select \/ harness_plan_create — Docs Harness plan lifecycle/)
+  // Built-in index intact, and the open-catalog hint is present.
+  assert.match(tool.description, /web_search — internet search/)
+  assert.match(tool.description, /not listed here; search the full catalog/)
+})
+
+test('without extraIndex the description keeps the built-in index only', () => {
+  const { registered } = register()
+  const tool = registered.find((t) => t.name === 'dev_tool_search')
+  assert.doesNotMatch(tool.description, /Deployment-registered plugin tools:/)
+  assert.match(tool.description, /todo_write — task tracking/)
+})
+
+test('invalid extraIndex values fail at apply time', () => {
+  assert.throws(() => registerWithConfig({ extraIndex: 'harness_plan_select' }), /extraIndex/)
+  assert.throws(() => registerWithConfig({ extraIndex: ['ok', 42] }), /extraIndex/)
+})
+
+test('unknown config keys reject at apply time', () => {
+  assert.throws(() => registerWithConfig({ extraIndexx: [] }), /unknown config key/)
+  assert.throws(() => registerWithConfig(null), /config must be an object/)
+})

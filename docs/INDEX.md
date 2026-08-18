@@ -16,6 +16,8 @@
 - [Release CI:tag 触发双平台构建并发布 GitHub Release](plans/release-ci.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-16 核对）；关键符号：`release.yml`、`dist:win`、`GITHUB_REF_NAME`、`gh release upload`
 - [Windows 安装包转正](plans/windows-installer.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-17 核对）；关键符号：`installBundledProfile`、`build-web-profile`、`DSH_SKIP_PROFILE`、`release.yml`
 - [Docs Harness 插件化：双闸激活治理与 plan 前端流程](plans/docs-harness-plugin.md) — 状态：有效（实施中）；关键符号：`harnessPlan`、`harnessProject`、`plan_progress`、`dsh-docs-harness`
+- [对标通用桌面产品的安装/更新/卸载流程](plans/desktop-lifecycle.md) — 状态：有效（实施中）；关键符号：`auto-update`、`deleteAppDataOnUninstall`、`checkForUpdate`、`quitAndInstall`
+- [Anchored Standard 预设：锚定后开放 prompt section 与插件工具发现](plans/anchored-phased-prompt.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-18 核对）；关键符号：`createEpochPromotion`、`sealSectionsUntilPromotion`、`UNLOCKABLE_INDEX`、`installBundledPresets`
 <!-- docs-harness:plans-index:end -->
 
 <!-- docs-harness:knowledge-index:start -->
@@ -28,6 +30,7 @@
 - [dsh 网关 settings 白名单：第三方插件设置面必须自建路由](knowledge/dsh-settings-gateway-allowlist.md) — 状态：有效（现行事实）；关键符号：`WEB_SETTINGS_NAMESPACES`、`settings.describe`、`docs-harness-settings`、`HarnessSettingsStore`
 - [Electron 当 Node 跑内嵌 dsh 的原生能力边界：external buffer 被禁](knowledge/electron-external-buffer-limit.md) — 状态：有效（现行事实）；关键符号：`readUtf16`、`patch-dsh-picker`、`DSH_PICKER_BROWSE`、`browse-picker-patch`
 - [预装插件存量缺口与 CI 安装位污染](knowledge/preinstall-existing-user-gap.md) — 状态：有效（现行事实）；关键符号：`installBundledProfile`、`preinstall-manifest`、`virtualStoreDir`、`healProfilesModuleFallback`
+- [complete persona 压制插件 prompt section 的根因与相位化密封方案](knowledge/anchored-complete-persona.md) — 状态：有效（现行事实）；关键符号：`sealSectionsUntilPromotion`、`extraIndex`、`installBundledPresets`、`complete`
 <!-- docs-harness:knowledge-index:end -->
 
 <!-- docs-harness:acceptance-index:start -->
@@ -40,4 +43,6 @@
 - [Release CI 验收](acceptance/release-ci.md) — 状态：已验收-仅追溯；关键符号：`release.yml`、`dist:win`、`gh release upload`
 - [Windows 安装包转正验收](acceptance/windows-installer.md) — 状态：已验收-仅追溯；关键符号：`installBundledProfile`、`build-web-profile`、`DSH_SKIP_PROFILE`、`release.yml`
 - [Docs Harness 插件化验收](acceptance/docs-harness-plugin.md) — 状态：有效（待验收）；关键符号：`dsh-docs-harness`、`harnessPlan`、`plan_progress`
+- [对标通用桌面产品的安装/更新/卸载流程](acceptance/desktop-lifecycle.md) — 状态：有效（待验收）；关键符号：`auto-update`、`deleteAppDataOnUninstall`、`checkForUpdate`、`quitAndInstall`
+- [Anchored 预设相位化开放 prompt section 与插件发现的验收](acceptance/anchored-phased-prompt.md) — 状态：已验收-仅追溯；关键符号：`sealSectionsUntilPromotion`、`extraIndex`、`installBundledPresets`、`createEpochPromotion`
 <!-- docs-harness:acceptance-index:end -->

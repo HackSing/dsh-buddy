@@ -1,0 +1,42 @@
+c1 安装器形态 + c2 卸载清理（L4 package_or_install，本机 Windows 25H2）
+=====================================================================
+日期: 2026-08-18
+构建: npm run dist:win（无 ELECTRON_* 注入，锁预检通过）->
+      dist\DSH Buddy Setup 0.1.0.exe (161,708,000 B)
+      构建日志关键行: target=nsis file=dist\DSH Buddy Setup 0.1.0.exe
+                      archs=x64 oneClick=false perMachine=false   <- assisted 形态生效
+      同批产出: dist\latest.yml (version 0.1.0 + sha512 + url)、
+                dist\DSH Buddy Setup 0.1.0.exe.blockmap
+
+c1 安装
+-----
+静默安装到自定义目录（assisted 安装器仍支持 /S /D=，目录参数被遵守）:
+  Start-Process -Wait "DSH Buddy Setup 0.1.0.exe" /S /D=C:\Users\freed\...\Temp\dsh-buddy-inst2
+  -> 目录含 DSH Buddy.exe / resources\app.asar / app.asar.unpacked(271 包,含 electron-updater 与 tar)
+注意: 安装未完成时启动 exe 会报 Cannot find module 'tar'(asar.unpacked 未写全),
+      属半安装瞬态;完整安装后不复现(下方启动冒烟证明)。
+交互向导(目录选择页)未逐步点击——由构建日志 oneClick=false +
+allowToChangeInstallationDirectory=true 与 /D= 参数被遵守两侧互证。
+
+安装后真实启动冒烟（临时 DSH_HOME=Temp\dsh-buddy-home2, 不碰 ~/.dsh）:
+  [dsh-buddy] installed bundled presets: preset, zero-anchored-standard, whoami-standard
+  [dsh-buddy] bundled profile: installed
+  [dsh-buddy] launcher=embedded ... @deepseek-ai\dsh\lib\bin.js web --host 127.0.0.1 --port 3080
+  dsh web: http://127.0.0.1:3080            <- 内嵌 dsh 就绪
+  GET http://127.0.0.1:3080 -> 200
+  窗口: 进程 MainWindowTitle = "DSH Buddy", MainWindowHandle != 0
+  [dsh-buddy] update check: checking        <- Windows 打包态分流到 electron-updater 通道
+  auto update: failed (...latest.yml...404) <- 现有 v0.1.0 Release 未挂 latest.yml,
+      失败折叠为一行具名日志,应用功能完全不受影响(错误哲学验证)
+  注: 此次运行后把 electron-updater 自带 logger 置 null(它会把整段响应头堆栈打进日志),
+      并去掉了 error 事件与 promise reject 双通道的重复日志——见 lib/auto-update.js。
+
+c2 卸载
+-----
+前置: 备份 %APPDATA%\DSH Buddy (16M, 含当日既有数据), 卸载后已原样恢复。
+  Start-Process -Wait "Uninstall DSH Buddy.exe" /S
+断言:
+  安装目录 Temp\dsh-buddy-inst2      -> REMOVED ✓
+  %APPDATA%\DSH Buddy (壳 userData)  -> REMOVED ✓ (deleteAppDataOnUninstall 生效)
+  临时 DSH_HOME (等价 ~/.dsh 边界)    -> 保留 ✓ (pet.json/profiles/storages 均在,
+      证实卸载不碰 dsh 共享数据; 卸载完成后备份的 userData 已恢复)

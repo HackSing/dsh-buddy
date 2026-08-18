@@ -16,6 +16,14 @@
  * set cannot do: the model should reach for dev_tool_search the moment a task
  * needs internet, delegation, workflows, goals, images, background jobs, or
  * multi-agent coordination — not try to work around them with bash.
+ *
+ * Deployment-registered plugin tools join the index through the `extraIndex`
+ * config key (2026-08-18): the catalog search already covers them (it queries
+ * the full assembled catalog), but a hardcoded built-in-only index gave the
+ * model no signal that they exist — dsh-docs-harness's plan tools sat
+ * unlockable yet undiscovered for a whole session. The index stays
+ * config-driven rather than auto-generated so the description remains
+ * deterministic and auditable.
  */
 
 /** Cordis plugin name used by loader diagnostics. */
@@ -58,8 +66,31 @@ const UNLOCKABLE_INDEX = [
   'ask_user_question — ask the user',
 ]
 
+/** Every config key this plugin accepts — anything else is a typo. */
+const ALLOWED_KEYS = new Set(['extraIndex'])
+
+/** Validate the extra index lines; absent means the built-in index only. */
+function extraIndexList(value) {
+  if (value === undefined) return []
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string' || item.length === 0)) {
+    throw new TypeError(`${name}: extraIndex must be an array of non-empty strings`)
+  }
+  return [...value]
+}
+
 /** Register the model-facing `dev_tool_search` tool. */
-export function apply(ctx) {
+export function apply(ctx, config) {
+  const source = config === undefined ? {} : config
+  if (typeof source !== 'object' || source === null || Array.isArray(source)) {
+    throw new TypeError(`${name}: config must be an object`)
+  }
+  const unknown = Object.keys(source).filter((key) => !ALLOWED_KEYS.has(key))
+  if (unknown.length > 0) {
+    throw new TypeError(
+      `${name}: unknown config key(s) ${unknown.join(', ')} — allowed keys: ${[...ALLOWED_KEYS].sort().join(', ')}`,
+    )
+  }
+  const extraIndex = extraIndexList(source.extraIndex)
   ctx.tools.register({
     name: 'dev_tool_search',
     description: [
@@ -69,7 +100,11 @@ export function apply(ctx) {
       '',
       'If the current task needs any of the following, call dev_tool_search FIRST — do not try to work around them with bash:',
       ...UNLOCKABLE_INDEX.map((line) => `- ${line}`),
+      ...(extraIndex.length > 0
+        ? ['', 'Deployment-registered plugin tools:', ...extraIndex.map((line) => `- ${line}`)]
+        : []),
       '',
+      'Deployment plugins may register further tools not listed here; search the full catalog with `query` by keyword.',
       'Usage: pass `query` to search the catalog (returns matching tool names + descriptions), then pass `toolNames` with exact names to unlock them. Unlocked tools appear from the next request on and stay unlocked for the session.',
     ].join('\n'),
     parameters: toJsonSchema({

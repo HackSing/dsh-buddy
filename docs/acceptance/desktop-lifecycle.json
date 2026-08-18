@@ -1,0 +1,162 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "对标通用桌面产品的安装/更新/卸载流程",
+  "key_symbols": [
+    "auto-update",
+    "deleteAppDataOnUninstall",
+    "checkForUpdate",
+    "quitAndInstall"
+  ],
+  "objective": "Windows 安装器升级为 assisted(可选目录)、卸载清理壳自身 userData(不动 ~/.dsh)、Windows 应用内自动更新(electron-updater 后台下载+重启安装,macOS 保持提示式)、菜单「检查更新」真实检查三态反馈、Release 挂载 latest.yml/blockmap、README 三节同步。",
+  "plan_ref": "docs/plans/desktop-lifecycle.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "安装器形态:本机 dist:win 产出 assisted 安装器,/S /D= 静默安装与交互目录选择均可用,安装后真实启动冒烟通过",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260818T105607-438fe68465",
+          "objective_fingerprint": "sha256:be354fc42ea98e46f590cc6302e38d467dd19911b1af755a969b12dda2ad030e",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "本机 dist:win 构建日志确认 oneClick=false perMachine=false;PowerShell Start-Process -Wait 静默安装 /S /D= 自定义目录成功;临时 DSH_HOME 真实启动:preset/profile 安装、dsh 200、窗口出现、update check 分流到 electron-updater 且 latest.yml 404 折叠为日志不阻塞",
+          "evidence_refs": [
+            "docs/acceptance/evidence/desktop-lifecycle/c1-c2-install-uninstall-smoke.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-18T10:56:07+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "卸载清理:卸载后程序目录与壳 userData(%APPDATA%/DSH Buddy)已清,临时 DSH_HOME 不动",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260818T105607-3d7ad0710b",
+          "objective_fingerprint": "sha256:be354fc42ea98e46f590cc6302e38d467dd19911b1af755a969b12dda2ad030e",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "备份壳 userData 后运行 Uninstall DSH Buddy.exe /S:安装目录与 %APPDATA%/DSH Buddy 均 REMOVED,临时 DSH_HOME(~/.dsh 等价边界)保留;卸载后恢复 userData 备份",
+          "evidence_refs": [
+            "docs/acceptance/evidence/desktop-lifecycle/c1-c2-install-uninstall-smoke.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-18T10:56:07+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "手动检查更新:force 绕过 24h 节流真实查询,三态反馈分支正确,自动检查节流语义不回归",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260818T102537-4d8b369eef",
+          "objective_fingerprint": "sha256:be354fc42ea98e46f590cc6302e38d467dd19911b1af755a969b12dda2ad030e",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "纯 node 冒烟:预置『刚查过』状态,断言非 force 走 throttled、force 真实查询 releases/latest 得 up-to-date;断言 isAutoUpdateSupported 四象限与 scheduleAutoUpdate 开发态 skipped 且不加载 electron;静态核对 main.js 三态反馈分支",
+          "evidence_refs": [
+            "docs/acceptance/evidence/desktop-lifecycle/c3-manual-check-smoke.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-18T10:25:37+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "Windows 自动更新全链:双 prerelease tag(test1→test2)实证装 test1 启动后自动下载安装到 test2,Release 挂载 latest.yml/blockmap",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "pending",
+      "records": []
+    },
+    {
+      "id": "c5",
+      "title": "文档同步:README 安装/卸载/更新节与 Roadmap 和实际行为一致",
+      "acceptance_type": "contract_check",
+      "layer": "L1",
+      "evidence_layer": null,
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260818T105607-9a83a2a741",
+          "objective_fingerprint": "sha256:be354fc42ea98e46f590cc6302e38d467dd19911b1af755a969b12dda2ad030e",
+          "acceptance_type": "contract_check",
+          "status": "passed",
+          "layer": "L1",
+          "evidence_layer": null,
+          "method": "逐项比对 README 下载表(assisted 安装器说明)、新增「更新与卸载」节(Windows 自动更新/macOS 提示式、卸载清壳 userData 保留 ~/.dsh)、Roadmap 勾选与 package.json nsis 配置/lib/auto-update.js/main.js 实际行为一致",
+          "evidence_refs": [
+            "README.md",
+            "package.json",
+            "lib/auto-update.js"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-18T10:56:07+00:00"
+        }
+      ]
+    }
+  ],
+  "status": "pending",
+  "revision": 5,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:92a1ec343fe1b60cb2a04ca8daba75bdb489673d923affddd6fde8e0911cd674",
+      "updated_at": "2026-08-18T10:24:56+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:b69f149cdafd6b25ed247132ef67214d97a9a4e51490a1a934ade54c6dd43769",
+      "updated_at": "2026-08-18T10:25:37+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:7299f5994eecf2968e811dbc06217fe4960437137366ee6b15598320b4abb3ab",
+      "updated_at": "2026-08-18T10:56:07+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:a3eeb8e59c3293a80f944979cd554ed91b0d1822f136ca32366172fc71b1a7ac",
+      "updated_at": "2026-08-18T10:56:07+00:00"
+    }
+  ],
+  "created_at": "2026-08-18T10:24:56+00:00",
+  "updated_at": "2026-08-18T10:56:07+00:00",
+  "settled_at": null,
+  "asset_fingerprint": "sha256:f1f62cc6593d42a1ff50ce18abf2d31f05bc88e24ed38a83341a6b8cccd4a55c"
+}

@@ -12,7 +12,17 @@ dsh 是一个强大且快速演进的 agent harness;DSH Buddy 把它变成双击
 | 平台 | 入口 | 说明 |
 |---|---|---|
 | **macOS**(Apple Silicon) | [下载最新版 dmg](https://github.com/HackSing/dsh-buddy/releases/latest) | 拖入「应用程序」即完成安装。产物暂未签名公证,首次打开请右键 → 打开(或在「系统设置 → 隐私与安全性」放行) |
-| **Windows**(x64) | [下载最新版 exe](https://github.com/HackSing/dsh-buddy/releases/latest) | 双击运行安装器即完成安装,无需 Node、无需管理员/开发者模式。产物未签名,SmartScreen 可能提示「Windows 已保护你的电脑」→ 更多信息 → 仍要运行;启动后首次连接会提示允许访问网络 |
+| **Windows**(x64) | [下载最新版 exe](https://github.com/HackSing/dsh-buddy/releases/latest) | 双击运行安装器,可按向导选择安装目录(默认装在用户目录,无需管理员/开发者模式)。产物未签名,SmartScreen 可能提示「Windows 已保护你的电脑」→ 更多信息 → 仍要运行;启动后首次连接会提示允许访问网络 |
+
+## 更新与卸载
+
+**更新**:
+- **Windows**:应用内自动更新——启动后后台检查 GitHub Releases,发现新版本自动下载,就绪后提示「立即重启安装」。也可用菜单「帮助 → 检查更新」手动触发(实时反馈:有新版本/已是最新/检查失败)。
+- **macOS**:未签名包无法静默换装(系统级约束),启动时检查更新,有新版本提示前往 Release 页下载新 dmg 覆盖安装。
+
+**卸载**:
+- **Windows**:「设置 → 应用」或控制面板卸载。卸载会删除程序文件与壳自身数据(`%APPDATA%\DSH Buddy`,仅日志与更新检查状态);**`~/.dsh` 会保留**——它是 dsh 的会话与配置目录,与 dsh 命令行共享,如确认不再使用 dsh 可手动删除。
+- **macOS**:把应用拖入废纸篓;`~/.dsh` 同理保留,按需手动删除。
 
 ## 发行版的四个职能
 
@@ -116,10 +126,11 @@ scripts\dist-win.bat # 本机 Windows 打包入口:清 IDE 注入的 ELECTRON_* 
 - [x] 随包资产:精选 agent preset 预装 + 插件 profile 随包
 - [x] 发布流水线(推 tag 即自动构建并发 Release;profile 产物独立构建经 artifact 分发,Windows 已转正)
 - [x] 应用内更新提示(检查 GitHub Releases,24h 节流)
+- [x] Windows 桌面生命周期对标:assisted 安装器(可选安装目录)、卸载清理壳自身数据(保留 `~/.dsh`)、应用内自动更新(electron-updater 后台下载 + 重启安装,NSIS 通道不要求签名)
 - [x] dsh 追新兼容验证(每日自动值班,新版本自动开 issue 报告)
 - [x] Windows 安装包转正(profile 产物改为单独构建经 artifact 分发,绕开 bsdtar × pnpm junction;纯 Node 两遍解包支持无特权普通用户)
 - [x] Docs Harness 插件随包(方案工具族 + 规则注入 + 进度气泡 + 用户发起的项目安装/升级/移除)
-- [ ] 代码签名 + 公证 + 全自动更新(签名就绪后同一发布流升级)
+- [ ] 代码签名 + 公证 + macOS 全自动更新(签名就绪后同一发布流升级;Windows 自动更新已先行落地)
 - [ ] 存量用户随包资产增量更新(版本戳分流;profile:未改动整体替换、有自定义则自动只加不改合并;preset:未改动替换、已改动保留用户版本;均先备份,异常回滚)
 - [ ] Docs Harness 后续:knowledge / acceptance 资产的前端可视化;插件发布 npm 后清单条目从 `local` 转 `packages`;引擎种子版本升级走上面那条随包资产增量更新的同一套语义
 - [ ] 系统托盘、关窗常驻等桌面体验(按用户反馈驱动)

@@ -21,6 +21,12 @@
       "version": "0.1.1",
       "license": "MIT",
       "comment": "本仓自研的治理插件,源码唯一真源在 https://github.com/HackSing/docs-harness;已发布 npm,与其余六件套走同一条 registry 安装链路。旧的非 scoped 名 dsh-docs-harness 未发布,存量用户手工补装过旧名的需先 remove 再 add 本条"
+    },
+    {
+      "name": "dsh-better-sidebar",
+      "version": "0.13.0",
+      "license": "MIT",
+      "comment": "VSCode 风格右侧侧边栏(资源管理器/编辑器/终端/Git/浏览器),源码 https://github.com/omdsh-dev/DSH-better-sidebar;已发布 npm,走同一 registry 链路。过门证据:LICENSE 全文 MIT、包 license 字段 MIT、发布包无 install/postinstall 脚本;依赖 node-pty(原生,本仓 allowScripts 已含)、mermaid、codemirror,无隧道/凭据存储类敏感依赖"
     }
   ],
   "excluded": [

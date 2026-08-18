@@ -57,6 +57,16 @@
 # to the controlled phase — bootstrap pair + `compactionTools` — until a NEW
 # durable promotion signal exists past the boundary (epoch-aware, see
 # compaction-epoch.mjs).
+#
+# PROMPT SEAL (local addition, 2026-08-18): `sealSectionsUntilPromotion` and
+# `sealContextsUntilPromotion` seal the SYSTEM PROMPT to the persona section
+# alone (no runtime contexts) while the session is unpromoted — the
+# phase-aware replacement for the persona row's old `complete: true`, which
+# was scope-static and suppressed every plugin prompt section for the whole
+# session (2026-08-18 incident: dsh-docs-harness governance never reached the
+# model under this preset). The seal follows the same epoch promotion state as
+# the tool catalog: request #1 stays byte-identical Minimal, promoted sessions
+# receive every registered section and context again.
 - id: tool-bootstrap
   name: ./tool-bootstrap.mjs
   config:
@@ -66,19 +76,22 @@
     # Post-compaction core work set: the model is mid-task and needs to keep
     # working, but faces a small catalog instead of the full Standard set.
     compactionTools: [read, write, edit, glob, grep, todo_write, ask_user_question]
+    # While unpromoted, keep only the persona section and drop contexts.
+    sealSectionsUntilPromotion: [deployment:persona]
+    sealContextsUntilPromotion: true
 
 # ── identity ────────────────────────────────────────────────────────────────
 
-# Keep this text byte-identical to the Minimal preset. `complete` prevents the
-# Harness identity and per-tool guidance from changing the system prompt, while
-# runtime-context suppression leaves task and repository rules to user messages
-# and explicit file reads. Tool schemas and their runtime enforcement remain.
+# Keep this text byte-identical to the Minimal preset. The first-request seal
+# lives in the tool-bootstrap row above (sealSectionsUntilPromotion /
+# sealContextsUntilPromotion): phase-aware, so promoted sessions receive the
+# Harness identity, per-tool guidance, and plugin sections again. Do NOT bring
+# back `complete: true` here — it is scope-static and silences every
+# prompt-injecting plugin for the whole session.
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
     text: You are a helpful software engineer assistant.
-    complete: true
-    includeRuntimeContext: false
 
 # Instruction FILES are NOT injected (replaces dsh-agent-instructions, local
 # addition): the full AGENTS.md/CLAUDE.md digest is a large injected block
@@ -94,9 +107,15 @@
 # On-demand tool discovery (the tool-search pattern, local addition): the
 # promoted catalog keeps a minimal resident set; heavier Standard tools
 # (web_search, subagent, workflow, …) are unlocked on demand via
-# dev_tool_search.
+# dev_tool_search. `extraIndex` lists deployment-registered plugin tools the
+# hardcoded built-in index cannot know about — dsh-docs-harness is in the
+# preinstall manifest, so its plan tools are named here explicitly; without
+# this the model has no signal that they exist (2026-08-18 incident).
 - id: dev-tool-search
   name: ./dev-tool-search.mjs
+  config:
+    extraIndex:
+      - harness_plan_select / harness_plan_create / harness_plan_settle / plan_progress — Docs Harness plan lifecycle (project governance)
 
 # ── shell ───────────────────────────────────────────────────────────────────
 

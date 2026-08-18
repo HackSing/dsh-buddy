@@ -5,6 +5,7 @@
   "description": "A desktop buddy for DeepSeek Harness",
   "main": "main.js",
   "scripts": {
+    "test": "node --test",
     "start": "electron .",
     "dist": "electron-builder --mac --publish never",
     "pack": "electron-builder --dir",
@@ -17,9 +18,8 @@
     "plugins/*"
   ],
   "dependencies": {
-    "@deepseek-ai/dsh": "0.1.0-rc.6",
-    "tar": "7.5.22",
     "@deepseek-ai/cordis-plugin-group": "1.0.1",
+    "@deepseek-ai/dsh": "0.1.0-rc.6",
     "@deepseek-ai/dsh-anonymous-user-id": "0.1.0-rc.6",
     "@deepseek-ai/dsh-atomic-write": "0.1.0-rc.6",
     "@deepseek-ai/dsh-bash-local": "0.1.0-rc.6",
@@ -37,7 +37,9 @@
     "@deepseek-ai/dsh-subagent-in-process-driver": "0.1.0-rc.6",
     "@deepseek-ai/dsh-subprocess": "0.1.0-rc.6",
     "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-workflow": "0.1.0-rc.6"
+    "@deepseek-ai/dsh-workflow": "0.1.0-rc.6",
+    "electron-updater": "6.8.9",
+    "tar": "7.5.22"
   },
   "devDependencies": {
     "electron": "^38.0.0",
@@ -104,6 +106,22 @@
         }
       ],
       "icon": "assets/icon.png"
-    }
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DSH Buddy",
+      "deleteAppDataOnUninstall": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "HackSing",
+        "repo": "dsh-buddy"
+      }
+    ]
   }
 }

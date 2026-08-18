@@ -1,0 +1,89 @@
+> 状态：有效（实施中）
+<!-- docs-harness:plan-document/v1 -->
+
+# 对标通用桌面产品的安装/更新/卸载流程
+
+- 冻结合同：`sha256:e83aa4e95ed70adfa04b67b23146aaa7b22478d82efbcb868d11802d9c353c98`
+- 关键符号：`auto-update`、`deleteAppDataOnUninstall`、`checkForUpdate`、`quitAndInstall`
+
+## 背景
+
+安装/更新/卸载基本链路已存在但完整度不足：1) Windows 安装走 electron-builder 默认 oneClick perUser NSIS（package.json 无 build.nsis 配置块），无安装目录选择与完成页；macOS dmg 拖拽已是标准形态。2) 更新仅有 lib/update-check.js 提示式检查（24h 节流、同版本一次、弹窗开下载页），菜单「检查更新」（lib/frameless-window.js 的 help:check-update）只是 shell.openExternal 开网页不做真实检查；dist/latest.yml 已由 electron-builder 生成但 release.yml 只上传 *.exe，electron-updater 所需元数据未挂 Release。3) 卸载走 NSIS 默认，不清壳自身 userData（%APPDATA%/DSH Buddy：日志+更新状态）；~/.dsh 为 dsh CLI 共享数据，任何方案不得触碰。已实证：node_modules 无 electron-updater；NSIS 通道不要求代码签名即可自动更新，macOS 自动更新硬依赖签名（未签名为天花板）。
+
+## 目标
+
+1) Windows 安装器升级为 assisted：可选安装目录（默认 perUser 免管理员）、桌面/开始菜单快捷方式、装完可启动；2) Windows 卸载清理壳自身 userData（deleteAppDataOnUninstall），明确不动 ~/.dsh 并在 README 写清边界；3) Windows 应用内自动更新：electron-updater 后台下载、就绪后提示重启安装（quitAndInstall），macOS 保持提示式通道（未签名天花板）；4) 菜单「检查更新」接真实 checkForUpdate（force 绕过节流），三态反馈（有新版本/已是最新/检查失败）；5) release.yml windows job 补传 latest.yml 与 blockmap；6) README 安装/卸载/更新文档同步。
+
+## 非目标
+
+不做代码签名/公证（Roadmap 二期，预算问题）；不做 macOS 自动更新（签名前置）；卸载不清 ~/.dsh（共享数据，有意不做）；不做开机自启、协议注册等安装器花活；不做 Linux 通道；不改 dsh 启动链路语义与随包资产安装链。
+
+## 成功标准
+
+1) 本机 npm run dist:win 产出 assisted 安装器：静默安装 /S /D=临时目录 可用，交互安装出现目录选择页；2) 卸载冒烟：运行卸载程序后程序目录与 %APPDATA%/DSH Buddy 已清，临时 DSH_HOME（~/.dsh 等价物）不动；3) 菜单「检查更新」真实触发检查：已是最新时给出明确反馈，不再只开网页；4) Windows 打包态启动后 auto-update 链不阻塞启动、失败只落日志；prerelease 双 tag（test1→test2）实证本机装 test1 启动后自动下载安装到 test2；5) release.yml 上传 latest.yml/blockmap 后 Release 挂载完整；6) macOS dmg 构建不回归、mac 仍走提示式更新；7) README 安装/卸载/更新节与实际行为一致。
+
+## 执行范围
+
+package.json：新增 build.nsis 配置块（oneClick:false、allowToChangeInstallationDirectory、perMachine:false、createDesktopShortcut、createStartMenuShortcut、shortcutName、deleteAppDataOnUninstall:true）与 build.publish（github provider）；dependencies 新增 electron-updater（钉死版本）。lib/update-check.js：checkForUpdate 加 force 选项绕过节流（自动检查路径语义不变）。lib/auto-update.js（新增）：仅 win32+isPackaged 生效的 electron-updater 封装。lib/frameless-window.js：help:check-update 改真实检查 + 三态反馈。main.js：接线 scheduleAutoUpdate（win32 打包态）与菜单手动检查回调。release.yml：windows job 上传 dist/latest.yml 与 dist/*.blockmap。README.md：安装/卸载/更新节与 Roadmap。
+
+## 执行内容
+
+批1（安装/卸载，package.json 配置）：build.nsis = { oneClick:false, allowToChangeInstallationDirectory:true, perMachine:false, createDesktopShortcut:true, createStartMenuShortcut:true, shortcutName:'DSH Buddy', deleteAppDataOnUninstall:true }；若实证 deleteAppDataOnUninstall 语义不符，降级 build/installer.nsh 自定义 customUnInstall 宏显式 RMDir userData。批2（手动检查更新真实化）：lib/update-check.js 的 checkForUpdate 增加 force 选项（默认 false；true 时跳过 isCheckDue 节流判定，其余状态落盘语义不变）；lib/frameless-window.js 的 help:check-update 从 openExternal 改为经回调触发真实检查，三态反馈（有新版本→复用现有弹窗引导下载；已是最新→提示当前版本；失败→提示网络异常），反馈 UI 由 main.js 注入保持分层。批3（Windows 自动更新）：npm 安装 electron-updater 钉死版本（electron-builder 官方伴侣库，标准库/现有依赖不具备 NSIS 包下载校验与静默换装能力）；新增 lib/auto-update.js：导出 scheduleAutoUpdate({ isPackaged, platform, version, notify })、checkUpdateManually 供菜单复用——启动后异步 checkForUpdates→downloadUpdate→update-downloaded 弹窗「立即重启安装/稍后」→quitAndInstall，一切失败折叠为日志（与 update-check 同一错误哲学），仅 win32+isPackaged 生效，darwin 返回 skipped 由 update-check 提示式通道接管；main.js 接线：scheduleUpdateCheck 按平台分流（win32 打包态走 auto-update，其余走原提示式），菜单手动检查同入口复用。批4（CI + 文档 + 收尾）：package.json 加 build.publish:[{provider:'github',owner:'HackSing',repo:'dsh-buddy'}]；release.yml windows job 上传 dist/latest.yml 与 dist/*.exe.blockmap（--clobber 幂等）；README 安装节补 assisted 说明、新增卸载节（清 userData、保留 ~/.dsh）、更新节改写（Windows 应用内自动更新/macOS 提示式）、Roadmap 勾选；验证：本机 dist:win→静默安装→真实启动冒烟→卸载断言；推 v0.1.1-test1/test2 双 prerelease tag 实证自动更新链，清理测试产物。
+
+## 验收方案
+
+acceptance 资产五条（先 create，逐条 record，全部 passed 后 settle）：c1 安装器形态（L3）：本机 dist:win 产出 assisted 安装器，/S /D= 静默安装与交互目录选择均可用；c2 卸载清理（L3）：卸载后程序目录与壳 userData 已清、临时 DSH_HOME 不动；c3 手动检查更新（L2/L3）：force 绕过节流、三态反馈正确，自动检查节流语义不回归；c4 Windows 自动更新全链（L4）：双 prerelease tag，装 test1 启动自动更新到 test2，Release 挂 latest.yml/blockmap；c5 文档同步（L1）：README 安装/卸载/更新节、Roadmap 与行为一致。
+
+## 是否需要 Acceptance 资产闭环
+
+```json
+true
+```
+
+## Knowledge 影响
+
+updated
+
+## 约束
+
+electron-updater 为本任务唯一新增第三方依赖（electron-builder 官方伴侣，应用内 NSIS 更新无现实替代），版本钉死；不新增第三方 action；不碰 ~/.dsh，验证一律临时 DSH_HOME；错误不吞：auto-update 失败折叠为具名日志不弹窗（增强项哲学），卸载/安装错误由 NSIS 自身呈现；macOS 更新通道保持 lib/update-check.js 提示式不动；业务默认值单一来源：repo owner/name 复用 build.publish 配置，不在代码重复硬编码。
+
+## 风险与回滚
+
+风险：1) 未签名 exe 经 quitAndInstall 换装时 SmartScreen 再提示一次——README 说明；2) electron-updater 在未签名 NSIS 上的行为细节（差量/全量回退）以 prerelease 双 tag 实证为准；3) assisted 安装器改变既有用户安装习惯——perUser 默认路径不变，一键变两步属预期取舍；4) deleteAppDataOnUninstall 只认默认 userData 名，productName 改动需同步——收尾报告标注；5) 自动更新链首跑需人工看日志。回滚：package.json 删 nsis/publish 块与 electron-updater 依赖、main.js/frameless-window.js 复原接线、release.yml 去掉两行上传即回到现状；整体 revert。
+
+## 源与目标
+
+源：oneClick 默认安装器、卸载不清 userData、菜单检查更新只开网页、latest.yml 未挂 Release、无应用内更新。目标：assisted 安装器（可选目录）、卸载清壳 userData、菜单真实检查三态反馈、Windows electron-updater 应用内自动更新、Release 挂载更新元数据、README 三节同步。
+
+## 版本与产物
+
+版本：DSH Buddy 仍 0.1.0（本任务不发版，验证用 v0.1.1-test1/test2 prerelease tag 且清理）；dsh 0.1.0-rc.6 不变；electron-updater 新增钉死。产物：DSH Buddy Setup 0.1.0.exe（assisted nsis）、latest.yml、*.exe.blockmap 挂 Release；mac dmg 不变。
+
+## 兼容与灰度
+
+灰度：自动更新链先以双 prerelease tag 实证（不占 releases/latest、不推给存量用户），全绿后随下次正式 tag 生效；老版本（无 electron-updater）用户仍走提示式手动下载，升到新版后才进入自动更新通道——两通道并存无冲突；macOS 行为不回归（dmg 构建链不变、提示式更新不动）；静默安装 /S 兼容保留（assisted 安装器仍支持 /S /D=）。
+
+## 数据安全
+
+卸载只清壳自身 userData（日志+更新状态），~/.dsh 共享数据明确不动并文档化；验证一律临时 DSH_HOME 与临时安装目录；auto-update 下载经 electron-updater 内置 sha512 校验（latest.yml），校验失败不安装；quitAndInstall 前复用现有 before-quit 进程树回收。
+
+## 监控与停止条件
+
+停止条件：本机安装/卸载冒烟失败、auto-update 实证链红、CI 上传步骤报错，即停并回归排查；auto-update 首跑人工看日志确认下载与换装；存量提示式通道的任何回归（节流/通知一次）即停。
+
+## 回滚
+
+package.json 移除 build.nsis/build.publish 与 electron-updater 依赖；main.js 恢复 scheduleUpdateCheck 单一提示式；frameless-window.js 恢复 openExternal；release.yml 移除 latest.yml/blockmap 上传；整体 revert 全部批次改动。
+
+## 交付层分离
+
+L1 文档：README 安装/卸载/更新节与 Roadmap（c5）；L2 单元冒烟：update-check force 语义与三态分支（c3 部分）；L3 本机集成：dist:win 构建 + 静默/交互安装 + 卸载断言 + 真实启动（c1/c2/c3）；L4 发布链：双 prerelease tag 自动更新实证 + Release 元数据挂载（c4）。
+
+<!-- docs-harness:plan-governance:start -->
+## 资产治理
+
+- 关联验收：`docs/acceptance/desktop-lifecycle.json`
+- 需要 Acceptance：true
+- Knowledge 影响：updated
+<!-- docs-harness:plan-governance:end -->
