@@ -1,0 +1,32 @@
+
+[dsh-buddy] installed bundled presets: preset, zero-anchored-standard, whoami-standard
+[dsh-buddy] bundled profile: upgraded (旧版备份于 profiles/web.backup-0.1.16)
+[dsh-buddy] launcher=embedded entry=D:\Project\dsh-buddy\dist\win-unpacked\resources\app.asar.unpacked\node_modules\@deepseek-ai\dsh\lib\bin.js cmd=D:\Project\dsh-buddy\dist\win-unpacked\DSH Buddy.exe args=["D:\\Project\\dsh-buddy\\dist\\win-unpacked\\resources\\app.asar.unpacked\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js","web","--host","127.0.0.1","--port","3080"]
+[ui-skin-center] legacy bridge: no legacy managed skin state; nothing to migrate
+[dsh-buddy] update check: checking
+dsh web: http://127.0.0.1:3080
+[dsh-buddy] auto update: failed (Cannot find latest.yml in the latest release artifacts (https://github.com/HackSing/dsh-buddy/releases/download/v0.1.0/latest.yml): HttpError: 404 
+"method: GET url: https://github.com/HackSing/dsh-buddy/releases/download/v0.1.0/latest.yml\n\nPlease double check that your authentication token is correct. Due to security reasons, actual status maybe not reported, but 404.\n"
+Headers: {
+  "cache-control": "no-cache",
+  "content-encoding": "gzip",
+  "content-length": "29",
+  "content-security-policy": "default-src 'none'; base-uri 'self'; connect-src 'self'; form-action 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline'",
+  "content-type": "text/plain; charset=utf-8",
+  "date": "Wed, 19 Aug 2026 12:09:52 GMT",
+  "referrer-policy": "no-referrer-when-downgrade",
+  "server": "github.com",
+  "strict-transport-security": "max-age=31536000; includeSubdomains; preload",
+  "vary": "X-PJAX, X-PJAX-Container, Turbo-Visit, Turbo-Frame, X-Requested-With, X-GitHub-Client-Version, Sec-Fetch-Site,Accept-Encoding, Accept, X-Requested-With",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "deny",
+  "x-github-edge-region": "westus2",
+  "x-github-request-id": "C6C6:300D9E:324FD7:52B958:6A859D0F",
+  "x-xss-protection": "0"
+}
+    at createHttpError (D:\Project\dsh-buddy\dist\win-unpacked\resources\app.asar\node_modules\builder-util-runtime\out\httpExecutor.js:53:12)
+    at ElectronHttpExecutor.handleResponse (D:\Project\dsh-buddy\dist\win-unpacked\resources\app.asar\node_modules\builder-util-runtime\out\httpExecutor.js:157:20)
+    at ClientRequest.<anonymous> (D:\Project\dsh-buddy\dist\win-unpacked\resources\app.asar\node_modules\builder-util-runtime\out\httpExecutor.js:122:26)
+    at ClientRequest.emit (node:events:519:28)
+    at SimpleURLLoaderWrapper.<anonymous> (node:electron/js2c/browser_init:2:124373)
+    at SimpleURLLoaderWrapper.emit (node:events:519:28))

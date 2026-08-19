@@ -170,8 +170,29 @@ function ensureBundledAssets() {
       tarballPath: resolveProfileTarball(),
       dshHome,
       profileName: preinstallManifest.profile,
+      manifestPackages: preinstallManifest.packages,
     });
-    console.log(`[dsh-buddy] bundled profile: ${profileResult}`);
+    console.log(
+      `[dsh-buddy] bundled profile: ${profileResult.status}` +
+        (profileResult.backup ? ` (旧版备份于 profiles/${profileResult.backup})` : '')
+    );
+    if (profileResult.status === 'preserved') {
+      // 存量 profile 含清单外插件(或 package.json 不可读):不覆盖,告知用户如何手动接收升级。
+      const extras = profileResult.extras || [];
+      console.warn(`[dsh-buddy] bundled profile upgrade held by extra packages: ${extras.join(', ')}`);
+      dialog.showMessageBox({
+        type: 'info',
+        title: 'DSH Buddy',
+        message: '内置插件包有更新,但你当前 profile 中存在清单外的插件,已保留原样未升级:',
+        detail:
+          (extras.length > 0 ? `${extras.join('\n')}\n\n` : '(无法读取 profile 的 package.json)\n\n') +
+          '如需接收更新:备份后删除目录 ' +
+          path.join(dshHome, 'profiles', preinstallManifest.profile) +
+          ',重启应用即会安装新版(清单外插件需事后自行重装)。',
+        buttons: ['OK'],
+        noLink: true,
+      });
+    }
   } catch (err) {
     dialog.showErrorBox(
       'DSH Buddy',

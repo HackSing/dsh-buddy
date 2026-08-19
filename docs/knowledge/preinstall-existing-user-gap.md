@@ -3,31 +3,31 @@
 
 # 预装插件存量缺口与 CI 安装位污染
 
-- 修订：4
+- 修订：5
 - 关键符号：`installBundledProfile`、`preinstall-manifest`、`virtualStoreDir`、`healProfilesModuleFallback`
-- 资产指纹：`sha256:b4313327bdd3984d4dac3c4f5c8f20e21b337f4174e6d9f13af60a753c82c64f`
+- 资产指纹：`sha256:4573801e3c9079c1e830dec70e71a1fefb16bc2981fc0415a8a0fc82ae3b0177`
 
 ## 摘要
 
-幂等解包让预装插件永远到不了存量 profile；解包出的 profile 带着构建机 pnpm 元数据导致用户机上插件增删被挡死；NSIS 做 CI 安装验证会改写真实安装位与快捷方式，平铺回退 junction 随之指进 Temp 易失目录
+存量 profile 幂等跳过缺口已由版本比对+备份替换根治（2026-08-19）；解包出的 profile 带着构建机 pnpm 元数据导致用户机上插件增删被挡死；NSIS 做 CI 安装验证会改写真实安装位与快捷方式，平铺回退 junction 随之指进 Temp 易失目录
 
 ## 事实
 
 ### `gap.idempotent-skip`
 
-lib/bundled-profile.js 的幂等解包对已存在的 profile 直接跳过，预装插件只送达全新安装；早于预装机制建立的存量 profile 永远拿不到后续新增插件——用户报『丢失了其他的插件』实为从未送达，需要 roadmap 中的应用层增量升级机制才能根治
+已修复（2026-08-19，方案 docs/plans/existing-profile-upgrade.json）：installBundledProfile 对已存在 profile 改为读其 package.json dependencies 与 preinstall-manifest 比对——一致返回 up-to-date 不动磁盘；落后或缺包且无清单外依赖时旧目录整体备份为 profiles/<name>.backup-<旧版本标识>（同名复用）后原子替换，返回 upgraded；含清单外依赖或 package.json 不可读返回 preserved 并报名，由 main.js 弹窗告知；升级中解包失败不触碰旧目录。历史事实：幂等跳过曾使存量 profile 永远拿不到后续新增插件，用户报『丢失了其他的插件』实为从未送达
 
-证据：`lib/bundled-profile.js`、`plugins/preinstall-manifest.json`、`docs/acceptance/evidence/docs-harness-plugin/c3-live-install.txt`
+证据：`lib/bundled-profile.js`、`main.js`、`plugins/preinstall-manifest.json`、`docs/plans/existing-profile-upgrade.json`
 
 ### `gap.virtual-store-drift`
 
-随包 tar 解包出的 profile 带着构建机的 pnpm 元数据：node_modules/.modules.yaml 的 virtualStoreDir 指向构建期临时目录（dsh-buddy-profile-*），该目录被清理后用户机上任何 pnpm add/remove 都被 ERR_PNPM_UNEXPECTED_VIRTUAL_STORE 挡死；因 Windows 分支打包前做过 dereference 实体化，node_modules 内容完整、运行态无感，坏的只有维护通道——2026-08-18 实测修法：改 profile 的 package.json（dependencies 与 dsh.profile.bundles 两处）→ 删 node_modules → dsh plugin --profile web install 重建，virtualStoreDir 回落本地后起 web 探测 HTTP 200
+随包 tar 解包出的 profile 带着构建机的 pnpm 元数据：node_modules/.modules.yaml 的 virtualStoreDir 指向构建期临时目录（dsh-buddy-profile-*），该目录被清理后用户机上任何 pnpm add/remove 都被 ERR_PNPM_UNEXPECTED_VIRTUAL_STORE 挡死；因 Windows 分支打包前做过 dereference 实体化，node_modules 内容完整、运行态无感，坏的只有维护通道——2026-08-18 实测修法：改 profile 的 package.json（dependencies 与 dsh.profile.bundles 两处）→ 删 node_modules → dsh plugin --profile web install 重建，virtualStoreDir 回落本地后起 web 探测 HTTP 200。注意：随包升级（upgraded 分支）整树替换后此漂移随之复位，但 preserved 分支保留的旧 profile 仍带漂移
 
 证据：`scripts/build-web-profile.js`、`lib/bundled-profile.js`、`plugins/preinstall-manifest.json`
 
 ### `repair.manual-add`
 
-存量修复手法：按 plugins/preinstall-manifest.json 的 packages 清单以 dsh plugin --profile web add 钉版补装八个包（@linxin666 六件套 @0.1.16、@aiwaretop/dsh-docs-harness@0.1.1、dsh-better-sidebar@0.13.0），全部为 registry spec 不再涉及本地 tarball；2026-08-17 曾以本地 tarball 装过非 scoped 旧名 dsh-docs-harness 的存量 profile（含用户本机，2026-08-18 已迁移完毕）必须先去掉旧名再装 scoped 名，否则同功能插件双份注册且旧名的 file: spec 会在后续 pnpm 操作中断裂
+存量修复手法：按 plugins/preinstall-manifest.json 的 packages 清单以 dsh plugin --profile web add 钉版补装八个包（@linxin666 六件套 @0.1.16、@aiwaretop/dsh-docs-harness@0.1.1、dsh-better-sidebar@0.13.0），全部为 registry spec 不再涉及本地 tarball；2026-08-17 曾以本地 tarball 装过非 scoped 旧名 dsh-docs-harness 的存量 profile（含用户本机，2026-08-18 已迁移完毕）必须先去掉旧名再装 scoped 名，否则同功能插件双份注册且旧名的 file: spec 会在后续 pnpm 操作中断裂。2026-08-19 起应用层升级机制（gap.idempotent-skip 修复）已覆盖无清单外依赖的存量 profile，手工补装只剩 preserved 场景需要
 
 证据：`plugins/preinstall-manifest.json`、`scripts/build-web-profile.js`、`docs/acceptance/evidence/docs-harness-plugin/c3-live-install.txt`
 

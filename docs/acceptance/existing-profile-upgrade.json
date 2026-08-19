@@ -1,0 +1,169 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "存量 profile 随包升级验收：四态判定 + 端到端旧 profile 升级",
+  "key_symbols": [
+    "installBundledProfile",
+    "profileUpgradeDecision"
+  ],
+  "objective": "让已存在 profile 的用户在升级应用后拿到随包清单声明的插件版本，同时不破坏用户自行安装的插件；无法安全升级时明确告知而不是静默跳过或静默覆盖。",
+  "plan_ref": "docs/plans/existing-profile-upgrade.json",
+  "knowledge_refs": [
+    "docs/knowledge/preinstall-existing-user-gap.json"
+  ],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "隔离 DSH_HOME 四态判定：installed / up-to-date / upgraded / preserved / no-tarball 返回值与磁盘结果全部符合成功标准",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260819T115926-e50602b2af",
+          "objective_fingerprint": "sha256:cfaa04cf2f8506fb7bf0614826c8f7911b35d18d70603366f6b255194f17a1e0",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "node scripts/verify-bundled-profile.js .：新增场景5 覆盖四态判定——纯函数 profileUpgradeDecision 五断言（一致/落后/清单外/不可读/缺包）；5a up-to-date 不动磁盘（mtime 不变、无备份）；5b 0.1.16 旧版 → upgraded，备份目录 web.backup-0.1.16 含旧 package.json、新版落位、无 staging 残留；5c 清单外依赖 dsh-my-own → preserved 并报名、原 profile 逐字节不变；5d 升级中解包失败 → 抛错且旧 profile 不变、不留 staging/备份/半成品。30 条断言全绿，exit=0。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/existing-profile-upgrade/c1-verify.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-19T11:59:26+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "回归：node scripts/verify-bundled-profile.js 与 npm test 全绿",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260819T115926-92150faa19",
+          "objective_fingerprint": "sha256:cfaa04cf2f8506fb7bf0614826c8f7911b35d18d70603366f6b255194f17a1e0",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "node scripts/verify-bundled-profile.js . 与 npm test（node --test，覆盖 test/ 全部单测 256 项）均 exit=0；verify 既有解包用例（实体化/链接链/hardlink/穿越拒绝/拒绝后清理）全部保持绿色，无回归。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/existing-profile-upgrade/c1-verify.txt",
+            "docs/acceptance/evidence/existing-profile-upgrade/c2-npm-test.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-19T11:59:26+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "端到端：真实打包应用对复刻自用户 live 的旧版 profile 完成升级，浏览器实读确认 8 插件全部启用且无 Failed to load plugins",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260819T122415-45c1c1e893",
+          "objective_fingerprint": "sha256:cfaa04cf2f8506fb7bf0614826c8f7911b35d18d70603366f6b255194f17a1e0",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "真实打包应用端到端：把用户 live ~/.dsh/profiles/web（六件套 0.1.16 + docs-harness 0.1.1）整目录复刻到隔离 DSH_HOME=build/e2e-dsh-home，用 dist/win-unpacked 的打包应用（asar 已换入本次改动后的 main.js 与 lib/bundled-profile.js）启动。应用日志输出 'bundled profile: upgraded (旧版备份于 profiles/web.backup-0.1.16)'；升级后 web/package.json 为清单 8 包新版本，web.backup-0.1.16 完整保留旧版。dsh（内嵌 rc.7）就绪后 Playwright 实读 127.0.0.1:3080：首页无 Failed to load plugins；设置→插件→插件列表中 docs-harness、ui-git-graph、ui-task-board、ui-web-ui-settings、live-stats、pet、ui-skin-center、better-sidebar 八个第三方插件全部『已挂载，已启用』；任务看板/鲸鱼娘/皮肤中心/侧边栏等插件 UI 均实际渲染。取证后已关闭应用并确认 3080 端口释放。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/existing-profile-upgrade/c3-e2e-app.log",
+            "docs/acceptance/evidence/existing-profile-upgrade/c3-plugins-list.yml",
+            "docs/acceptance/evidence/existing-profile-upgrade/c3-profile-dirs.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-19T12:24:15+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "用户确认升级后本机真实环境插件可用",
+      "acceptance_type": "user_acceptance",
+      "layer": "L5",
+      "evidence_layer": null,
+      "status": "pending",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260819T122514-e9cc151305",
+          "objective_fingerprint": "sha256:cfaa04cf2f8506fb7bf0614826c8f7911b35d18d70603366f6b255194f17a1e0",
+          "acceptance_type": "user_acceptance",
+          "status": "user_pending",
+          "layer": "L5",
+          "evidence_layer": null,
+          "method": null,
+          "evidence_refs": [],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-19T12:25:14+00:00",
+          "user_handoff": {
+            "automatically_verified": [
+              "L2 聚焦验证：verify 脚本 30 条断言全绿（四态判定 + 备份替换 + 失败回滚），npm test 256/256",
+              "L4 打包端到端：复刻用户 live 旧版 profile 在真实打包应用上完成 upgraded，8 插件全部已启用，无 Failed to load plugins"
+            ],
+            "user_checks": [
+              "本机真实 ~/.dsh profile 在升级后的应用启动时被备份替换（出现 profiles/web.backup-0.1.16）",
+              "dsh web 首页无 Failed to load plugins，任务看板/侧边栏/皮肤/宠物等第三方插件可用"
+            ],
+            "steps": [
+              "用本次改动构建或更新本机 DSH Buddy（或直接运行 dist/win-unpacked/DSH Buddy.exe）",
+              "启动后查看 %USERPROFILE%/.dsh/profiles 下出现 web.backup-0.1.16 备份目录",
+              "打开 dsh web 首页确认无 Failed to load plugins，设置→插件→插件列表确认 8 个第三方插件已启用",
+              "确认无误后告知 agent，由 agent 用 --user-confirmed 记录 c4 并结项"
+            ],
+            "environment_ready": true
+          }
+        }
+      ]
+    }
+  ],
+  "status": "pending",
+  "revision": 5,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:e2ef5c109c711f69c9c5abb1e85bb97134e9058265ddea66cce26cd700fe3623",
+      "updated_at": "2026-08-19T11:47:13+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:e9b0fdc3744a709662ce2956762596f8fc083301835bb12b1fed621bd50d20ff",
+      "updated_at": "2026-08-19T11:59:26+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:35ee239200e0b346a198953b68d6ceac185a85308b3e29f226372c5602d3a5c5",
+      "updated_at": "2026-08-19T11:59:26+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:96fd129d987cb1f21713de633fa4e84e46347daad0b549758e6e8c10b1fc6d54",
+      "updated_at": "2026-08-19T12:24:15+00:00"
+    }
+  ],
+  "created_at": "2026-08-19T11:47:13+00:00",
+  "updated_at": "2026-08-19T12:25:14+00:00",
+  "settled_at": null,
+  "asset_fingerprint": "sha256:e9075945738b165d234b4b8056f1f923909d3ee26e4cfd2d1809f45da350cc80"
+}

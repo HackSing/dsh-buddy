@@ -1,0 +1,855 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e4]:
+    - generic [ref=f1e7]:
+      - button "打开侧边栏" [ref=f1e9] [cursor=pointer]
+      - button "新建会话" [ref=f1e12] [cursor=pointer]
+      - button "任务看板" [ref=f1e15] [cursor=pointer]
+      - generic [ref=f1e22]:
+        - button "添加工作区" [ref=f1e25] [cursor=pointer]
+        - button "搜索会话" [ref=f1e30] [cursor=pointer]
+      - generic [ref=f1e37]:
+        - button [expanded] [ref=f1e38] [cursor=pointer]
+        - dialog "设置" [ref=f1e112]:
+          - navigation [ref=f1e113]:
+            - generic [ref=f1e114]: 设置
+            - generic [ref=f1e115]:
+              - button "通用设置" [ref=f1e116] [cursor=pointer]
+              - button "模型" [ref=f1e122] [cursor=pointer]
+              - button "插件" [ref=f1e127] [cursor=pointer]
+              - button "Agent 预设" [ref=f1e131] [cursor=pointer]
+              - button "侧边卡片" [ref=f1e138] [cursor=pointer]
+              - button "Web UI 插件" [ref=f1e140] [cursor=pointer]
+              - button "皮肤中心" [ref=f1e142] [cursor=pointer]
+              - button "宠物" [ref=f1e144] [cursor=pointer]
+          - generic [ref=f1e146]:
+            - generic [ref=f1e147]:
+              - button "打开配置文件" [ref=f1e151] [cursor=pointer]
+              - button "关闭" [ref=f1e152] [cursor=pointer]
+            - generic [ref=f1e213]:
+              - heading "插件" [level=2] [ref=f1e214]
+              - paragraph [ref=f1e215]: 配置和查看本部署已安装的插件。
+              - tablist "插件视图" [ref=f1e216]:
+                - tab "插件配置" [ref=f1e217] [cursor=pointer]
+                - tab "插件列表" [active] [selected] [ref=f1e218] [cursor=pointer]
+              - tabpanel "插件列表" [ref=f1e267]:
+                - generic [ref=f1e270]:
+                  - generic [ref=f1e271]:
+                    - generic [ref=f1e272]: 搜索插件
+                    - searchbox "搜索插件" [ref=f1e273]
+                  - generic [ref=f1e274]:
+                    - heading "插件列表" [level=3] [ref=f1e275]
+                    - generic [ref=f1e276]: "141"
+                  - list [ref=f1e277]:
+                    - listitem [ref=f1e278]:
+                      - button "include, 已挂载, 已启用" [ref=f1e279] [cursor=pointer]:
+                        - strong [ref=f1e280]: include
+                        - generic [ref=f1e281]:
+                          - img "已挂载" [ref=f1e282]
+                          - generic [ref=f1e283]: 已启用
+                    - listitem [ref=f1e286]:
+                      - button "timer, 已挂载, 已启用" [ref=f1e287] [cursor=pointer]:
+                        - strong [ref=f1e288]: timer
+                        - generic [ref=f1e289]:
+                          - img "已挂载" [ref=f1e290]
+                          - generic [ref=f1e291]: 已启用
+                    - listitem [ref=f1e294]:
+                      - button "hmr, 已停用" [ref=f1e295] [cursor=pointer]:
+                        - strong [ref=f1e296]: hmr
+                        - generic [ref=f1e297]: 已停用
+                    - listitem [ref=f1e301]:
+                      - button "llm, 已挂载, 已启用" [ref=f1e302] [cursor=pointer]:
+                        - strong [ref=f1e303]: llm
+                        - generic [ref=f1e304]:
+                          - img "已挂载" [ref=f1e305]
+                          - generic [ref=f1e306]: 已启用
+                    - listitem [ref=f1e309]:
+                      - button "session, 已挂载, 已启用" [ref=f1e310] [cursor=pointer]:
+                        - strong [ref=f1e311]: session
+                        - generic [ref=f1e312]:
+                          - img "已挂载" [ref=f1e313]
+                          - generic [ref=f1e314]: 已启用
+                    - listitem [ref=f1e317]:
+                      - button "typert-registry, 已挂载, 已启用" [ref=f1e318] [cursor=pointer]:
+                        - strong [ref=f1e319]: typert-registry
+                        - generic [ref=f1e320]:
+                          - img "已挂载" [ref=f1e321]
+                          - generic [ref=f1e322]: 已启用
+                    - listitem [ref=f1e325]:
+                      - button "typert-loader, 已挂载, 已启用" [ref=f1e326] [cursor=pointer]:
+                        - strong [ref=f1e327]: typert-loader
+                        - generic [ref=f1e328]:
+                          - img "已挂载" [ref=f1e329]
+                          - generic [ref=f1e330]: 已启用
+                    - listitem [ref=f1e333]:
+                      - button "api-gateway, 已挂载, 已启用" [ref=f1e334] [cursor=pointer]:
+                        - strong [ref=f1e335]: api-gateway
+                        - generic [ref=f1e336]:
+                          - img "已挂载" [ref=f1e337]
+                          - generic [ref=f1e338]: 已启用
+                    - listitem [ref=f1e341]:
+                      - button "session-title, 已挂载, 已启用" [ref=f1e342] [cursor=pointer]:
+                        - strong [ref=f1e343]: session-title
+                        - generic [ref=f1e344]:
+                          - img "已挂载" [ref=f1e345]
+                          - generic [ref=f1e346]: 已启用
+                    - listitem [ref=f1e349]:
+                      - button "session-title-first-prompt-llm, 已挂载, 已启用" [ref=f1e350] [cursor=pointer]:
+                        - strong [ref=f1e351]: session-title-first-prompt-llm
+                        - generic [ref=f1e352]:
+                          - img "已挂载" [ref=f1e353]
+                          - generic [ref=f1e354]: 已启用
+                    - listitem [ref=f1e357]:
+                      - button "user-questions, 已挂载, 已启用" [ref=f1e358] [cursor=pointer]:
+                        - strong [ref=f1e359]: user-questions
+                        - generic [ref=f1e360]:
+                          - img "已挂载" [ref=f1e361]
+                          - generic [ref=f1e362]: 已启用
+                    - listitem [ref=f1e365]:
+                      - button "agent, 已挂载, 已启用" [ref=f1e366] [cursor=pointer]:
+                        - strong [ref=f1e367]: agent
+                        - generic [ref=f1e368]:
+                          - img "已挂载" [ref=f1e369]
+                          - generic [ref=f1e370]: 已启用
+                    - listitem [ref=f1e373]:
+                      - button "agent-default-model, 已挂载, 已启用" [ref=f1e374] [cursor=pointer]:
+                        - strong [ref=f1e375]: agent-default-model
+                        - generic [ref=f1e376]:
+                          - img "已挂载" [ref=f1e377]
+                          - generic [ref=f1e378]: 已启用
+                    - listitem [ref=f1e381]:
+                      - button "jobs-local, 已挂载, 已启用" [ref=f1e382] [cursor=pointer]:
+                        - strong [ref=f1e383]: jobs-local
+                        - generic [ref=f1e384]:
+                          - img "已挂载" [ref=f1e385]
+                          - generic [ref=f1e386]: 已启用
+                    - listitem [ref=f1e389]:
+                      - button "llm-retry, 已挂载, 已启用" [ref=f1e390] [cursor=pointer]:
+                        - strong [ref=f1e391]: llm-retry
+                        - generic [ref=f1e392]:
+                          - img "已挂载" [ref=f1e393]
+                          - generic [ref=f1e394]: 已启用
+                    - listitem [ref=f1e397]:
+                      - button "settings-file, 已挂载, 已启用" [ref=f1e398] [cursor=pointer]:
+                        - strong [ref=f1e399]: settings-file
+                        - generic [ref=f1e400]:
+                          - img "已挂载" [ref=f1e401]
+                          - generic [ref=f1e402]: 已启用
+                    - listitem [ref=f1e405]:
+                      - button "credentials-local, 已挂载, 已启用" [ref=f1e406] [cursor=pointer]:
+                        - strong [ref=f1e407]: credentials-local
+                        - generic [ref=f1e408]:
+                          - img "已挂载" [ref=f1e409]
+                          - generic [ref=f1e410]: 已启用
+                    - listitem [ref=f1e413]:
+                      - button "llm-pi-ai, 已挂载, 已启用" [ref=f1e414] [cursor=pointer]:
+                        - strong [ref=f1e415]: llm-pi-ai
+                        - generic [ref=f1e416]:
+                          - img "已挂载" [ref=f1e417]
+                          - generic [ref=f1e418]: 已启用
+                    - listitem [ref=f1e421]:
+                      - button "session-persistence-jsonl, 已挂载, 已启用" [ref=f1e422] [cursor=pointer]:
+                        - strong [ref=f1e423]: session-persistence-jsonl
+                        - generic [ref=f1e424]:
+                          - img "已挂载" [ref=f1e425]
+                          - generic [ref=f1e426]: 已启用
+                    - listitem [ref=f1e429]:
+                      - button "attachment-local, 已挂载, 已启用" [ref=f1e430] [cursor=pointer]:
+                        - strong [ref=f1e431]: attachment-local
+                        - generic [ref=f1e432]:
+                          - img "已挂载" [ref=f1e433]
+                          - generic [ref=f1e434]: 已启用
+                    - listitem [ref=f1e437]:
+                      - button "session-query-sqlite, 已挂载, 已启用" [ref=f1e438] [cursor=pointer]:
+                        - strong [ref=f1e439]: session-query-sqlite
+                        - generic [ref=f1e440]:
+                          - img "已挂载" [ref=f1e441]
+                          - generic [ref=f1e442]: 已启用
+                    - listitem [ref=f1e445]:
+                      - button "session-projection, 已挂载, 已启用" [ref=f1e446] [cursor=pointer]:
+                        - strong [ref=f1e447]: session-projection
+                        - generic [ref=f1e448]:
+                          - img "已挂载" [ref=f1e449]
+                          - generic [ref=f1e450]: 已启用
+                    - listitem [ref=f1e453]:
+                      - button "session-telemetry-otel, 已挂载, 已启用" [ref=f1e454] [cursor=pointer]:
+                        - strong [ref=f1e455]: session-telemetry-otel
+                        - generic [ref=f1e456]:
+                          - img "已挂载" [ref=f1e457]
+                          - generic [ref=f1e458]: 已启用
+                    - listitem [ref=f1e461]:
+                      - button "subprocess-local, 已挂载, 已启用" [ref=f1e462] [cursor=pointer]:
+                        - strong [ref=f1e463]: subprocess-local
+                        - generic [ref=f1e464]:
+                          - img "已挂载" [ref=f1e465]
+                          - generic [ref=f1e466]: 已启用
+                    - listitem [ref=f1e469]:
+                      - button "sandbox-local, 已挂载, 已启用" [ref=f1e470] [cursor=pointer]:
+                        - strong [ref=f1e471]: sandbox-local
+                        - generic [ref=f1e472]:
+                          - img "已挂载" [ref=f1e473]
+                          - generic [ref=f1e474]: 已启用
+                    - listitem [ref=f1e477]:
+                      - button "sandbox-policy, 已挂载, 已启用" [ref=f1e478] [cursor=pointer]:
+                        - strong [ref=f1e479]: sandbox-policy
+                        - generic [ref=f1e480]:
+                          - img "已挂载" [ref=f1e481]
+                          - generic [ref=f1e482]: 已启用
+                    - listitem [ref=f1e485]:
+                      - button "bash-sandbox, 已停用" [ref=f1e486] [cursor=pointer]:
+                        - strong [ref=f1e487]: bash-sandbox
+                        - generic [ref=f1e488]: 已停用
+                    - listitem [ref=f1e492]:
+                      - button "pwsh-sandbox, 已挂载, 已启用" [ref=f1e493] [cursor=pointer]:
+                        - strong [ref=f1e494]: pwsh-sandbox
+                        - generic [ref=f1e495]:
+                          - img "已挂载" [ref=f1e496]
+                          - generic [ref=f1e497]: 已启用
+                    - listitem [ref=f1e500]:
+                      - button "user-approval, 已挂载, 已启用" [ref=f1e501] [cursor=pointer]:
+                        - strong [ref=f1e502]: user-approval
+                        - generic [ref=f1e503]:
+                          - img "已挂载" [ref=f1e504]
+                          - generic [ref=f1e505]: 已启用
+                    - listitem [ref=f1e508]:
+                      - button "permission-presets, 已挂载, 已启用" [ref=f1e509] [cursor=pointer]:
+                        - strong [ref=f1e510]: permission-presets
+                        - generic [ref=f1e511]:
+                          - img "已挂载" [ref=f1e512]
+                          - generic [ref=f1e513]: 已启用
+                    - listitem [ref=f1e516]:
+                      - button "shell-env, 已挂载, 已启用" [ref=f1e517] [cursor=pointer]:
+                        - strong [ref=f1e518]: shell-env
+                        - generic [ref=f1e519]:
+                          - img "已挂载" [ref=f1e520]
+                          - generic [ref=f1e521]: 已启用
+                    - listitem [ref=f1e524]:
+                      - button "tool-bash, 已停用" [ref=f1e525] [cursor=pointer]:
+                        - strong [ref=f1e526]: tool-bash
+                        - generic [ref=f1e527]: 已停用
+                    - listitem [ref=f1e531]:
+                      - button "tool-pwsh, 已停用" [ref=f1e532] [cursor=pointer]:
+                        - strong [ref=f1e533]: tool-pwsh
+                        - generic [ref=f1e534]: 已停用
+                    - listitem [ref=f1e538]:
+                      - button "tool-jobs, 已停用" [ref=f1e539] [cursor=pointer]:
+                        - strong [ref=f1e540]: tool-jobs
+                        - generic [ref=f1e541]: 已停用
+                    - listitem [ref=f1e545]:
+                      - button "fs-observation-policy, 已挂载, 已启用" [ref=f1e546] [cursor=pointer]:
+                        - strong [ref=f1e547]: fs-observation-policy
+                        - generic [ref=f1e548]:
+                          - img "已挂载" [ref=f1e549]
+                          - generic [ref=f1e550]: 已启用
+                    - listitem [ref=f1e553]:
+                      - button "tool-fs, 已停用" [ref=f1e554] [cursor=pointer]:
+                        - strong [ref=f1e555]: tool-fs
+                        - generic [ref=f1e556]: 已停用
+                    - listitem [ref=f1e560]:
+                      - button "tool-fs-search, 已停用" [ref=f1e561] [cursor=pointer]:
+                        - strong [ref=f1e562]: tool-fs-search
+                        - generic [ref=f1e563]: 已停用
+                    - listitem [ref=f1e567]:
+                      - button "agent-instructions, 已停用" [ref=f1e568] [cursor=pointer]:
+                        - strong [ref=f1e569]: agent-instructions
+                        - generic [ref=f1e570]: 已停用
+                    - listitem [ref=f1e574]:
+                      - button "skill, 已挂载, 已启用" [ref=f1e575] [cursor=pointer]:
+                        - strong [ref=f1e576]: skill
+                        - generic [ref=f1e577]:
+                          - img "已挂载" [ref=f1e578]
+                          - generic [ref=f1e579]: 已启用
+                    - listitem [ref=f1e582]:
+                      - button "skill-filesystem, 已停用" [ref=f1e583] [cursor=pointer]:
+                        - strong [ref=f1e584]: skill-filesystem
+                        - generic [ref=f1e585]: 已停用
+                    - listitem [ref=f1e589]:
+                      - button "skill-badge, 已停用" [ref=f1e590] [cursor=pointer]:
+                        - strong [ref=f1e591]: skill-badge
+                        - generic [ref=f1e592]: 已停用
+                    - listitem [ref=f1e596]:
+                      - button "tool-skill, 已停用" [ref=f1e597] [cursor=pointer]:
+                        - strong [ref=f1e598]: tool-skill
+                        - generic [ref=f1e599]: 已停用
+                    - listitem [ref=f1e603]:
+                      - button "commands, 已挂载, 已启用" [ref=f1e604] [cursor=pointer]:
+                        - strong [ref=f1e605]: commands
+                        - generic [ref=f1e606]:
+                          - img "已挂载" [ref=f1e607]
+                          - generic [ref=f1e608]: 已启用
+                    - listitem [ref=f1e611]:
+                      - button "command-feedback, 已挂载, 已启用" [ref=f1e612] [cursor=pointer]:
+                        - strong [ref=f1e613]: command-feedback
+                        - generic [ref=f1e614]:
+                          - img "已挂载" [ref=f1e615]
+                          - generic [ref=f1e616]: 已启用
+                    - listitem [ref=f1e619]:
+                      - button "goal, 已挂载, 已启用" [ref=f1e620] [cursor=pointer]:
+                        - strong [ref=f1e621]: goal
+                        - generic [ref=f1e622]:
+                          - img "已挂载" [ref=f1e623]
+                          - generic [ref=f1e624]: 已启用
+                    - listitem [ref=f1e627]:
+                      - button "goal-round-driver, 已挂载, 已启用" [ref=f1e628] [cursor=pointer]:
+                        - strong [ref=f1e629]: goal-round-driver
+                        - generic [ref=f1e630]:
+                          - img "已挂载" [ref=f1e631]
+                          - generic [ref=f1e632]: 已启用
+                    - listitem [ref=f1e635]:
+                      - button "command-goal, 已挂载, 已启用" [ref=f1e636] [cursor=pointer]:
+                        - strong [ref=f1e637]: command-goal
+                        - generic [ref=f1e638]:
+                          - img "已挂载" [ref=f1e639]
+                          - generic [ref=f1e640]: 已启用
+                    - listitem [ref=f1e643]:
+                      - button "plan-mode, 已停用" [ref=f1e644] [cursor=pointer]:
+                        - strong [ref=f1e645]: plan-mode
+                        - generic [ref=f1e646]: 已停用
+                    - listitem [ref=f1e650]:
+                      - button "token-meter, 已挂载, 已启用" [ref=f1e651] [cursor=pointer]:
+                        - strong [ref=f1e652]: token-meter
+                        - generic [ref=f1e653]:
+                          - img "已挂载" [ref=f1e654]
+                          - generic [ref=f1e655]: 已启用
+                    - listitem [ref=f1e658]:
+                      - button "compaction-basic, 已停用" [ref=f1e659] [cursor=pointer]:
+                        - strong [ref=f1e660]: compaction-basic
+                        - generic [ref=f1e661]: 已停用
+                    - listitem [ref=f1e665]:
+                      - button "command-compact, 已停用" [ref=f1e666] [cursor=pointer]:
+                        - strong [ref=f1e667]: command-compact
+                        - generic [ref=f1e668]: 已停用
+                    - listitem [ref=f1e672]:
+                      - button "subagent, 已挂载, 已启用" [ref=f1e673] [cursor=pointer]:
+                        - strong [ref=f1e674]: subagent
+                        - generic [ref=f1e675]:
+                          - img "已挂载" [ref=f1e676]
+                          - generic [ref=f1e677]: 已启用
+                    - listitem [ref=f1e680]:
+                      - button "subagent-spawn-in-process, 已挂载, 已启用" [ref=f1e681] [cursor=pointer]:
+                        - strong [ref=f1e682]: subagent-spawn-in-process
+                        - generic [ref=f1e683]:
+                          - img "已挂载" [ref=f1e684]
+                          - generic [ref=f1e685]: 已启用
+                    - listitem [ref=f1e688]:
+                      - button "subagent-fork-in-process, 已挂载, 已启用" [ref=f1e689] [cursor=pointer]:
+                        - strong [ref=f1e690]: subagent-fork-in-process
+                        - generic [ref=f1e691]:
+                          - img "已挂载" [ref=f1e692]
+                          - generic [ref=f1e693]: 已启用
+                    - listitem [ref=f1e696]:
+                      - button "tool-subagent-control, 已停用" [ref=f1e697] [cursor=pointer]:
+                        - strong [ref=f1e698]: tool-subagent-control
+                        - generic [ref=f1e699]: 已停用
+                    - listitem [ref=f1e703]:
+                      - button "tool-subagent-control/list-agents, 已停用" [ref=f1e704] [cursor=pointer]:
+                        - strong [ref=f1e705]: tool-subagent-control/list-agents
+                        - generic [ref=f1e706]: 已停用
+                    - listitem [ref=f1e710]:
+                      - button "tool-subagent, 已停用" [ref=f1e711] [cursor=pointer]:
+                        - strong [ref=f1e712]: tool-subagent
+                        - generic [ref=f1e713]: 已停用
+                    - listitem [ref=f1e717]:
+                      - button "tool-subagent, 已停用" [ref=f1e718] [cursor=pointer]:
+                        - strong [ref=f1e719]: tool-subagent
+                        - generic [ref=f1e720]: 已停用
+                    - listitem [ref=f1e724]:
+                      - button "tool-subagent-report, 已挂载, 已启用" [ref=f1e725] [cursor=pointer]:
+                        - strong [ref=f1e726]: tool-subagent-report
+                        - generic [ref=f1e727]:
+                          - img "已挂载" [ref=f1e728]
+                          - generic [ref=f1e729]: 已启用
+                    - listitem [ref=f1e732]:
+                      - button "workflow-worker-thread, 已停用" [ref=f1e733] [cursor=pointer]:
+                        - strong [ref=f1e734]: workflow-worker-thread
+                        - generic [ref=f1e735]: 已停用
+                    - listitem [ref=f1e739]:
+                      - button "tool-workflow, 已停用" [ref=f1e740] [cursor=pointer]:
+                        - strong [ref=f1e741]: tool-workflow
+                        - generic [ref=f1e742]: 已停用
+                    - listitem [ref=f1e746]:
+                      - button "tool-call-timeout-policy, 已挂载, 已启用" [ref=f1e747] [cursor=pointer]:
+                        - strong [ref=f1e748]: tool-call-timeout-policy
+                        - generic [ref=f1e749]:
+                          - img "已挂载" [ref=f1e750]
+                          - generic [ref=f1e751]: 已启用
+                    - listitem [ref=f1e754]:
+                      - button "spill-local, 已挂载, 已启用" [ref=f1e755] [cursor=pointer]:
+                        - strong [ref=f1e756]: spill-local
+                        - generic [ref=f1e757]:
+                          - img "已挂载" [ref=f1e758]
+                          - generic [ref=f1e759]: 已启用
+                    - listitem [ref=f1e762]:
+                      - button "spill-policy, 已挂载, 已启用" [ref=f1e763] [cursor=pointer]:
+                        - strong [ref=f1e764]: spill-policy
+                        - generic [ref=f1e765]:
+                          - img "已挂载" [ref=f1e766]
+                          - generic [ref=f1e767]: 已启用
+                    - listitem [ref=f1e770]:
+                      - button "session-checkpoint-policy, 已挂载, 已启用" [ref=f1e771] [cursor=pointer]:
+                        - strong [ref=f1e772]: session-checkpoint-policy
+                        - generic [ref=f1e773]:
+                          - img "已挂载" [ref=f1e774]
+                          - generic [ref=f1e775]: 已启用
+                    - listitem [ref=f1e778]:
+                      - button "compaction-tool-result-pruner, 已停用" [ref=f1e779] [cursor=pointer]:
+                        - strong [ref=f1e780]: compaction-tool-result-pruner
+                        - generic [ref=f1e781]: 已停用
+                    - listitem [ref=f1e785]:
+                      - button "tool-todo, 已停用" [ref=f1e786] [cursor=pointer]:
+                        - strong [ref=f1e787]: tool-todo
+                        - generic [ref=f1e788]: 已停用
+                    - listitem [ref=f1e792]:
+                      - button "tool-goal, 已停用" [ref=f1e793] [cursor=pointer]:
+                        - strong [ref=f1e794]: tool-goal
+                        - generic [ref=f1e795]: 已停用
+                    - listitem [ref=f1e799]:
+                      - button "tool-ralph, 已停用" [ref=f1e800] [cursor=pointer]:
+                        - strong [ref=f1e801]: tool-ralph
+                        - generic [ref=f1e802]: 已停用
+                    - listitem [ref=f1e806]:
+                      - button "tool-str-replace-editor, 已停用" [ref=f1e807] [cursor=pointer]:
+                        - strong [ref=f1e808]: tool-str-replace-editor
+                        - generic [ref=f1e809]: 已停用
+                    - listitem [ref=f1e813]:
+                      - button "repeat-tool-reminder, 已挂载, 已启用" [ref=f1e814] [cursor=pointer]:
+                        - strong [ref=f1e815]: repeat-tool-reminder
+                        - generic [ref=f1e816]:
+                          - img "已挂载" [ref=f1e817]
+                          - generic [ref=f1e818]: 已启用
+                    - listitem [ref=f1e821]:
+                      - button "web, 已挂载, 已启用" [ref=f1e822] [cursor=pointer]:
+                        - strong [ref=f1e823]: web
+                        - generic [ref=f1e824]:
+                          - img "已挂载" [ref=f1e825]
+                          - generic [ref=f1e826]: 已启用
+                    - listitem [ref=f1e829]:
+                      - button "web-search-deepseek, 已挂载, 已启用" [ref=f1e830] [cursor=pointer]:
+                        - strong [ref=f1e831]: web-search-deepseek
+                        - generic [ref=f1e832]:
+                          - img "已挂载" [ref=f1e833]
+                          - generic [ref=f1e834]: 已启用
+                    - listitem [ref=f1e837]:
+                      - button "tool-web, 已停用" [ref=f1e838] [cursor=pointer]:
+                        - strong [ref=f1e839]: tool-web
+                        - generic [ref=f1e840]: 已停用
+                    - listitem [ref=f1e844]:
+                      - button "tools, 已挂载, 已启用" [ref=f1e845] [cursor=pointer]:
+                        - strong [ref=f1e846]: tools
+                        - generic [ref=f1e847]:
+                          - img "已挂载" [ref=f1e848]
+                          - generic [ref=f1e849]: 已启用
+                    - listitem [ref=f1e852]:
+                      - button "system-prompt, 已挂载, 已启用" [ref=f1e853] [cursor=pointer]:
+                        - strong [ref=f1e854]: system-prompt
+                        - generic [ref=f1e855]:
+                          - img "已挂载" [ref=f1e856]
+                          - generic [ref=f1e857]: 已启用
+                    - listitem [ref=f1e860]:
+                      - button "agent-loop, 已挂载, 已启用" [ref=f1e861] [cursor=pointer]:
+                        - strong [ref=f1e862]: agent-loop
+                        - generic [ref=f1e863]:
+                          - img "已挂载" [ref=f1e864]
+                          - generic [ref=f1e865]: 已启用
+                    - listitem [ref=f1e868]:
+                      - button "fs-sandbox, 已挂载, 已启用" [ref=f1e869] [cursor=pointer]:
+                        - strong [ref=f1e870]: fs-sandbox
+                        - generic [ref=f1e871]:
+                          - img "已挂载" [ref=f1e872]
+                          - generic [ref=f1e873]: 已启用
+                    - listitem [ref=f1e876]:
+                      - button "llm-deepseek, 已挂载, 已启用" [ref=f1e877] [cursor=pointer]:
+                        - strong [ref=f1e878]: llm-deepseek
+                        - generic [ref=f1e879]:
+                          - img "已挂载" [ref=f1e880]
+                          - generic [ref=f1e881]: 已启用
+                    - listitem [ref=f1e884]:
+                      - button "code-runtime-worker-thread, 已挂载, 已启用" [ref=f1e885] [cursor=pointer]:
+                        - strong [ref=f1e886]: code-runtime-worker-thread
+                        - generic [ref=f1e887]:
+                          - img "已挂载" [ref=f1e888]
+                          - generic [ref=f1e889]: 已启用
+                    - listitem [ref=f1e892]:
+                      - button "storage, 已挂载, 已启用" [ref=f1e893] [cursor=pointer]:
+                        - strong [ref=f1e894]: storage
+                        - generic [ref=f1e895]:
+                          - img "已挂载" [ref=f1e896]
+                          - generic [ref=f1e897]: 已启用
+                    - listitem [ref=f1e900]:
+                      - button "storage-json, 已挂载, 已启用" [ref=f1e901] [cursor=pointer]:
+                        - strong [ref=f1e902]: storage-json
+                        - generic [ref=f1e903]:
+                          - img "已挂载" [ref=f1e904]
+                          - generic [ref=f1e905]: 已启用
+                    - listitem [ref=f1e908]:
+                      - button "storage-domain, 已挂载, 已启用" [ref=f1e909] [cursor=pointer]:
+                        - strong [ref=f1e910]: storage-domain
+                        - generic [ref=f1e911]:
+                          - img "已挂载" [ref=f1e912]
+                          - generic [ref=f1e913]: 已启用
+                    - listitem [ref=f1e916]:
+                      - button "message-feedback, 已挂载, 已启用" [ref=f1e917] [cursor=pointer]:
+                        - strong [ref=f1e918]: message-feedback
+                        - generic [ref=f1e919]:
+                          - img "已挂载" [ref=f1e920]
+                          - generic [ref=f1e921]: 已启用
+                    - listitem [ref=f1e924]:
+                      - button "session-log-export, 已挂载, 已启用" [ref=f1e925] [cursor=pointer]:
+                        - strong [ref=f1e926]: session-log-export
+                        - generic [ref=f1e927]:
+                          - img "已挂载" [ref=f1e928]
+                          - generic [ref=f1e929]: 已启用
+                    - listitem [ref=f1e932]:
+                      - button "workspace, 已挂载, 已启用" [ref=f1e933] [cursor=pointer]:
+                        - strong [ref=f1e934]: workspace
+                        - generic [ref=f1e935]:
+                          - img "已挂载" [ref=f1e936]
+                          - generic [ref=f1e937]: 已启用
+                    - listitem [ref=f1e940]:
+                      - button "session-projection-cache, 已挂载, 已启用" [ref=f1e941] [cursor=pointer]:
+                        - strong [ref=f1e942]: session-projection-cache
+                        - generic [ref=f1e943]:
+                          - img "已挂载" [ref=f1e944]
+                          - generic [ref=f1e945]: 已启用
+                    - listitem [ref=f1e948]:
+                      - button "session-stats, 已挂载, 已启用" [ref=f1e949] [cursor=pointer]:
+                        - strong [ref=f1e950]: session-stats
+                        - generic [ref=f1e951]:
+                          - img "已挂载" [ref=f1e952]
+                          - generic [ref=f1e953]: 已启用
+                    - listitem [ref=f1e956]:
+                      - button "directory-picker-auto, 已挂载, 已启用" [ref=f1e957] [cursor=pointer]:
+                        - strong [ref=f1e958]: directory-picker-auto
+                        - generic [ref=f1e959]:
+                          - img "已挂载" [ref=f1e960]
+                          - generic [ref=f1e961]: 已启用
+                    - listitem [ref=f1e964]:
+                      - button "plugin-inventory, 已挂载, 已启用" [ref=f1e965] [cursor=pointer]:
+                        - strong [ref=f1e966]: plugin-inventory
+                        - generic [ref=f1e967]:
+                          - img "已挂载" [ref=f1e968]
+                          - generic [ref=f1e969]: 已启用
+                    - listitem [ref=f1e972]:
+                      - button "apiproxy, 已挂载, 已启用" [ref=f1e973] [cursor=pointer]:
+                        - strong [ref=f1e974]: apiproxy
+                        - generic [ref=f1e975]:
+                          - img "已挂载" [ref=f1e976]
+                          - generic [ref=f1e977]: 已启用
+                    - listitem [ref=f1e980]:
+                      - button "cordis-host-runner, 已挂载, 已启用" [ref=f1e981] [cursor=pointer]:
+                        - strong [ref=f1e982]: cordis-host-runner
+                        - generic [ref=f1e983]:
+                          - img "已挂载" [ref=f1e984]
+                          - generic [ref=f1e985]: 已启用
+                    - listitem [ref=f1e988]:
+                      - button "web-app/startup, 已挂载, 已启用" [ref=f1e989] [cursor=pointer]:
+                        - strong [ref=f1e990]: web-app/startup
+                        - generic [ref=f1e991]:
+                          - img "已挂载" [ref=f1e992]
+                          - generic [ref=f1e993]: 已启用
+                    - listitem [ref=f1e996]:
+                      - button "webserver, 已挂载, 已启用" [ref=f1e997] [cursor=pointer]:
+                        - strong [ref=f1e998]: webserver
+                        - generic [ref=f1e999]:
+                          - img "已挂载" [ref=f1e1000]
+                          - generic [ref=f1e1001]: 已启用
+                    - listitem [ref=f1e1004]:
+                      - button "web-app, 已挂载, 已启用" [ref=f1e1005] [cursor=pointer]:
+                        - strong [ref=f1e1006]: web-app
+                        - generic [ref=f1e1007]:
+                          - img "已挂载" [ref=f1e1008]
+                          - generic [ref=f1e1009]: 已启用
+                    - listitem [ref=f1e1012]:
+                      - button "hmr, 已挂载, 已启用" [ref=f1e1013] [cursor=pointer]:
+                        - strong [ref=f1e1014]: hmr
+                        - generic [ref=f1e1015]:
+                          - img "已挂载" [ref=f1e1016]
+                          - generic [ref=f1e1017]: 已启用
+                    - listitem [ref=f1e1020]:
+                      - button "modules, 已挂载, 已启用" [ref=f1e1021] [cursor=pointer]:
+                        - strong [ref=f1e1022]: modules
+                        - generic [ref=f1e1023]:
+                          - img "已挂载" [ref=f1e1024]
+                          - generic [ref=f1e1025]: 已启用
+                    - listitem [ref=f1e1028]:
+                      - button "connection, 已挂载, 已启用" [ref=f1e1029] [cursor=pointer]:
+                        - strong [ref=f1e1030]: connection
+                        - generic [ref=f1e1031]:
+                          - img "已挂载" [ref=f1e1032]
+                          - generic [ref=f1e1033]: 已启用
+                    - listitem [ref=f1e1036]:
+                      - button "api-remotes, 已挂载, 已启用" [ref=f1e1037] [cursor=pointer]:
+                        - strong [ref=f1e1038]: api-remotes
+                        - generic [ref=f1e1039]:
+                          - img "已挂载" [ref=f1e1040]
+                          - generic [ref=f1e1041]: 已启用
+                    - listitem [ref=f1e1044]:
+                      - button "runtime, 已挂载, 已启用" [ref=f1e1045] [cursor=pointer]:
+                        - strong [ref=f1e1046]: runtime
+                        - generic [ref=f1e1047]:
+                          - img "已挂载" [ref=f1e1048]
+                          - generic [ref=f1e1049]: 已启用
+                    - listitem [ref=f1e1052]:
+                      - button "cordis-client-runner, 已挂载, 已启用" [ref=f1e1053] [cursor=pointer]:
+                        - strong [ref=f1e1054]: cordis-client-runner
+                        - generic [ref=f1e1055]:
+                          - img "已挂载" [ref=f1e1056]
+                          - generic [ref=f1e1057]: 已启用
+                    - listitem [ref=f1e1060]:
+                      - button "ui-theme, 已挂载, 已启用" [ref=f1e1061] [cursor=pointer]:
+                        - strong [ref=f1e1062]: ui-theme
+                        - generic [ref=f1e1063]:
+                          - img "已挂载" [ref=f1e1064]
+                          - generic [ref=f1e1065]: 已启用
+                    - listitem [ref=f1e1068]:
+                      - button "locale, 已挂载, 已启用" [ref=f1e1069] [cursor=pointer]:
+                        - strong [ref=f1e1070]: locale
+                        - generic [ref=f1e1071]:
+                          - img "已挂载" [ref=f1e1072]
+                          - generic [ref=f1e1073]: 已启用
+                    - listitem [ref=f1e1076]:
+                      - button "ui-layout, 已挂载, 已启用" [ref=f1e1077] [cursor=pointer]:
+                        - strong [ref=f1e1078]: ui-layout
+                        - generic [ref=f1e1079]:
+                          - img "已挂载" [ref=f1e1080]
+                          - generic [ref=f1e1081]: 已启用
+                    - listitem [ref=f1e1084]:
+                      - button "ui-sidebar, 已挂载, 已启用" [ref=f1e1085] [cursor=pointer]:
+                        - strong [ref=f1e1086]: ui-sidebar
+                        - generic [ref=f1e1087]:
+                          - img "已挂载" [ref=f1e1088]
+                          - generic [ref=f1e1089]: 已启用
+                    - listitem [ref=f1e1092]:
+                      - button "ui-settings, 已挂载, 已启用" [ref=f1e1093] [cursor=pointer]:
+                        - strong [ref=f1e1094]: ui-settings
+                        - generic [ref=f1e1095]:
+                          - img "已挂载" [ref=f1e1096]
+                          - generic [ref=f1e1097]: 已启用
+                    - listitem [ref=f1e1100]:
+                      - button "ui-settings-general, 已挂载, 已启用" [ref=f1e1101] [cursor=pointer]:
+                        - strong [ref=f1e1102]: ui-settings-general
+                        - generic [ref=f1e1103]:
+                          - img "已挂载" [ref=f1e1104]
+                          - generic [ref=f1e1105]: 已启用
+                    - listitem [ref=f1e1108]:
+                      - button "ui-settings-models, 已挂载, 已启用" [ref=f1e1109] [cursor=pointer]:
+                        - strong [ref=f1e1110]: ui-settings-models
+                        - generic [ref=f1e1111]:
+                          - img "已挂载" [ref=f1e1112]
+                          - generic [ref=f1e1113]: 已启用
+                    - listitem [ref=f1e1116]:
+                      - button "ui-settings-plugin-inventory, 已挂载, 已启用" [ref=f1e1117] [cursor=pointer]:
+                        - strong [ref=f1e1118]: ui-settings-plugin-inventory
+                        - generic [ref=f1e1119]:
+                          - img "已挂载" [ref=f1e1120]
+                          - generic [ref=f1e1121]: 已启用
+                    - listitem [ref=f1e1124]:
+                      - button "ui-conversation, 已挂载, 已启用" [ref=f1e1125] [cursor=pointer]:
+                        - strong [ref=f1e1126]: ui-conversation
+                        - generic [ref=f1e1127]:
+                          - img "已挂载" [ref=f1e1128]
+                          - generic [ref=f1e1129]: 已启用
+                    - listitem [ref=f1e1132]:
+                      - button "ui-tool, 已挂载, 已启用" [ref=f1e1133] [cursor=pointer]:
+                        - strong [ref=f1e1134]: ui-tool
+                        - generic [ref=f1e1135]:
+                          - img "已挂载" [ref=f1e1136]
+                          - generic [ref=f1e1137]: 已启用
+                    - listitem [ref=f1e1140]:
+                      - button "ui-cordis, 已挂载, 已启用" [ref=f1e1141] [cursor=pointer]:
+                        - strong [ref=f1e1142]: ui-cordis
+                        - generic [ref=f1e1143]:
+                          - img "已挂载" [ref=f1e1144]
+                          - generic [ref=f1e1145]: 已启用
+                    - listitem [ref=f1e1148]:
+                      - button "ui-workflow-run, 已挂载, 已启用" [ref=f1e1149] [cursor=pointer]:
+                        - strong [ref=f1e1150]: ui-workflow-run
+                        - generic [ref=f1e1151]:
+                          - img "已挂载" [ref=f1e1152]
+                          - generic [ref=f1e1153]: 已启用
+                    - listitem [ref=f1e1156]:
+                      - button "ui-deliverables, 已挂载, 已启用" [ref=f1e1157] [cursor=pointer]:
+                        - strong [ref=f1e1158]: ui-deliverables
+                        - generic [ref=f1e1159]:
+                          - img "已挂载" [ref=f1e1160]
+                          - generic [ref=f1e1161]: 已启用
+                    - listitem [ref=f1e1164]:
+                      - button "ui-workspace, 已挂载, 已启用" [ref=f1e1165] [cursor=pointer]:
+                        - strong [ref=f1e1166]: ui-workspace
+                        - generic [ref=f1e1167]:
+                          - img "已挂载" [ref=f1e1168]
+                          - generic [ref=f1e1169]: 已启用
+                    - listitem [ref=f1e1172]:
+                      - button "ui-input-trigger, 已挂载, 已启用" [ref=f1e1173] [cursor=pointer]:
+                        - strong [ref=f1e1174]: ui-input-trigger
+                        - generic [ref=f1e1175]:
+                          - img "已挂载" [ref=f1e1176]
+                          - generic [ref=f1e1177]: 已启用
+                    - listitem [ref=f1e1180]:
+                      - button "ui-commands, 已挂载, 已启用" [ref=f1e1181] [cursor=pointer]:
+                        - strong [ref=f1e1182]: ui-commands
+                        - generic [ref=f1e1183]:
+                          - img "已挂载" [ref=f1e1184]
+                          - generic [ref=f1e1185]: 已启用
+                    - listitem [ref=f1e1188]:
+                      - button "ui-skill, 已挂载, 已启用" [ref=f1e1189] [cursor=pointer]:
+                        - strong [ref=f1e1190]: ui-skill
+                        - generic [ref=f1e1191]:
+                          - img "已挂载" [ref=f1e1192]
+                          - generic [ref=f1e1193]: 已启用
+                    - listitem [ref=f1e1196]:
+                      - button "ui-subagent, 已挂载, 已启用" [ref=f1e1197] [cursor=pointer]:
+                        - strong [ref=f1e1198]: ui-subagent
+                        - generic [ref=f1e1199]:
+                          - img "已挂载" [ref=f1e1200]
+                          - generic [ref=f1e1201]: 已启用
+                    - listitem [ref=f1e1204]:
+                      - button "ui-jobs, 已挂载, 已启用" [ref=f1e1205] [cursor=pointer]:
+                        - strong [ref=f1e1206]: ui-jobs
+                        - generic [ref=f1e1207]:
+                          - img "已挂载" [ref=f1e1208]
+                          - generic [ref=f1e1209]: 已启用
+                    - listitem [ref=f1e1212]:
+                      - button "ui-goal, 已挂载, 已启用" [ref=f1e1213] [cursor=pointer]:
+                        - strong [ref=f1e1214]: ui-goal
+                        - generic [ref=f1e1215]:
+                          - img "已挂载" [ref=f1e1216]
+                          - generic [ref=f1e1217]: 已启用
+                    - listitem [ref=f1e1220]:
+                      - button "ui-message-feedback, 已挂载, 已启用" [ref=f1e1221] [cursor=pointer]:
+                        - strong [ref=f1e1222]: ui-message-feedback
+                        - generic [ref=f1e1223]:
+                          - img "已挂载" [ref=f1e1224]
+                          - generic [ref=f1e1225]: 已启用
+                    - listitem [ref=f1e1228]:
+                      - button "ui-model-selection, 已挂载, 已启用" [ref=f1e1229] [cursor=pointer]:
+                        - strong [ref=f1e1230]: ui-model-selection
+                        - generic [ref=f1e1231]:
+                          - img "已挂载" [ref=f1e1232]
+                          - generic [ref=f1e1233]: 已启用
+                    - listitem [ref=f1e1236]:
+                      - button "ui-permission-presets, 已挂载, 已启用" [ref=f1e1237] [cursor=pointer]:
+                        - strong [ref=f1e1238]: ui-permission-presets
+                        - generic [ref=f1e1239]:
+                          - img "已挂载" [ref=f1e1240]
+                          - generic [ref=f1e1241]: 已启用
+                    - listitem [ref=f1e1244]:
+                      - button "ui-agent-preset, 已挂载, 已启用" [ref=f1e1245] [cursor=pointer]:
+                        - strong [ref=f1e1246]: ui-agent-preset
+                        - generic [ref=f1e1247]:
+                          - img "已挂载" [ref=f1e1248]
+                          - generic [ref=f1e1249]: 已启用
+                    - listitem [ref=f1e1252]:
+                      - button "ui-settings-plugins, 已挂载, 已启用" [ref=f1e1253] [cursor=pointer]:
+                        - strong [ref=f1e1254]: ui-settings-plugins
+                        - generic [ref=f1e1255]:
+                          - img "已挂载" [ref=f1e1256]
+                          - generic [ref=f1e1257]: 已启用
+                    - listitem [ref=f1e1260]:
+                      - button "ui-plan, 已挂载, 已启用" [ref=f1e1261] [cursor=pointer]:
+                        - strong [ref=f1e1262]: ui-plan
+                        - generic [ref=f1e1263]:
+                          - img "已挂载" [ref=f1e1264]
+                          - generic [ref=f1e1265]: 已启用
+                    - listitem [ref=f1e1268]:
+                      - button "ui-user-questions, 已挂载, 已启用" [ref=f1e1269] [cursor=pointer]:
+                        - strong [ref=f1e1270]: ui-user-questions
+                        - generic [ref=f1e1271]:
+                          - img "已挂载" [ref=f1e1272]
+                          - generic [ref=f1e1273]: 已启用
+                    - listitem [ref=f1e1276]:
+                      - button "ui-trajectory, 已挂载, 已启用" [ref=f1e1277] [cursor=pointer]:
+                        - strong [ref=f1e1278]: ui-trajectory
+                        - generic [ref=f1e1279]:
+                          - img "已挂载" [ref=f1e1280]
+                          - generic [ref=f1e1281]: 已启用
+                    - listitem [ref=f1e1284]:
+                      - button "agent-presets, 已挂载, 已启用" [ref=f1e1285] [cursor=pointer]:
+                        - strong [ref=f1e1286]: agent-presets
+                        - generic [ref=f1e1287]:
+                          - img "已挂载" [ref=f1e1288]
+                          - generic [ref=f1e1289]: 已启用
+                    - listitem [ref=f1e1292]:
+                      - button "docs-harness, 已挂载, 已启用" [ref=f1e1293] [cursor=pointer]:
+                        - strong [ref=f1e1294]: docs-harness
+                        - generic [ref=f1e1295]:
+                          - img "已挂载" [ref=f1e1296]
+                          - generic [ref=f1e1297]: 已启用
+                    - listitem [ref=f1e1300]:
+                      - button "ui-git-graph, 已挂载, 已启用" [ref=f1e1301] [cursor=pointer]:
+                        - strong [ref=f1e1302]: ui-git-graph
+                        - generic [ref=f1e1303]:
+                          - img "已挂载" [ref=f1e1304]
+                          - generic [ref=f1e1305]: 已启用
+                    - listitem [ref=f1e1308]:
+                      - button "ui-task-board, 已挂载, 已启用" [ref=f1e1309] [cursor=pointer]:
+                        - strong [ref=f1e1310]: ui-task-board
+                        - generic [ref=f1e1311]:
+                          - img "已挂载" [ref=f1e1312]
+                          - generic [ref=f1e1313]: 已启用
+                    - listitem [ref=f1e1316]:
+                      - button "ui-web-ui-settings, 已挂载, 已启用" [ref=f1e1317] [cursor=pointer]:
+                        - strong [ref=f1e1318]: ui-web-ui-settings
+                        - generic [ref=f1e1319]:
+                          - img "已挂载" [ref=f1e1320]
+                          - generic [ref=f1e1321]: 已启用
+                    - listitem [ref=f1e1324]:
+                      - button "live-stats, 已挂载, 已启用" [ref=f1e1325] [cursor=pointer]:
+                        - strong [ref=f1e1326]: live-stats
+                        - generic [ref=f1e1327]:
+                          - img "已挂载" [ref=f1e1328]
+                          - generic [ref=f1e1329]: 已启用
+                    - listitem [ref=f1e1332]:
+                      - button "pet, 已挂载, 已启用" [ref=f1e1333] [cursor=pointer]:
+                        - strong [ref=f1e1334]: pet
+                        - generic [ref=f1e1335]:
+                          - img "已挂载" [ref=f1e1336]
+                          - generic [ref=f1e1337]: 已启用
+                    - listitem [ref=f1e1340]:
+                      - button "ui-skin-center, 已挂载, 已启用" [ref=f1e1341] [cursor=pointer]:
+                        - strong [ref=f1e1342]: ui-skin-center
+                        - generic [ref=f1e1343]:
+                          - img "已挂载" [ref=f1e1344]
+                          - generic [ref=f1e1345]: 已启用
+                    - listitem [ref=f1e1348]:
+                      - button "better-sidebar, 已挂载, 已启用" [ref=f1e1349] [cursor=pointer]:
+                        - strong [ref=f1e1350]: better-sidebar
+                        - generic [ref=f1e1351]:
+                          - img "已挂载" [ref=f1e1352]
+                          - generic [ref=f1e1353]: 已启用
+                    - listitem [ref=f1e1356]:
+                      - button "directory-picker-native, 已挂载, 已启用" [ref=f1e1357] [cursor=pointer]:
+                        - strong [ref=f1e1358]: directory-picker-native
+                        - generic [ref=f1e1359]:
+                          - img "已挂载" [ref=f1e1360]
+                          - generic [ref=f1e1361]: 已启用
+                    - listitem [ref=f1e1364]:
+                      - button "ui-directory-picker-native, 已挂载, 已启用" [ref=f1e1365] [cursor=pointer]:
+                        - strong [ref=f1e1366]: ui-directory-picker-native
+                        - generic [ref=f1e1367]:
+                          - img "已挂载" [ref=f1e1368]
+                          - generic [ref=f1e1369]: 已启用
+                    - listitem [ref=f1e1372]:
+                      - button "hmr, 已挂载, 已启用" [ref=f1e1373] [cursor=pointer]:
+                        - strong [ref=f1e1374]: hmr
+                        - generic [ref=f1e1375]:
+                          - img "已挂载" [ref=f1e1376]
+                          - generic [ref=f1e1377]: 已启用
+    - generic [ref=f1e51]:
+      - generic [ref=f1e54]:
+        - generic [ref=f1e58]: 探索未至之境
+        - generic [ref=f1e59]: 预览版
+      - generic [ref=f1e60]:
+        - button "选择工作区" [ref=f1e61] [cursor=pointer]
+        - button "标准模式" [ref=f1e80] [cursor=pointer]
+      - generic [ref=f1e69] [cursor=pointer]:
+        - textbox "选择工作区" [ref=f1e72]:
+          - /placeholder: 选择一个工作区开始
+        - generic [ref=f1e73]:
+          - generic [ref=f1e74]:
+            - button "命令" [disabled]
+          - generic [ref=f1e75]:
+            - button "发送消息" [disabled]
+  - button "鲸鱼娘（原版）" [ref=f1e77]
+  - generic [ref=f1e88]:
+    - button "选择一个会话以使用侧边栏" [disabled] [ref=f1e89]
+    - button "选择一个会话以使用侧边栏" [disabled] [ref=f1e93]

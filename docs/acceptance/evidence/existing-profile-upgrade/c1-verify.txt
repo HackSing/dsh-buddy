@@ -1,0 +1,34 @@
+[bundled-profile] skip unsupported entry type: CharacterDevice web/node_modules/pkg/device
+ok   win32 installed 返回契约 (got {"status":"installed"})
+ok   win32 实体文件内容
+ok   win32 symlink 实体化为目录
+ok   win32 实体化内容正确
+ok   win32 多层链接链实体化
+ok   win32 hardlink 内容一致
+ok   win32 条目路径穿越未越界
+ok   win32 无 staging 残留
+ok   win32 无 package.json 重复安装 preserved (got {"status":"preserved","extras":[]})
+ok   decision 版本一致 up-to-date (got {"status":"up-to-date"})
+ok   decision 版本落后 upgrade (got {"status":"upgrade"})
+ok   decision 清单外依赖 preserved 并报名 (got {"status":"preserved","extras":["dsh-my-own"]})
+ok   decision 不可读 preserved (got {"status":"preserved","extras":[]})
+ok   decision 缺包 upgrade (got {"status":"upgrade"})
+ok   up-to-date 返回契约 (got {"status":"up-to-date"})
+ok   up-to-date 不动磁盘
+ok   up-to-date 无备份目录
+[bundled-profile] skip unsupported entry type: CharacterDevice web/node_modules/pkg/device
+ok   upgraded 返回契约 (got {"status":"upgraded","backup":"web.backup-0.1.16"})
+ok   upgraded 旧 profile 已备份
+ok   upgraded 新版落位
+ok   upgraded 无 staging 残留
+ok   preserved 返回契约含包名 (got {"status":"preserved","extras":["dsh-my-own"]})
+ok   preserved 原 profile 不变
+ok   preserved 无备份无 staging
+ok   升级解包失败抛错 (symlink target escapes staging root: C:\Windows\system32)
+ok   升级失败旧 profile 不变
+ok   升级失败不留 staging/备份/半成品 (web)
+ok   win32 绝对/越界链接拒绝 (symlink target escapes staging root: C:\Windows\system32)
+ok   win32 拒绝后 staging 清理
+ok   no-tarball 静默返回 (got {"status":"no-tarball"})
+skip posix symlink 断言（Windows 无符号链接特权，fs.symlinkSync EPERM 实证）
+SMOKE PASS
