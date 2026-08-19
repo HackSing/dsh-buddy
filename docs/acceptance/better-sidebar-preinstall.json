@@ -1,0 +1,263 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "better-sidebar 预装与 rc.7 升级验收",
+  "key_symbols": [
+    "verify-profile-tar",
+    "dsh-better-sidebar",
+    "DSH_VERSION",
+    "prebuilds"
+  ],
+  "objective": "把 dsh-better-sidebar@0.13.1 纳入随包预装清单(7 个包扩为 8 个),内嵌 dsh 从 0.1.0-rc.6 升至 0.1.0-rc.7 以满足其 peer 约束,并把 profile tar 的平台二进制断言由零二进制改为路径白名单加双平台覆盖,使发布流水线在产物含原生 prebuilds 的前提下仍守住 profile 跨平台可解的原始意图。",
+  "plan_ref": "docs/plans/better-sidebar-preinstall.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "verify-dsh-compat 对 0.1.0-rc.7 四项验证全过(升级门禁)",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260819T094941-162e7c582c",
+          "objective_fingerprint": "sha256:7c052df24a6842c9ac8b578e45e548cff65af80f236f05d1dd7882f1a7372235",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "node scripts/verify-dsh-compat.js 0.1.0-rc.7,win32-x64 / node v24.14.1,四项全过:① npm install 与 bin 入口解析 ② 随包 preset node --test 全绿 ③ 3 个 preset 装载后 web HTTP 200 ④ manifest 8 插件安装后 web HTTP 200。注:该脚本本次修复了 Windows 上 spawnSync('npm') ENOENT 导致的假阴性(改走 process.execPath + npm-cli.js),修复前报 0/4。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/better-sidebar-preinstall/c1-verify-dsh-compat-rc7.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-19T09:49:41+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "build-web-profile 退出 0 且 tar 内 8 个包齐全、better-sidebar 的 lib 与 cordis.patch.yml 在位",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260819T103531-2d86267eac",
+          "objective_fingerprint": "sha256:7c052df24a6842c9ac8b578e45e548cff65af80f236f05d1dd7882f1a7372235",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "node scripts/build-web-profile.js 退出 0(8 包全部落位),产出 build/web-profile.tar.gz 128,913,161 B;该 tar 随 electron-builder extraResources 进安装包后,由真实应用解包到隔离 DSH_HOME,逐包核对版本齐全,并含 lightningcss 四份平台分包与 node-pty 四份 prebuilds",
+          "evidence_refs": [
+            "docs/acceptance/evidence/better-sidebar-preinstall/c2-profile-contents.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-19T10:35:31+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "verify-profile-tar 对新 tar 通过,对注入白名单外二进制的构造样例 FAIL 并列出路径",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260819T103531-84db5f3e57",
+          "objective_fingerprint": "sha256:7c052df24a6842c9ac8b578e45e548cff65af80f236f05d1dd7882f1a7372235",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "正例:node scripts/verify-profile-tar.js 对新 tar 返回 PASS(entries=15255 links=0 binaries=24)。反例:构造 5 个最小 tar 逐条验证——基线 PASS;白名单外 evil.node FAIL 并列出路径;lightningcss 核心在而平台分包全缺 FAIL;lightningcss 只有构建机单份(即 CI ubuntu 现状)FAIL;node-pty 缺 darwin-arm64 FAIL",
+          "evidence_refs": [
+            "docs/acceptance/evidence/better-sidebar-preinstall/c2-c3-verify-profile-tar.txt",
+            "docs/acceptance/evidence/better-sidebar-preinstall/c3-assert-negative-cases.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-19T10:35:31+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "dsh web 返回 HTTP 200 且真实会话中侧边栏终端能执行命令并回显",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "pending",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260819T103822-8d82657abc",
+          "objective_fingerprint": "sha256:7c052df24a6842c9ac8b578e45e548cff65af80f236f05d1dd7882f1a7372235",
+          "acceptance_type": "behavior_acceptance",
+          "status": "unverified",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "前半段已验:打包应用内嵌 dsh 在 127.0.0.1:3080 返回 HTTP 200(端口归属进程已核对),浏览器实读 DOM 无 Failed to load plugins,8 个第三方插件全部已启用,better-sidebar 面板可展开且文件树读到工作区文件,底部面板出现 powershell 终端页签。后半段「侧边栏终端执行命令并回显」未能自动验证:本会话浏览器面板不合成画面(截图报 not compositing frames),xterm 容器始终 0 子元素;改用真实 Chrome 亦不通(该 Chrome 不在本机 loopback,ERR_CONNECTION_REFUSED)。作为替代,已在打包应用自己的 Electron 运行时下(ELECTRON_RUN_AS_NODE=1)直接用随包 profile 的 node-pty 1.1.0 起真实 powershell 并回显命令,marker 出现 2 次;该证据覆盖原生底座,不覆盖 better-sidebar 的 UI 接线。UI 层交接给 c6 用户真机确认。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/better-sidebar-preinstall/c4-c5-packaged-app-run.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-19T10:38:22+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c5",
+      "title": "Windows 安装包打出,隔离 DSH_HOME 实机运行出现 bundled profile: installed 且 8 插件落位",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260819T103531-eade422991",
+          "objective_fingerprint": "sha256:7c052df24a6842c9ac8b578e45e548cff65af80f236f05d1dd7882f1a7372235",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "DSH_SKIP_PROFILE=1 npm run dist:win 退出 0,产出 DSH Buddy Setup 0.1.0.exe(266,057,965 B)+ latest.yml + blockmap;以空的隔离 DSH_HOME 启动同载荷的 win-unpacked,4 秒内解包出 profiles/web,8 包版本全对;浏览器实读页面无 Failed to load plugins,141 条插件中 8 个第三方插件全部已启用",
+          "evidence_refs": [
+            "docs/acceptance/evidence/better-sidebar-preinstall/c4-c5-packaged-app-run.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-19T10:35:31+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c6",
+      "title": "用户在真机确认侧边栏文件树、Git 面板与终端交互可用",
+      "acceptance_type": "user_acceptance",
+      "layer": "L5",
+      "evidence_layer": null,
+      "status": "pending",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260819T103610-e6d52ceb82",
+          "objective_fingerprint": "sha256:7c052df24a6842c9ac8b578e45e548cff65af80f236f05d1dd7882f1a7372235",
+          "acceptance_type": "user_acceptance",
+          "status": "user_pending",
+          "layer": "L5",
+          "evidence_layer": null,
+          "method": null,
+          "evidence_refs": [],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-19T10:36:10+00:00",
+          "user_handoff": {
+            "automatically_verified": [
+              "better-sidebar 0.13.1 在打包应用中已启用,侧边栏可展开,文件树列出工作区内文件",
+              "node-pty 与 lightningcss 两个原生件在发行运行时下均实测可用"
+            ],
+            "user_checks": [
+              "侧边栏文件树能浏览并打开文件",
+              "Git 面板能显示仓库状态",
+              "终端交互可用"
+            ],
+            "steps": [
+              "在真机打开 DSH Buddy 并选一个真实 git 仓库作为工作区",
+              "展开侧边栏,依次切到「文件」「源代码管理」「终端」",
+              "各自做一次最小交互(开文件 / 看 Git 状态 / 敲一条命令)"
+            ],
+            "environment_ready": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "c7",
+      "title": "assets-check 通过(Plan/Knowledge/Acceptance 闭环)",
+      "acceptance_type": "contract_check",
+      "layer": "L1",
+      "evidence_layer": null,
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260819T103835-70746e9770",
+          "objective_fingerprint": "sha256:7c052df24a6842c9ac8b578e45e548cff65af80f236f05d1dd7882f1a7372235",
+          "acceptance_type": "contract_check",
+          "status": "passed",
+          "layer": "L1",
+          "evidence_layer": null,
+          "method": "python scripts/harness.py assets-check 退出 0:plans 活跃 10 篇 / 归档 0 / markdown 47,knowledge 8,acceptance 10,cross 20,违规 0 条、警告 0 条",
+          "evidence_refs": [
+            "docs/acceptance/evidence/better-sidebar-preinstall/c7-assets-check.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-19T10:38:35+00:00"
+        }
+      ]
+    }
+  ],
+  "status": "pending",
+  "revision": 8,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:44ec1a458c47c831cb672b2265f6cc65a37560ab6085f40681c63f62826f5a33",
+      "updated_at": "2026-08-19T09:04:56+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:9dcd27ac73c2170ad1219ed1b977f1e71cf64160ff0a3f22efed67ddf007392a",
+      "updated_at": "2026-08-19T09:49:41+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:5c94a25d9f4bbd626b889bfac94bdbd9dcffd3ac77dd25a4ef43437896c8786c",
+      "updated_at": "2026-08-19T10:35:31+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:44347af7bdf3f92d8e3552d31d1abdbc02b07b50e043bdcc52f8f9f84b76c208",
+      "updated_at": "2026-08-19T10:35:31+00:00"
+    },
+    {
+      "revision": 5,
+      "asset_fingerprint": "sha256:4facd90ffadef4e5de1e1c1e3edfda65b23c42e5cc024c9f5341195a874cf5b1",
+      "updated_at": "2026-08-19T10:35:31+00:00"
+    },
+    {
+      "revision": 6,
+      "asset_fingerprint": "sha256:817f4f8230d6e5b79b4380474d2aaf4f2888962337dfe2a0d1dbe0df31aae54e",
+      "updated_at": "2026-08-19T10:36:10+00:00"
+    },
+    {
+      "revision": 7,
+      "asset_fingerprint": "sha256:943de17f232b8baa8d58d7c01bf2f486fd5b14d1c81a13d29c0fa92c1fcadee2",
+      "updated_at": "2026-08-19T10:38:22+00:00"
+    }
+  ],
+  "created_at": "2026-08-19T09:04:56+00:00",
+  "updated_at": "2026-08-19T10:38:35+00:00",
+  "settled_at": null,
+  "asset_fingerprint": "sha256:ccf18d410c1aaa507b0e93840bf5fde7db736e0782e6400166b9a8e5d6c50aa9"
+}

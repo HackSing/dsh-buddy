@@ -1,0 +1,31 @@
+
+### ok-baseline  exit=0
+PROFILE ASSERT PASS: entries=15 links=0 binaries=4 (C:\Users\freed\AppData\Local\Temp\claude\D--Project-dsh-buddy\81d2b242-0487-4498-b3c2-0b49c75fd192\scratchpad\negtests\ok-baseline.tar.gz)
+FAIL: 白名单外的平台二进制: web/node_modules/some-other-pkg/build/Release/evil.node
+PROFILE ASSERT FAIL: 1 条
+
+### bad-stray-binary  exit=1
+FAIL: 白名单外的平台二进制: web/node_modules/some-other-pkg/build/Release/evil.node
+PROFILE ASSERT FAIL: 1 条
+FAIL: lightningcss 缺少发布目标平台: darwin-arm64
+FAIL: lightningcss 缺少发布目标平台: win32-x64
+PROFILE ASSERT FAIL: 2 条
+
+### bad-lightningcss-none  exit=1
+FAIL: lightningcss 缺少发布目标平台: darwin-arm64
+FAIL: lightningcss 缺少发布目标平台: win32-x64
+PROFILE ASSERT FAIL: 2 条
+FAIL: lightningcss 缺少发布目标平台: darwin-arm64
+FAIL: lightningcss 缺少发布目标平台: win32-x64
+PROFILE ASSERT FAIL: 2 条
+
+### bad-lightningcss-single  exit=1
+FAIL: lightningcss 缺少发布目标平台: darwin-arm64
+FAIL: lightningcss 缺少发布目标平台: win32-x64
+PROFILE ASSERT FAIL: 2 条
+FAIL: node-pty 缺少发布目标平台: darwin-arm64
+PROFILE ASSERT FAIL: 1 条
+
+### bad-nodepty-single  exit=1
+FAIL: node-pty 缺少发布目标平台: darwin-arm64
+PROFILE ASSERT FAIL: 1 条

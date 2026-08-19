@@ -1,0 +1,7 @@
+status: passed
+strict: False
+fast: False
+checked: {"plans": {"live_docs": 10, "archived_docs": 0, "markdown_files": 47}, "knowledge": 8, "acceptance": 10, "cross": 20}
+failures: []
+warnings: []
+summary: assets-check passed：Plan/Knowledge/Acceptance 已检查，违规 0 条、警告 0 条

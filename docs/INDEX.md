@@ -18,6 +18,7 @@
 - [Docs Harness 插件化：双闸激活治理与 plan 前端流程](plans/docs-harness-plugin.md) — 状态：有效（实施中）；关键符号：`harnessPlan`、`harnessProject`、`plan_progress`、`dsh-docs-harness`
 - [对标通用桌面产品的安装/更新/卸载流程](plans/desktop-lifecycle.md) — 状态：有效（实施中）；关键符号：`auto-update`、`deleteAppDataOnUninstall`、`checkForUpdate`、`quitAndInstall`
 - [Anchored Standard 预设：锚定后开放 prompt section 与插件工具发现](plans/anchored-phased-prompt.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-18 核对）；关键符号：`createEpochPromotion`、`sealSectionsUntilPromotion`、`UNLOCKABLE_INDEX`、`installBundledPresets`
+- [预装 dsh-better-sidebar:内嵌 dsh 升 rc.7 与 profile 二进制断言白名单化](plans/better-sidebar-preinstall.md) — 状态：有效（实施中）；关键符号：`verify-profile-tar`、`dsh-better-sidebar`、`DSH_VERSION`、`prebuilds`
 <!-- docs-harness:plans-index:end -->
 
 <!-- docs-harness:knowledge-index:start -->
@@ -45,6 +46,7 @@
 - [Docs Harness 插件化验收](acceptance/docs-harness-plugin.md) — 状态：有效（待验收）；关键符号：`dsh-docs-harness`、`harnessPlan`、`plan_progress`
 - [对标通用桌面产品的安装/更新/卸载流程](acceptance/desktop-lifecycle.md) — 状态：有效（待验收）；关键符号：`auto-update`、`deleteAppDataOnUninstall`、`checkForUpdate`、`quitAndInstall`
 - [Anchored 预设相位化开放 prompt section 与插件发现的验收](acceptance/anchored-phased-prompt.md) — 状态：已验收-仅追溯；关键符号：`sealSectionsUntilPromotion`、`extraIndex`、`installBundledPresets`、`createEpochPromotion`
+- [better-sidebar 预装与 rc.7 升级验收](acceptance/better-sidebar-preinstall.md) — 状态：有效（待验收）；关键符号：`verify-profile-tar`、`dsh-better-sidebar`、`DSH_VERSION`、`prebuilds`
 <!-- docs-harness:acceptance-index:end -->
 
 <!-- docs-harness:adr-index:start -->

@@ -41,12 +41,39 @@ function stepError(message, log) {
 }
 
 // 同步执行外部命令,合并 stdout/stderr 作为日志;非零退出即抛带日志的步骤错误
-function run(cmd, args, options) {
-  const r = spawnSync(cmd, args, { encoding: 'utf8', ...options });
-  const log = `$ ${cmd} ${args.join(' ')}\n${r.stdout || ''}${r.stderr || ''}`;
-  if (r.error) throw stepError(`${cmd} 无法执行: ${r.error.message}`, log);
-  if (r.status !== 0) throw stepError(`${cmd} 退出码 ${r.status}`, log);
+function run(cmd, args, options = {}) {
+  const { display, ...spawnOptions } = options;
+  const shown = display || `${cmd} ${args.join(' ')}`;
+  const name = shown.split(' ')[0];
+  const r = spawnSync(cmd, args, { encoding: 'utf8', ...spawnOptions });
+  const log = `$ ${shown}\n${r.stdout || ''}${r.stderr || ''}`;
+  if (r.error) throw stepError(`${name} 无法执行: ${r.error.message}`, log);
+  if (r.status !== 0) throw stepError(`${name} 退出码 ${r.status}`, log);
   return log;
+}
+
+// npm 的 JS 入口。不直接 spawn npm:Windows 上 npm 是 npm.cmd,spawnSync 不带 shell
+// 直接 ENOENT(本脚本此前在 Windows 上四项全废即因于此),带 shell 又要自己处理路径引号。
+// npm_execpath 只在 npm 生命周期里有值,直接 node 跑脚本时回落到与当前 Node 同装的那份。
+function npmCliEntry() {
+  const nodeDir = path.dirname(process.execPath);
+  const candidates = [
+    process.env.npm_execpath,
+    path.join(nodeDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+    path.join(nodeDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+  ];
+  for (const c of candidates) {
+    if (c && c.endsWith('.js') && fs.existsSync(c)) return c;
+  }
+  throw new Error('cannot locate npm-cli.js next to the current Node runtime');
+}
+
+// 用当前 Node 运行时跑 npm:跨平台一致,日志里仍呈现为 npm <args>
+function npm(args, options) {
+  return run(process.execPath, [npmCliEntry(), ...args], {
+    ...options,
+    display: `npm ${args.join(' ')}`,
+  });
 }
 
 // 向内核要一个空闲端口:listen(0) 拿到后立即释放,再交给 dsh 复用
@@ -121,7 +148,7 @@ function stepInstall(ctx) {
     path.join(ctx.workspace, 'package.json'),
     `${JSON.stringify({ name: 'dsh-compat-probe', version: '0.0.0', private: true }, null, 2)}\n`
   );
-  const log = run('npm', ['install', '--no-audit', '--no-fund', `${DSH_PKG}@${ctx.version}`], {
+  const log = npm(['install', '--no-audit', '--no-fund', `${DSH_PKG}@${ctx.version}`], {
     cwd: ctx.workspace,
   });
   const pkgDir = path.join(ctx.workspace, 'node_modules', ...DSH_PKG.split('/'));
@@ -132,7 +159,7 @@ function stepInstall(ctx) {
 }
 
 function stepPresetTest() {
-  const log = run('npm', ['test'], { cwd: PRESET_PKG_DIR });
+  const log = npm(['test'], { cwd: PRESET_PKG_DIR });
   return { detail: 'plugins/dsh-anchored-standard 的 node --test 全绿', log };
 }
 

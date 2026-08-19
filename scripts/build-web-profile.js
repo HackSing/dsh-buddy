@@ -20,6 +20,18 @@ const DSH_PKG_DIR = path.join(REPO_ROOT, 'node_modules', '@deepseek-ai', 'dsh');
 const { binEntryFrom } = require('../lib/dsh-entry');
 const { applyBrowsePicker } = require('../lib/browse-picker-patch');
 
+// 随包 profile 要在两个发布目标(macOS arm64 / Windows x64)上都能跑,但 pnpm 默认只装
+// 构建机那一个平台的 optionalDependencies。lightningcss 是
+// @linxin666/dsh-client-ui-skin-center 0.2.x 的运行时依赖且按平台拆包分发,只带构建机
+// 那一份会让 skin-center 在其他平台 require 失败、整个插件装载不起来(CI 在 ubuntu 构建
+// profile,若不干预则 mac 与 win 用户拿到的都是 linux 二进制)。
+// 注意 supportedArchitectures 是"替换"而非"叠加"语义:声明了就只装声明的,所以构建机
+// 自身平台也必须列进来。代价是取到 os×cpu 的叉积(4 份,约 35MB),多出的
+// darwin-x64/win32-arm64 是 pnpm 无法按平台对精确取值的必然开销。
+// 只列发布目标的两个 os:linux 开发机在本地构建的 profile 因此缺 linux 分包,
+// skin-center 在其本机跑不起来——本仓不发 linux,该场景不在支持面内。
+const SUPPORTED_ARCHITECTURES = { os: ['win32', 'darwin'], cpu: ['x64', 'arm64'] };
+
 // CI artifact 分发:profile 产物由独立 job 构建后经 download-artifact 落到
 // build/web-profile.tar.gz,消费方(macos/windows dist job)以 DSH_SKIP_PROFILE=1
 // 跳过本步,避免重复构建与平台差异。tar 缺失时直接报错退出,防止 CI 漏拉
@@ -44,6 +56,14 @@ function dshPlugin(dshHome, profile, args) {
   });
 }
 
+/** 把跨平台安装声明写进 profile 的 package.json,供随后的 install 拉齐各平台分包。 */
+function pinSupportedArchitectures(profileDir) {
+  const pkgPath = path.join(profileDir, 'package.json');
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  pkg.pnpm = { ...pkg.pnpm, supportedArchitectures: SUPPORTED_ARCHITECTURES };
+  fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+}
+
 function main() {
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
   const specs = manifest.packages.map((p) => `${p.name}@${p.version}`);
@@ -55,6 +75,10 @@ function main() {
     dshPlugin(home, manifest.profile, ['add', ...specs]);
 
     const profileDir = path.join(home, 'profiles', manifest.profile);
+    // add 已按构建机平台装了一遍;补上跨平台声明后再 install 一次拉齐其余平台分包
+    pinSupportedArchitectures(profileDir);
+    dshPlugin(home, manifest.profile, ['install']);
+
     for (const p of manifest.packages) {
       const dir = path.join(profileDir, 'node_modules', ...p.name.split('/'));
       if (!fs.existsSync(dir)) throw new Error(`installed package missing: ${p.name}`);

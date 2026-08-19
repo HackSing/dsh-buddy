@@ -40,31 +40,10 @@ jobs:
       - name: 构建 web profile 压缩包
         run: node scripts/build-web-profile.js
 
-      - name: 打包后断言(链接不逃逸/无平台二进制/入口齐全)
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/profile-check && mkdir -p /tmp/profile-check
-          tar -xzf build/web-profile.tar.gz -C /tmp/profile-check
-          root="$(realpath /tmp/profile-check)"
-          # 1. 无绝对 linkname
-          if find "$root" -type l -printf '%l\n' | grep -q '^/'; then
-            echo "FAIL: 存在绝对 linkname"; exit 1
-          fi
-          # 2. 符号链接解析后必须仍在 profile 根内(防逃逸构建机 pnpm store)
-          while IFS= read -r l; do
-            tgt="$(realpath -m "$l")"
-            case "$tgt" in
-              "$root"|"$root"/*) ;;
-              *) echo "FAIL: 链接逃逸 $l -> $tgt"; exit 1 ;;
-            esac
-          done < <(find "$root" -type l)
-          # 3. 无平台二进制(原生模块/可执行文件)
-          if find "$root" -type f | grep -qE '\.(node|dll|exe|dylib|so)$'; then
-            echo "FAIL: 存在平台二进制"; exit 1
-          fi
-          # 4. profile 根存在
-          [ -d "$root/web" ] || { echo "FAIL: profile 根缺失"; exit 1; }
-          echo "PROFILE ASSERT PASS: links=$(find "$root" -type l | wc -l) files=$(find "$root" -type f | wc -l)"
+      # 断言规则(链接不逃逸/二进制白名单/入口齐全)落在脚本里,CI 与开发机共用同一份,
+      # 改断言时本机可先自测,不必推 tag 试 CI。
+      - name: 打包后断言
+        run: node scripts/verify-profile-tar.js build/web-profile.tar.gz
 
       - name: 上传 profile artifact
         uses: actions/upload-artifact@v5
