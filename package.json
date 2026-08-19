@@ -9,9 +9,9 @@
     "start": "electron .",
     "dist": "electron-builder --mac --publish never",
     "pack": "electron-builder --dir",
-    "postinstall": "node scripts/patch-dsh-picker.js",
-    "predist": "node scripts/patch-dsh-picker.js --check && node scripts/build-web-profile.js",
-    "dist:win": "node scripts/patch-dsh-picker.js --check && node scripts/build-web-profile.js && electron-builder --win --publish never"
+    "postinstall": "node scripts/patch-dsh-picker.js && node scripts/patch-multimodal-ui.js",
+    "predist": "node scripts/patch-dsh-picker.js --check && node scripts/patch-multimodal-ui.js --check && node scripts/build-web-profile.js",
+    "dist:win": "node scripts/patch-dsh-picker.js --check && node scripts/patch-multimodal-ui.js --check && node scripts/build-web-profile.js && electron-builder --win --publish never"
   },
   "license": "MIT",
   "workspaces": [
