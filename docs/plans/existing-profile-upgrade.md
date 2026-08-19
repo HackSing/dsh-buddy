@@ -1,9 +1,9 @@
-> 状态：有效（实施中）
+> 状态：已实施-仅追溯（代码已是真源，2026-08-19 核对）
 <!-- docs-harness:plan-document/v1 -->
 
 # 存量 profile 随包升级：幂等跳过改为版本比对后的备份替换
 
-- 冻结合同：`sha256:a80ad6edb47e821088ffde63cf35ffbbd1906701bfbd7332f2474eed20570101`
+- 冻结合同：`sha256:2833068d28457a86fbe9df695fa5db062b018ed50790af21502f6be11c6a341a`
 - 关键符号：`installBundledProfile`、`preinstall-manifest`、`profileUpgradeDecision`、`dsh.profile.bundles`
 
 ## 背景

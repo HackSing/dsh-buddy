@@ -101,7 +101,7 @@
       "acceptance_type": "user_acceptance",
       "layer": "L5",
       "evidence_layer": null,
-      "status": "pending",
+      "status": "passed",
       "records": [
         {
           "schema_version": "docs-harness/acceptance-record/v3",
@@ -134,12 +134,33 @@
             ],
             "environment_ready": true
           }
+        },
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260819T142024-83bca1857b",
+          "objective_fingerprint": "sha256:cfaa04cf2f8506fb7bf0614826c8f7911b35d18d70603366f6b255194f17a1e0",
+          "acceptance_type": "user_acceptance",
+          "status": "passed",
+          "layer": "L5",
+          "evidence_layer": null,
+          "method": "用户安装从 GitHub 全新 clone 构建的 NSIS 包（提交 466bf32）覆盖本机真实环境后口头确认：真实 ~/.dsh profile 升级流程正常、插件可用。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/existing-profile-upgrade/c3-e2e-app.log"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-19T14:20:24+00:00",
+          "user_confirmation": {
+            "confirmed_by": "user",
+            "confirmation": "用户原话：『我刚安装了你clone下来并构建的包，确认ok了』"
+          }
         }
       ]
     }
   ],
-  "status": "pending",
-  "revision": 5,
+  "status": "passed",
+  "revision": 7,
   "revision_history": [
     {
       "revision": 1,
@@ -160,10 +181,21 @@
       "revision": 4,
       "asset_fingerprint": "sha256:96fd129d987cb1f21713de633fa4e84e46347daad0b549758e6e8c10b1fc6d54",
       "updated_at": "2026-08-19T12:24:15+00:00"
+    },
+    {
+      "revision": 5,
+      "asset_fingerprint": "sha256:e9075945738b165d234b4b8056f1f923909d3ee26e4cfd2d1809f45da350cc80",
+      "updated_at": "2026-08-19T12:25:14+00:00"
+    },
+    {
+      "revision": 6,
+      "asset_fingerprint": "sha256:e0807d4dc36a4d91aba77ccb377202aad29cf92e2a3827c9f682c262ca588ffd",
+      "updated_at": "2026-08-19T14:20:24+00:00"
     }
   ],
   "created_at": "2026-08-19T11:47:13+00:00",
-  "updated_at": "2026-08-19T12:25:14+00:00",
-  "settled_at": null,
-  "asset_fingerprint": "sha256:e9075945738b165d234b4b8056f1f923909d3ee26e4cfd2d1809f45da350cc80"
+  "updated_at": "2026-08-19T14:20:28+00:00",
+  "settled_at": "2026-08-19T14:20:28+00:00",
+  "asset_fingerprint": "sha256:1f782774ef63aa2b13fedad743373646baab6bbeedd526754101ef01558e2c94",
+  "replacement": null
 }

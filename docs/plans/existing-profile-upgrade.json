@@ -97,10 +97,12 @@
   "governance": {
     "acceptance_required": true,
     "knowledge_impact": "updated",
-    "updated_knowledge_refs": [],
+    "updated_knowledge_refs": [
+      "docs/knowledge/preinstall-existing-user-gap.json"
+    ],
     "unchanged_reason": null,
-    "governance_settled_at": null
+    "governance_settled_at": "2026-08-19T14:20:44+00:00"
   },
   "frozen_at": "2026-08-19T11:42:47+00:00",
-  "plan_fingerprint": "sha256:a80ad6edb47e821088ffde63cf35ffbbd1906701bfbd7332f2474eed20570101"
+  "plan_fingerprint": "sha256:2833068d28457a86fbe9df695fa5db062b018ed50790af21502f6be11c6a341a"
 }

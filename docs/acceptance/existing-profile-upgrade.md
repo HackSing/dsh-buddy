@@ -1,11 +1,11 @@
-> 状态：有效（待验收）
+> 状态：已验收-仅追溯
 <!-- docs-harness:acceptance-document/v1 -->
 
 # 存量 profile 随包升级验收：四态判定 + 端到端旧 profile 升级
 
-- 修订：5
+- 修订：7
 - 关键符号：`installBundledProfile`、`profileUpgradeDecision`
-- 资产指纹：`sha256:e9075945738b165d234b4b8056f1f923909d3ee26e4cfd2d1809f45da350cc80`
+- 资产指纹：`sha256:1f782774ef63aa2b13fedad743373646baab6bbeedd526754101ef01558e2c94`
 - 关联方案：`docs/plans/existing-profile-upgrade.json`
 - 关联知识：`docs/knowledge/preinstall-existing-user-gap.json`
 
@@ -38,7 +38,7 @@
 
 ### `c4` 用户确认升级后本机真实环境插件可用
 
-- 状态：pending
+- 状态：passed
 - 类型：user_acceptance
 - 层级：L5
-- 证据：
+- 证据：`docs/acceptance/evidence/existing-profile-upgrade/c3-e2e-app.log`
