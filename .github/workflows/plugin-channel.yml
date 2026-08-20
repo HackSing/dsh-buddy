@@ -1,0 +1,45 @@
+# 插件热更通道发布:手动触发,在 ubuntu 上按 registry latest 重建
+# plugin-channel.json + web-profile-plugins.tar.gz 并上传到滚动 release
+# (固定 tag plugin-channel,asset 名恒定,--clobber 覆盖,客户端 URL 永不变)。
+#
+# 为什么不在本机做:网页上传限 25MB 而 tar 约 129MB;runner 自带 gh 与
+# GITHUB_TOKEN,无需维护者本机装 gh CLI。发错版本时用 Actions 日志定位,
+# 重跑一次本 workflow 或手工改回 channel JSON 即收敛。
+name: plugin-channel
+
+on:
+  workflow_dispatch: # 手动触发口:插件上游发新版后点一次
+
+permissions:
+  contents: write # gh release create/upload 需要
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      # dsh plugin 子命令把插件安装转发给 pnpm(与 release.yml 的 profile job 同款)
+      - name: 启用 pnpm
+        run: corepack enable
+
+      # 构建只需 @deepseek-ai/dsh 的生产树;--legacy-peer-deps 与本仓 lockfile 的
+      # 生成方式一致(npm 严格 peer 解析在 dsh 依赖树上病态回溯,见 verify-dsh-compat.js)
+      - name: 安装依赖
+        run: npm ci --omit=dev --no-audit --no-fund --legacy-peer-deps
+
+      # 版本集合取 registry latest;minDshVersion 由插件 peer 声明自动推导
+      - name: 构建通道产物
+        run: node scripts/build-plugin-channel.js
+
+      # create || true + upload --clobber:tag 已存在时幂等覆盖(与 release.yml 同一手法)
+      - name: 上传滚动 release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create plugin-channel --title "Plugin Channel" --notes "滚动插件更新通道" || true
+          gh release upload plugin-channel build/plugin-channel/plugin-channel.json build/plugin-channel/web-profile-plugins.tar.gz --clobber
