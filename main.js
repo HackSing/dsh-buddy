@@ -322,7 +322,9 @@ async function checkUpdateManually() {
   if (isAutoUpdateSupported({ isPackaged: app.isPackaged })) {
     const { outcome, detail } = await checkForUpdateManually({ isPackaged: app.isPackaged });
     if (outcome === AUTO_UPDATE_OUTCOME.downloading) {
-      showCheckResult(`发现新版本 ${detail}`, '正在后台下载,完成后将提示安装。');
+      // 浮层立刻出现,不等首个 progress 事件;进度由 scheduleAutoUpdate 的常驻监听推送
+      if (win && win.updateOverlay) win.updateOverlay.showDownloading();
+      showCheckResult(`发现新版本 ${detail}`, '正在后台下载,左下角浮层会显示进度,完成后将提示安装。');
     } else if (outcome === AUTO_UPDATE_OUTCOME.upToDate) {
       showCheckResult('已是最新版本', `当前版本 ${app.getVersion()}。`);
     } else if (outcome === AUTO_UPDATE_OUTCOME.failed) {
@@ -516,9 +518,16 @@ async function checkPluginUpdateManually() {
 // 非预期错误(如 userData 不可写)也只记录,绝不弹窗、绝不影响 dsh 使用。
 function scheduleUpdateCheck() {
   if (isAutoUpdateSupported({ isPackaged: app.isPackaged })) {
+    const overlay = () => (win && win.updateOverlay) || null; // 仅无边框窗口有浮层
     const { outcome } = scheduleAutoUpdate({
       isPackaged: app.isPackaged,
-      notifyReady: notifyUpdateReady,
+      notifyReady: (info) => {
+        overlay()?.hide(); // 浮层生命周期到下载完成为止,之后由重启安装对话框接管
+        notifyUpdateReady(info);
+      },
+      onAvailable: () => overlay()?.showDownloading(),
+      onProgress: (progress) => overlay()?.setProgress(progress),
+      onError: (message) => overlay()?.reportError(message), // 仅下载已开始时生效
     });
     console.log(`[dsh-buddy] update check: ${outcome}`);
     return;
@@ -548,6 +557,7 @@ function createWindow() {
       version: app.getVersion(),
       onCheckUpdate: checkUpdateManually,
       onCheckPluginUpdate: checkPluginUpdateManually,
+      onRetryUpdate: checkUpdateManually, // 浮层 error 态的重试 = 再来一次手动检查
     });
     win.on('closed', () => (win = null));
     return;

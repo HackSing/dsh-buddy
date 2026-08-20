@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!--
+  更新下载进度浮层(独立 WebContentsView,叠在内容视图左下角,不注入 dsh 页面)。
+  视图模型全部由主进程经 IPC 下发(window.dshUpdateOverlay,见同目录 preload),
+  本页只做渲染与重试点击上报,不持有任何业务逻辑。
+  卡片即整个视图:视图背景与卡片同色,规避 WebContentsView 圆角透明的平台差异。
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { color-scheme: light; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font: 12px/1.4 system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+    color: #1b1b1b;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+    user-select: none;
+  }
+  #card { display: flex; align-items: center; height: 100%; padding: 0 14px; gap: 10px; }
+  #spinner {
+    flex: none; width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid #d0d0d0; border-top-color: #4a6cf7;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #card.error #spinner { display: none; }
+  #text { flex: 1; min-width: 0; }
+  #title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #card.error #title { color: #c42b1c; }
+  #detail {
+    margin-top: 3px; font-size: 11px; opacity: 0.6;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #bar { margin-top: 6px; height: 4px; border-radius: 2px; background: #ececec; overflow: hidden; }
+  #fill { height: 100%; width: 0; background: #4a6cf7; transition: width 0.25s ease; }
+  #card.error #bar { display: none; }
+  #retry {
+    flex: none; display: none; padding: 5px 12px; border: 1px solid #c42b1c;
+    border-radius: 4px; background: transparent; color: #c42b1c; font: inherit;
+  }
+  #retry:hover { background: #fdf3f2; }
+  #card.error #retry { display: block; }
+</style>
+</head>
+<body>
+  <div id="card">
+    <div id="spinner"></div>
+    <div id="text">
+      <div id="title"></div>
+      <div id="detail"></div>
+      <div id="bar"><div id="fill"></div></div>
+    </div>
+    <button id="retry"></button>
+  </div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+
+  function applyState(model) {
+    if (!model) return;
+    $('card').className = model.stage;
+    $('title').textContent = model.title;
+    $('detail').textContent = model.detail;
+    $('retry').textContent = model.retryLabel;
+    if (typeof model.percent === 'number') $('fill').style.width = model.percent + '%';
+  }
+
+  $('retry').addEventListener('click', () => window.dshUpdateOverlay.retry());
+
+  window.dshUpdateOverlay.onState(applyState);
+  window.dshUpdateOverlay.init().then(applyState);
+})();
+</script>
+</body>
+</html>
