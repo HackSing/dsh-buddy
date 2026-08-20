@@ -77,8 +77,27 @@
       "acceptance_type": "behavior_acceptance",
       "layer": "L4",
       "evidence_layer": "package_or_install",
-      "status": "pending",
-      "records": []
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260820T133529-8ec011219f",
+          "objective_fingerprint": "sha256:26c915a55c14bdf69279df21c62820f4cc1822b268cb50728dd68179ac1f2450",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "DSH_SKIP_PROFILE=1 electron-builder --dir --win 打包 exit 0(build/pack-v030.log);解包版应用在隔离沙盒(DSH_HOME=build/l4-home,DSH_URL=:3099,与用户真实环境无交集)首次启动:随包 profile 安装成功(8 个插件依赖齐)、内嵌 dsh rc.8 启动 30s 后 HTTP 200、进程树回收干净。增量热更链路本身由 c2 的 L3 真实运行时三场景覆盖。",
+          "evidence_refs": [
+            "build/pack-v030.log",
+            "build/l4-boot.log"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-20T13:35:29+00:00"
+        }
+      ]
     },
     {
       "id": "c4",
@@ -91,7 +110,7 @@
     }
   ],
   "status": "pending",
-  "revision": 3,
+  "revision": 4,
   "revision_history": [
     {
       "revision": 1,
@@ -102,10 +121,15 @@
       "revision": 2,
       "asset_fingerprint": "sha256:8e830cecd4d7a48fa829119a44732861542706e82a1f6064328e6af8cf2a9a03",
       "updated_at": "2026-08-20T12:31:36+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:4c3479614f5f0058e11c58322c2575b77edeb532ae850569191d1032ccd137fe",
+      "updated_at": "2026-08-20T12:33:42+00:00"
     }
   ],
   "created_at": "2026-08-20T11:48:03+00:00",
-  "updated_at": "2026-08-20T12:33:42+00:00",
+  "updated_at": "2026-08-20T13:35:29+00:00",
   "settled_at": null,
-  "asset_fingerprint": "sha256:4c3479614f5f0058e11c58322c2575b77edeb532ae850569191d1032ccd137fe"
+  "asset_fingerprint": "sha256:f10bdee9622f31f662d698806ca7a13c6f21bc5ee5bd752fa7ccca8a735652f6"
 }

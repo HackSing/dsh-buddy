@@ -3,9 +3,9 @@
 
 # 插件按包增量更新验收
 
-- 修订：3
+- 修订：4
 - 关键符号：`applyPluginUpdate`、`installBundledProfile`、`buildWebProfileTar`、`checkPluginChannel`
-- 资产指纹：`sha256:4c3479614f5f0058e11c58322c2575b77edeb532ae850569191d1032ccd137fe`
+- 资产指纹：`sha256:f10bdee9622f31f662d698806ca7a13c6f21bc5ee5bd752fa7ccca8a735652f6`
 - 关联方案：`docs/plans/plugin-incremental-update.json`
 - 关联知识：`docs/knowledge/plugin-channel-hot-update.json`
 
@@ -31,10 +31,10 @@
 
 ### `c3` 打包安装态验证(随包 profile + 增量热更链路)
 
-- 状态：pending
+- 状态：passed
 - 类型：behavior_acceptance
 - 层级：L4
-- 证据：尚无
+- 证据：`build/pack-v030.log`、`build/l4-boot.log`
 
 ### `c4` 用户验收:真实发布单插件新版本,客户端只下载该插件并完成热更
 
