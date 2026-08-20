@@ -88,7 +88,8 @@ function resolveLauncher() {
     return {
       kind: 'embedded',
       cmd: process.execPath, // Electron 二进制 + ELECTRON_RUN_AS_NODE = 纯 Node 进程
-      args: [entry, 'web', '--host', TARGET.host, '--port', TARGET.port],
+      // --no-open:壳自己加载 web UI 进窗口,dsh 默认开的那个浏览器标签页是多余的
+      args: [entry, 'web', '--host', TARGET.host, '--port', TARGET.port, '--no-open'],
       env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
       // 内嵌 dsh 免下载,但要 require/import profile 里全部插件的依赖树(实测
       // 2万+文件);首次覆盖安装后这批文件对 Windows Defender 实时防护而言都是
@@ -102,7 +103,7 @@ function resolveLauncher() {
   return {
     kind: 'npx',
     cmd: 'npx',
-    args: [`${DSH_PKG}@${DSH_VERSION}`, 'web', '--host', TARGET.host, '--port', TARGET.port],
+    args: [`${DSH_PKG}@${DSH_VERSION}`, 'web', '--host', TARGET.host, '--port', TARGET.port, '--no-open'],
     env: process.env,
     // npx 冷启动要下载 @deepseek-ai/dsh 的整棵依赖树(500+ 包),实测超过 120s
     timeoutMs: 300000,
