@@ -105,25 +105,28 @@ gh release upload "$TAG" dist/*.dmg --clobber
 
 ## 附：插件热更通道（滚动 release）
 
-dsh 本体更新必须走整包发版（件一→件二→件三），但预装插件（`plugins/preinstall-manifest.json` 那批）不必——它们住在用户目录的 `DSH_HOME/profiles` 里，可以运行时替换。本仓的实现是第四条链：
+dsh 本体更新必须走整包发版（件一→件二→件三），但预装插件（`plugins/preinstall-manifest.json` 那批）不必——它们住在用户目录的 `DSH_HOME/profiles` 里，可以运行时替换。本仓的实现是第四条链（schema v2，按插件增量）：
 
 ```
 插件上游发新版 ──→ node scripts/build-plugin-channel.js
-                      按 registry latest 重建成品 tar + plugin-channel.json
+                      按 registry latest 重建 profile(唯一构建链 buildWebProfileTar)
+                      → 按 lockfile 闭包逐插件切片(lib/profile-closure.js)
+                      → plugin-<slug>.tar.gz × N + profile-bookkeeping.tar.gz + v2 JSON
                       gh release upload plugin-channel … --clobber   # 滚动 tag 覆盖
                               │
-用户侧 ──────────────→ 客户端节流检测 channel JSON
-                      → 弹窗确认 → 停 dsh → 下载校验 sha256
-                      → installBundledProfile 替换 profile → 重启 dsh
+用户侧 ──────────────→ 客户端节流检测 channel JSON(先看 schema_version 分流)
+                      → 弹窗确认 → 停 dsh → 只下载变化插件的切片 + 簿记,校验 sha256
+                      → 外科替换 profile 里的闭包目录 → 重启 dsh
 ```
 
 设计要点（与三件套同一套哲学）：
 
 1. **channel JSON 是「能下到什么」的唯一真源**，不是 npm registry——registry 有新版到发布侧出包之间有空窗，客户端只信 channel 就不会提示一个下不到的更新；
-2. **更新物以成品 tar 分发，不在用户机上跑 pnpm**：内嵌 dsh 不带 pnpm，且随包 tar 解出的 profile 其 pnpm 维护通道在终端机上是坏的（virtualStoreDir 漂移）——构建侧复用 [build-web-profile.js](../scripts/build-web-profile.js) 的同一条链路，安装侧复用 [bundled-profile.js](../lib/bundled-profile.js) 的备份/回滚；
-3. **滚动 release 用固定 tag**（本仓为 `plugin-channel`），asset 名恒定、`--clobber` 覆盖，客户端 URL 永不变；发错了把 channel JSON 改回旧版本集合，客户端下个节流窗口自然收敛。**该 release 必须保持 prerelease 标记**（workflow 里 `gh release create --prerelease`）：它只是数据通道，一旦以正式 release 身份占住 `/releases/latest`，electron-updater 会到它下面找 `latest.yml` 得到 404，旧版应用「检查更新」直接报错；
-4. **`minDshVersion` 门槛**：插件可能依赖新 dsh 的能力（如 rc.7 的 keyed slot），channel 声明所需下限，客户端内嵌 dsh 不够新时只提示不安装；
-5. **升级判定带方向**：本地 profile 版本领先于随包清单时不得回滚（热更的成果不能被下次启动的旧安装包抹掉），见 `profileUpgradeDecision`。
+2. **schema v2 按插件切片**：任一插件更新，客户端只下载该插件的闭包 tar（插件本体+依赖，lockfile 计算、实体化平铺布局目录为条目）与簿记 tar；小插件 0.07–5.4MB，大插件（dsh-skins 70MB、dsh-better-sidebar 53MB）闭包即上限。切片键控 name@version 天然去重；簿记（package.json/pnpm-lock.yaml 等 7 件）单独一个 tar 整体换新（spike 已实证无副作用）。**v1 整包资产不再产出**，旧客户端读到 v2 schema 会提示更新应用本体；
+3. **更新物以成品 tar 分发，不在用户机上跑 pnpm**：内嵌 dsh 不带 pnpm，且随包 tar 解出的 profile 其 pnpm 维护通道在终端机上是坏的（virtualStoreDir 漂移）——构建侧复用 [build-web-profile.js](../scripts/build-web-profile.js) 的同一条链路，安装侧复用 [bundled-profile.js](../lib/bundled-profile.js) 的备份/回滚；
+4. **滚动 release 用固定 tag**（本仓为 `plugin-channel`），asset 名恒定（`plugin-<slug>.tar.gz`，slug = 包名去 `@`、`/` 转 `__`，不带版本号）、`--clobber` 覆盖，客户端 URL 永不变；发错了把 channel JSON 改回旧版本集合，客户端下个节流窗口自然收敛。**该 release 必须保持 prerelease 标记**（workflow 里 `gh release create --prerelease`）：它只是数据通道，一旦以正式 release 身份占住 `/releases/latest`，electron-updater 会到它下面找 `latest.yml` 得到 404，旧版应用「检查更新」直接报错；
+5. **`minDshVersion` 门槛**：插件可能依赖新 dsh 的能力（如 rc.7 的 keyed slot），channel 声明所需下限，客户端内嵌 dsh 不够新时只提示不安装；
+6. **升级判定带方向**：本地 profile 版本领先于随包清单时不得回滚（热更的成果不能被下次启动的旧安装包抹掉），见 `profileUpgradeDecision`。
 
 ## 成本
 

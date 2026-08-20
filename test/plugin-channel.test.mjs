@@ -10,11 +10,13 @@ const {
   checkPluginChannel,
   CHANNEL_OUTCOME,
   CHANNEL_SCHEMA,
+  CHANNEL_SCHEMA_V2,
   STATE_FILE_NAME,
   splitPrerelease,
   compareRelease,
   isNewerRelease,
   parseChannel,
+  parseChannelV2,
   diffChannelVersions,
 } = require('../lib/plugin-channel.js');
 
@@ -85,6 +87,44 @@ test('parseChannel accepts a valid channel and rejects malformed ones', () => {
     null
   );
   assert.equal(parseChannel({ ...VALID_CHANNEL, minDshVersion: 'garbage' }), null);
+});
+
+const VALID_CHANNEL_V2 = {
+  schema_version: CHANNEL_SCHEMA_V2,
+  packages: [
+    {
+      name: '@a/plugin-one',
+      version: '0.3.0',
+      tarball: { url: 'https://example.com/plugin-a__plugin-one.tar.gz', sha256: 'a'.repeat(64), size: 12345 },
+    },
+    {
+      name: '@a/plugin-two',
+      version: '0.2.0',
+      tarball: { url: 'https://example.com/plugin-a__plugin-two.tar.gz', sha256: 'b'.repeat(64), size: 6789 },
+    },
+  ],
+  bookkeeping: { url: 'https://example.com/profile-bookkeeping.tar.gz', sha256: 'c'.repeat(64), size: 123 },
+  minDshVersion: '0.1.0-rc.7',
+};
+
+test('parseChannelV2 accepts a valid v2 channel and rejects malformed ones', () => {
+  const parsed = parseChannelV2(VALID_CHANNEL_V2);
+  assert.equal(parsed.fingerprint, '@a/plugin-one@0.3.0\n@a/plugin-two@0.2.0');
+  assert.equal(parsed.packages.length, 2);
+  // schema 分流:v1 体给 v2 校验器、v2 体给 v1 校验器,都必须拒
+  assert.equal(parseChannelV2(VALID_CHANNEL), null);
+  assert.equal(parseChannel({ ...VALID_CHANNEL_V2 }), null);
+  assert.equal(parseChannelV2({ ...VALID_CHANNEL_V2, packages: [] }), null);
+  // tarball 引用缺 size / 坏 sha256 / 非 https 一律拒
+  const noSize = JSON.parse(JSON.stringify(VALID_CHANNEL_V2));
+  delete noSize.packages[0].tarball.size;
+  assert.equal(parseChannelV2(noSize), null);
+  const badHash = JSON.parse(JSON.stringify(VALID_CHANNEL_V2));
+  badHash.packages[0].tarball.sha256 = 'not-hex';
+  assert.equal(parseChannelV2(badHash), null);
+  const badBookkeeping = { ...VALID_CHANNEL_V2, bookkeeping: { url: 'http://insecure', sha256: 'c'.repeat(64), size: 1 } };
+  assert.equal(parseChannelV2(badBookkeeping), null);
+  assert.equal(parseChannelV2({ ...VALID_CHANNEL_V2, minDshVersion: 'garbage' }), null);
 });
 
 test('diffChannelVersions lists only strictly newer channel packages', () => {

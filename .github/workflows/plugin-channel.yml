@@ -1,9 +1,9 @@
 # 插件热更通道发布:手动触发,在 ubuntu 上按 registry latest 重建
-# plugin-channel.json + web-profile-plugins.tar.gz 并上传到滚动 release
-# (固定 tag plugin-channel,asset 名恒定,--clobber 覆盖,客户端 URL 永不变)。
+# plugin-channel.json(schema v2)+ 每插件闭包切片 tar + 簿记 tar,上传到滚动
+# release(固定 tag plugin-channel,asset 名恒定,--clobber 覆盖,客户端 URL 永不变)。
 #
-# 为什么不在本机做:网页上传限 25MB 而 tar 约 129MB;runner 自带 gh 与
-# GITHUB_TOKEN,无需维护者本机装 gh CLI。发错版本时用 Actions 日志定位,
+# 为什么不在本机做:网页上传限 25MB 而大插件切片(skins)约 70MB;runner 自带
+# gh 与 GITHUB_TOKEN,无需维护者本机装 gh CLI。发错版本时用 Actions 日志定位,
 # 重跑一次本 workflow 或手工改回 channel JSON 即收敛。
 name: plugin-channel
 
@@ -42,9 +42,12 @@ jobs:
       # create || true + upload --clobber:tag 已存在时幂等覆盖(与 release.yml 同一手法)
       # --prerelease 必须带:该 release 只是数据通道,若占住 /releases/latest,
       # electron-updater 会到这里找 latest.yml 得到 404(旧版应用检查更新直接报错)
+      # v2 资产:v2 JSON + 簿记 tar + 每插件切片 tar(plugin-*.tar.gz 通配);
+      # v1 整包资产不再产出,顺手清掉历史残留,旧客户端读 v2 JSON 会提示更新应用
       - name: 上传滚动 release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create plugin-channel --title "Plugin Channel" --notes "滚动插件更新通道" --prerelease || true
-          gh release upload plugin-channel build/plugin-channel/plugin-channel.json build/plugin-channel/web-profile-plugins.tar.gz --clobber
+          gh release delete-asset plugin-channel web-profile-plugins.tar.gz --yes || true
+          gh release upload plugin-channel build/plugin-channel/plugin-channel.json build/plugin-channel/profile-bookkeeping.tar.gz build/plugin-channel/plugin-*.tar.gz --clobber
