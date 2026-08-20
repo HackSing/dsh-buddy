@@ -34,8 +34,10 @@ jobs:
         run: corepack enable
 
       # 构建 profile 只需 @deepseek-ai/dsh 的生产树,不装 electron-builder
+      # --legacy-peer-deps:dsh 插件树 peer 链在 npm 11 严格解析下会 ERESOLVE/病态回溯,
+      # lockfile 也是用该旗标生成的,CI 必须与本机保持一致
       - name: 安装依赖
-        run: npm ci --omit=dev
+        run: npm ci --omit=dev --legacy-peer-deps --no-audit --no-fund
 
       - name: 构建 web profile 压缩包
         run: node scripts/build-web-profile.js
@@ -83,8 +85,9 @@ jobs:
             *) echo "tag $tag 与 package.json version $ver 不一致,先改版本再打 tag"; exit 1 ;;
           esac
 
+      # --legacy-peer-deps 原因同 profile job
       - name: 安装依赖
-        run: npm ci
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
 
       # profile 由独立 job 分发,DSH_SKIP_PROFILE=1 跳过 predist 重建(缺失会报错)
       - name: 构建 dmg(使用分发的 profile)
@@ -132,8 +135,9 @@ jobs:
             *) echo "tag $tag 与 package.json version $ver 不一致,先改版本再打 tag"; exit 1 ;;
           esac
 
+      # --legacy-peer-deps 原因同 profile job
       - name: 安装依赖
-        run: npm ci
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
 
       - name: 构建 Windows 安装包(nsis x64,使用分发的 profile)
         run: DSH_SKIP_PROFILE=1 npm run dist:win
