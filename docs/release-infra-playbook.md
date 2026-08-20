@@ -106,6 +106,7 @@ gh release upload "$TAG" dist/*.dmg --clobber
 | pnpm v11 ignored builds | CI corepack 默认拉最新 pnpm，v11 起 node-pty 构建脚本被忽略直接报错退出，profile 构建 5 秒即挂 | 两个 workflow 钉住 `corepack prepare pnpm@10.33.0 --activate` |
 | 通道抢占 latest | 数据通道 release 以正式身份晚于版本 release 发布，抢占 /releases/latest，整包更新摸到通道里的 latest.yml 404 | 通道 release 永远 `--prerelease`（见下节）|
 | 无 checkout 的 gh | 末尾 publish job 一行 `gh release edit` 直接挂："failed to run git: fatal: not a git repository"——gh 靠 git remote 推断目标仓库 | 不 checkout 的 job 里 gh 命令一律带 `--repo "$GITHUB_REPOSITORY"` |
+| 产物名两套规则 | electron-builder 磁盘产物保留空格（`DSH Buddy Setup 0.3.0.exe`），但 latest*.yml 里写的是空格→连字符的安全名；GitHub 资产上传又把空格转点号——三方错位，应用内更新下载 404（v0.3.0 实炸） | 上传前统一把 dist 产物改名为连字符形式，与 yml 清单对齐；已发布的 release 可用 API PATCH 资产名补救，不必重打包 |
 
 ## 附：插件热更通道（滚动 release）
 

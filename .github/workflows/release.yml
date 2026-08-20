@@ -110,13 +110,23 @@ jobs:
       - name: 构建 dmg(使用分发的 profile)
         run: DSH_SKIP_PROFILE=1 npm run dist
 
+      # electron-builder 在 latest*.yml 里写的是"空格→连字符"的安全文件名,
+      # 而 GitHub 资产上传会把空格转点号——两者错位导致应用内更新下载 404。
+      # 上传前把产物统一改成连字符名,与 yml 清单对齐(v0.3.0 实炸过一次)
+      - name: 产物文件名对齐 latest*.yml(空格→连字符)
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in *" "*; do mv -- "$f" "${f// /-}"; done
+
       # 草稿已由 profile job 创建,这里只上传;草稿对外不可见,无空窗
       - name: 上传 dmg 到草稿 Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release upload "$GITHUB_REF_NAME" dist/*.dmg --clobber
+          gh release upload "$GITHUB_REF_NAME" dist/*.dmg dist/latest-mac.yml --clobber
 
   windows:
     runs-on: windows-latest
@@ -154,6 +164,14 @@ jobs:
 
       - name: 构建 Windows 安装包(nsis x64,使用分发的 profile)
         run: DSH_SKIP_PROFILE=1 npm run dist:win
+
+      # 与 macos job 同理:产物名改成连字符,对齐 latest.yml 的安全文件名
+      - name: 产物文件名对齐 latest.yml(空格→连字符)
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in *" "*; do mv -- "$f" "${f// /-}"; done
 
       # 草稿已由 profile job 创建,这里只上传
       - name: 上传安装包到草稿 Release
