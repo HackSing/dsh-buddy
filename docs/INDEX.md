@@ -5,6 +5,7 @@
 ## 方法论
 
 - [开源项目发布基础设施三件套搭建指南](release-infra-playbook.md) — 状态：有效（方法论沉淀）；rc 追新值班 / tag 即发流水线 / 应用内更新提示的通用搭建方法与实战坑；关键符号：`dsh-compat.yml`、`release.yml`、`update-check`、`workflow_dispatch`
+- [DSH Buddy 更新体系全链路](update-mechanism.md) — 状态：有效（现行事实，2026-08-20 核对）；应用整包更新 / dsh 上游检测 / 插件 v2 增量热更三条链路的检测、下载、安装语义与实炸记录；关键符号：`checkPluginChannel`、`applyPluginUpdateV2`、`isPendingReleaseError`、`createUpdateOverlay`
 
 <!-- docs-harness:plans-index:start -->
 ## 任务方案
