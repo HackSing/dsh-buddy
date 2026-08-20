@@ -129,3 +129,78 @@ test('profile with extra packages is preserved, not overwritten', async (t) => {
   assert.deepEqual(result.extras, ['user-plugin']);
   assert.equal(readDeps(dshHome)['@a/plugin-one'], '0.2.2');
 });
+
+test('onProgress 逐块累计上报,total 取 content-length', async (t) => {
+  const { dshHome, downloadDir, update, fetchImpl } = scaffold(t, {
+    '@a/plugin-one': '0.3.0',
+    '@a/plugin-two': '0.2.0',
+  });
+  // 包一层假 fetch,补上 content-length 头
+  const withHeaders = async () => {
+    const res = await fetchImpl();
+    return { ...res, headers: new Map([['content-length', '1048576']]) };
+  };
+  const events = [];
+  const result = await applyPluginUpdate({
+    update,
+    dshHome,
+    profileName: PROFILE,
+    downloadDir,
+    fetchImpl: withHeaders,
+    onProgress: (p) => events.push(p),
+  });
+  assert.equal(result.outcome, PLUGIN_UPDATE_OUTCOME.installed);
+  assert.ok(events.length > 0);
+  // 累计递增且最后一个等于文件实际大小;total 恒定
+  for (let i = 1; i < events.length; i++) {
+    assert.ok(events[i].transferred >= events[i - 1].transferred);
+  }
+  assert.equal(events.at(-1).total, 1048576);
+  assert.ok(events.at(-1).transferred > 0);
+});
+
+test('prepareInstall 在下载完成后、安装前调用', async (t) => {
+  const { dshHome, downloadDir, update, fetchImpl } = scaffold(t, {
+    '@a/plugin-one': '0.3.0',
+    '@a/plugin-two': '0.2.0',
+  });
+  writeProfile(dshHome, { '@a/plugin-one': '0.2.2', '@a/plugin-two': '0.2.0' });
+  const order = [];
+  const result = await applyPluginUpdate({
+    update,
+    dshHome,
+    profileName: PROFILE,
+    downloadDir,
+    fetchImpl,
+    onProgress: () => order.push('download'),
+    prepareInstall: () => {
+      // 此刻 profile 必须还是旧版(安装尚未开始)
+      order.push('prepareInstall');
+      assert.equal(readDeps(dshHome)['@a/plugin-one'], '0.2.2');
+    },
+  });
+  assert.equal(result.outcome, PLUGIN_UPDATE_OUTCOME.upgraded);
+  assert.equal(order.at(-1), 'prepareInstall'); // 下载事件全部先于 prepareInstall
+  assert.ok(order.includes('download'));
+});
+
+test('下载失败时 prepareInstall 不被调用', async (t) => {
+  const { dshHome, downloadDir, update } = scaffold(t, {
+    '@a/plugin-one': '0.3.0',
+    '@a/plugin-two': '0.2.0',
+  });
+  let called = false;
+  const failingFetch = async () => ({ ok: false, status: 502 });
+  const result = await applyPluginUpdate({
+    update,
+    dshHome,
+    profileName: PROFILE,
+    downloadDir,
+    fetchImpl: failingFetch,
+    prepareInstall: () => {
+      called = true;
+    },
+  });
+  assert.equal(result.outcome, PLUGIN_UPDATE_OUTCOME.failed);
+  assert.equal(called, false);
+});

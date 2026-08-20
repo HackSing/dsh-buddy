@@ -67,3 +67,21 @@ test('locale:en 文案与未知 locale 回退 en', () => {
   const fr = overlayViewModel({ stage: OVERLAY_STAGE.error, locale: 'fr', errorMessage: 'boom' });
   assert.equal(fr.title, 'Update download failed');
 });
+
+test('subject=plugin:标题切换到插件文案', () => {
+  const model = overlayViewModel({ stage: OVERLAY_STAGE.downloading, subject: 'plugin', progress: { percent: 30 } });
+  assert.equal(model.title, '正在下载插件更新 30%');
+  const en = overlayViewModel({ stage: OVERLAY_STAGE.downloading, locale: 'en', subject: 'plugin', progress: { percent: 30 } });
+  assert.equal(en.title, 'Downloading plugin update 30%');
+});
+
+test('percent 缺省时由 transferred/total 推导(插件 tar 载荷)', () => {
+  const model = overlayViewModel({
+    stage: OVERLAY_STAGE.downloading,
+    subject: 'plugin',
+    progress: { transferred: 64 * 1024 * 1024, total: 128 * 1024 * 1024 },
+  });
+  assert.equal(model.percent, 50);
+  assert.equal(model.title, '正在下载插件更新 50%');
+  assert.equal(model.detail, '64.0 / 128.0 MB');
+});

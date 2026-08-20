@@ -229,7 +229,7 @@ async function ensureDsh() {
       ` cmd=${launcher.cmd} args=${JSON.stringify(launcher.args)}`
   );
 
-  dshProc = spawn(launcher.cmd, launcher.args, {
+  const proc = spawn(launcher.cmd, launcher.args, {
     // 捕获 stdout/stderr(由 dshLog 落盘 + 透传控制台),取代 'inherit':
     // 打包后的 GUI 应用无控制台,inherit 会丢弃 dsh 输出,启动失败时无从诊断。
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -239,10 +239,11 @@ async function ensureDsh() {
     // 独立进程组:dsh 自身还会派生子进程,退出时须整组回收
     detached: process.platform !== 'win32',
   });
+  dshProc = proc;
   dshLog = createDshLogger({ dir: path.join(app.getPath('userData'), 'logs') });
-  dshLog.attach(dshProc);
+  dshLog.attach(proc);
 
-  dshProc.on('error', (err) => {
+  proc.on('error', (err) => {
     showDshFailure(
       `无法启动 dsh(${launcher.cmd}):${err.message}\n` +
         (launcher.kind === 'embedded'
@@ -252,12 +253,13 @@ async function ensureDsh() {
     app.quit();
   });
 
-  dshProc.on('exit', (code) => {
-    dshProc = null;
-    if (!quitting) {
-      showDshFailure(`dsh 进程意外退出(code ${code})。`);
-      app.quit();
-    }
+  proc.on('exit', (code) => {
+    if (dshProc === proc) dshProc = null;
+    // expectedExit 挂在进程实例上(killDsh 置位):插件热更的"先停后装再重启"
+    // 属于预期内退出;绑定实例可避免标志泄漏到下一次 spawn 的新进程上。
+    if (quitting || proc.expectedExit) return;
+    showDshFailure(`dsh 进程意外退出(code ${code})。`);
+    app.quit();
   });
 
   const ready = await waitForServer(DSH_URL, launcher.timeoutMs);
@@ -323,7 +325,9 @@ async function checkUpdateManually() {
     const { outcome, detail } = await checkForUpdateManually({ isPackaged: app.isPackaged });
     if (outcome === AUTO_UPDATE_OUTCOME.downloading) {
       // 浮层立刻出现,不等首个 progress 事件;进度由 scheduleAutoUpdate 的常驻监听推送
-      if (win && win.updateOverlay) win.updateOverlay.showDownloading();
+      if (win && win.updateOverlay) {
+        win.updateOverlay.showDownloading({ subject: 'app', onRetry: checkUpdateManually });
+      }
       showCheckResult(`发现新版本 ${detail}`, '正在后台下载,左下角浮层会显示进度,完成后将提示安装。');
     } else if (outcome === AUTO_UPDATE_OUTCOME.upToDate) {
       showCheckResult('已是最新版本', `当前版本 ${app.getVersion()}。`);
@@ -369,29 +373,41 @@ async function notifyDshUpstream({ version }) {
   });
 }
 
-// 执行插件热更:壳托管的 dsh 先停后装再重启(运行中的 dsh 加载的是旧插件,
-// 且 Windows 上运行中的文件锁会挡住替换);复用的外部 dsh 不在此列——
+// 执行插件热更:下载+校验期间 dsh 照常服务(浮层显示进度);prepareInstall
+// 钩子把「停 dsh」压到安装前一刻(运行中的 dsh 加载的是旧插件,且 Windows
+// 上运行中的文件锁会挡住替换);装完无论成败都把 dsh 拉回来——preserved
+// (清单外插件,未覆盖)同样需要恢复服务。复用的外部 dsh 不在此列:
 // 只安装,生效与否由用户自行重启那个进程决定。
 // 安装成功后刷新窗口内容,让页面指向重启后的 dsh。
 async function runPluginInstall({ update, dshHome }) {
-  const restarting = dshProc !== null;
-  if (restarting) {
-    killDsh(); // killDsh 先把 dshProc 置空,exit 监听不会误报「意外退出」
-    if (dshLog) {
-      dshLog.close();
-      dshLog = null;
-    }
-  }
+  const overlay = win && win.updateOverlay ? win.updateOverlay : null; // 仅无边框窗口有浮层
+  if (overlay) overlay.showDownloading({ subject: 'plugin', onRetry: checkPluginUpdateManually });
+  let dshStopped = false;
   const result = await applyPluginUpdate({
     update,
     dshHome,
     profileName: preinstallManifest.profile,
     downloadDir: app.getPath('userData'),
+    onProgress: (progress) => overlay && overlay.setProgress(progress),
+    prepareInstall: () => {
+      dshStopped = dshProc !== null;
+      killDsh(); // killDsh 给进程实例打上 expectedExit,exit 监听据此放行预期内退出
+      if (dshLog) {
+        dshLog.close();
+        dshLog = null;
+      }
+    },
   });
   const succeeded =
     result.outcome === PLUGIN_UPDATE_OUTCOME.installed ||
     result.outcome === PLUGIN_UPDATE_OUTCOME.upgraded;
-  if (restarting && succeeded) {
+  if (overlay) {
+    // 下载失败:浮层转 error 态(带重试);其余结局(成功/preserved)浮层收场,
+    // 成功后的呈现由「dsh 重启+页面刷新」本身承担。
+    if (result.outcome === PLUGIN_UPDATE_OUTCOME.failed) overlay.reportError(result.detail);
+    else overlay.hide();
+  }
+  if (dshStopped) {
     const ok = await ensureDsh();
     if (ok && win) {
       if (typeof win.reloadContent === 'function') win.reloadContent(); // 无边框窗口
@@ -525,7 +541,8 @@ function scheduleUpdateCheck() {
         overlay()?.hide(); // 浮层生命周期到下载完成为止,之后由重启安装对话框接管
         notifyUpdateReady(info);
       },
-      onAvailable: () => overlay()?.showDownloading(),
+      onAvailable: () =>
+        overlay()?.showDownloading({ subject: 'app', onRetry: checkUpdateManually }),
       onProgress: (progress) => overlay()?.setProgress(progress),
       onError: (message) => overlay()?.reportError(message), // 仅下载已开始时生效
     });
@@ -557,7 +574,6 @@ function createWindow() {
       version: app.getVersion(),
       onCheckUpdate: checkUpdateManually,
       onCheckPluginUpdate: checkPluginUpdateManually,
-      onRetryUpdate: checkUpdateManually, // 浮层 error 态的重试 = 再来一次手动检查
     });
     win.on('closed', () => (win = null));
     return;
@@ -610,11 +626,14 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 // 退出时整组回收 dsh 进程树,不留孤儿(复用的外部服务不在此列:dshProc 为空)
+// expectedExit 必须先于 kill 置位:exit 事件异步到达,晚一步就会被
+// exit 监听误判为「意外退出」(插件热更重启链路实测踩过,code 1 + app.quit)。
 function killDsh() {
   if (!dshProc) return;
-  const pid = dshProc.pid;
+  const proc = dshProc;
+  proc.expectedExit = true;
   dshProc = null;
-  killProcessTree(pid);
+  killProcessTree(proc.pid);
 }
 
 app.on('before-quit', () => {
