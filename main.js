@@ -418,10 +418,17 @@ async function runPluginInstall({ update, dshHome }) {
   return result;
 }
 
-// 插件更新提示:列出变化;installable=false(channel 要求更高的内嵌 dsh)时
-// 只提示不安装。确认后走 runPluginInstall,结果三态各自呈现。
+// 插件更新提示:列出变化;v2 通道逐项带切片大小(MB),v1 整包大小下载时才知道,
+// 不带。installable=false(channel 要求更高的内嵌 dsh)时只提示不安装。
+// 确认后走 runPluginInstall,结果三态各自呈现。
 async function notifyPluginUpdate({ update, dshHome }) {
-  const lines = update.updates.map((u) => `${u.name}: ${u.from ?? '未安装'} → ${u.to}`);
+  const lines = update.updates.map((u) => {
+    const size =
+      u.tarball && Number.isInteger(u.tarball.size)
+        ? `,下载 ${(u.tarball.size / 1048576).toFixed(1)} MB`
+        : '';
+    return `${u.name}: ${u.from ?? '未安装'} → ${u.to}${size}`;
+  });
   if (!update.installable) {
     await dialog.showMessageBox({
       type: 'info',

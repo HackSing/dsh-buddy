@@ -127,6 +127,27 @@ test('parseChannelV2 accepts a valid v2 channel and rejects malformed ones', () 
   assert.equal(parseChannelV2({ ...VALID_CHANNEL_V2, minDshVersion: 'garbage' }), null);
 });
 
+test('checkPluginChannel: v2 channel → updates 逐项带切片 tarball,顶层带簿记', async (t) => {
+  const { profileDir, stateDir } = scaffold(t, {
+    '@a/plugin-one': '0.2.2',
+    '@a/plugin-two': '0.2.0',
+  });
+  const result = await checkPluginChannel({
+    profileDir,
+    stateDir,
+    currentDshVersion: '0.1.0-rc.7',
+    notify: async () => {},
+    fetchImpl: fakeFetch({ channel: VALID_CHANNEL_V2 }),
+  });
+  assert.equal(result.outcome, CHANNEL_OUTCOME.notified);
+  assert.equal(result.update.schema, CHANNEL_SCHEMA_V2);
+  assert.deepEqual(result.update.updates, [
+    { name: '@a/plugin-one', from: '0.2.2', to: '0.3.0', tarball: VALID_CHANNEL_V2.packages[0].tarball },
+  ]);
+  assert.equal(result.update.bookkeeping, VALID_CHANNEL_V2.bookkeeping);
+  assert.equal(result.update.installable, true);
+});
+
 test('diffChannelVersions lists only strictly newer channel packages', () => {
   const local = { '@a/plugin-one': '0.2.2', '@a/plugin-two': '0.2.0' };
   assert.deepEqual(diffChannelVersions(VALID_CHANNEL.packages, local), [
