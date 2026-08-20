@@ -31,19 +31,6 @@ const { applyBrowsePicker } = require('../lib/browse-picker-patch');
 // skin-center 在其本机跑不起来——本仓不发 linux,该场景不在支持面内。
 const SUPPORTED_ARCHITECTURES = { os: ['win32', 'darwin'], cpu: ['x64', 'arm64'] };
 
-// CI artifact 分发:profile 产物由独立 job 构建后经 download-artifact 落到
-// build/web-profile.tar.gz,消费方(macos/windows dist job)以 DSH_SKIP_PROFILE=1
-// 跳过本步,避免重复构建与平台差异。tar 缺失时直接报错退出,防止 CI 漏拉
-// artifact 后静默产出无 profile 的安装包。
-if (process.env.DSH_SKIP_PROFILE === '1') {
-  if (fs.existsSync(OUTPUT_PATH)) {
-    console.log(`[build-web-profile] DSH_SKIP_PROFILE=1, tar exists, skip: ${OUTPUT_PATH}`);
-    process.exit(0);
-  }
-  console.error(`[build-web-profile] DSH_SKIP_PROFILE=1 but ${OUTPUT_PATH} missing (CI download-artifact 漏拉?); refusing to build`);
-  process.exit(1);
-}
-
 // 本脚本自身就运行在 Node 里,用同一个运行时(process.execPath)拉起 dsh 即可:
 // 跨平台一致(Windows 上没有 .bin/electron 这个 POSIX 路径),也少一层间接。
 function dshPlugin(dshHome, profile, args) {
@@ -63,35 +50,38 @@ function pinSupportedArchitectures(profileDir) {
   fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
 }
 
-function main() {
-  const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
-  const specs = manifest.packages.map((p) => `${p.name}@${p.version}`);
-  if (specs.length === 0) throw new Error('preinstall-manifest packages is empty');
+// 预装链路主体:临时 DSH_HOME 初始化 → dsh plugin add 钉版安装 → 跨平台分包补齐 →
+// 产物验证 → 打 tar。抽成导出函数供 scripts/build-plugin-channel.js 复用
+// (插件热更的发布侧产物与随包 tar 同构,链路只有一条)。
+// packages 形如 [{ name, version }];任何一步失败即抛错,不产出半成品。
+function buildWebProfileTar({ profileName, packages, outputPath, applyPickerPatch = false }) {
+  const specs = packages.map((p) => `${p.name}@${p.version}`);
+  if (specs.length === 0) throw new Error('packages is empty');
 
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-buddy-profile-'));
   try {
     // 初始化 + 安装:dsh plugin 子命令对空 HOME 会自动初始化 profile(已实证)
-    dshPlugin(home, manifest.profile, ['add', ...specs]);
+    dshPlugin(home, profileName, ['add', ...specs]);
 
-    const profileDir = path.join(home, 'profiles', manifest.profile);
+    const profileDir = path.join(home, 'profiles', profileName);
     // add 已按构建机平台装了一遍;补上跨平台声明后再 install 一次拉齐其余平台分包
     pinSupportedArchitectures(profileDir);
-    dshPlugin(home, manifest.profile, ['install']);
+    dshPlugin(home, profileName, ['install']);
 
-    for (const p of manifest.packages) {
+    for (const p of packages) {
       const dir = path.join(profileDir, 'node_modules', ...p.name.split('/'));
       if (!fs.existsSync(dir)) throw new Error(`installed package missing: ${p.name}`);
     }
 
     // 降级出包:把目录选择钉在 browse 交互上,随包 profile 自带该 patch 层。
     // 只在原生对话框那条路走不通时使用(见 scripts/patch-dsh-picker.js 的失败提示),
-    // 因此是显式 env 开关而非默认。
-    if (process.env.DSH_PICKER_BROWSE === '1') {
+    // 因此是显式开关而非默认。
+    if (applyPickerPatch) {
       console.log(`[build-web-profile] browse picker: ${applyBrowsePicker(profileDir)}`);
     }
 
-    fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
-    fs.rmSync(OUTPUT_PATH, { force: true });
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    fs.rmSync(outputPath, { force: true });
     // tar 顶层目录名必须等于 profile 名(解包器按 staging/<profileName> rename)。
     // Windows 上 pnpm 用 junction 布局(Node 视为 symlink,linkname 为指向 store
     // 的绝对路径),系统 tar 打包后链接失真、终端解包还需符号链接特权;先
@@ -100,7 +90,7 @@ function main() {
     let tarCwd;
     if (process.platform === 'win32') {
       const materialized = path.join(home, 'materialized');
-      fs.cpSync(profileDir, path.join(materialized, manifest.profile), {
+      fs.cpSync(profileDir, path.join(materialized, profileName), {
         recursive: true,
         dereference: true,
       });
@@ -112,11 +102,36 @@ function main() {
     // 不依赖系统 tar:Git Bash 环境的 GNU tar 会把 D:\ 盘符当远程主机
     // ("Cannot connect to D")导致打包失败;bsdtar 只在部分环境可用。
     // follow 默认 false:POSIX 符号链接保留为链接条目,硬链接落地实体。
-    tar.c({ file: OUTPUT_PATH, cwd: tarCwd, gzip: true, sync: true }, [manifest.profile]);
-    console.log(`[build-web-profile] wrote ${OUTPUT_PATH} (platform=${process.platform})`);
+    tar.c({ file: outputPath, cwd: tarCwd, gzip: true, sync: true }, [profileName]);
+    console.log(`[build-web-profile] wrote ${outputPath} (platform=${process.platform})`);
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
   }
 }
 
-main();
+function main() {
+  // CI artifact 分发:profile 产物由独立 job 构建后经 download-artifact 落到
+  // build/web-profile.tar.gz,消费方(macos/windows dist job)以 DSH_SKIP_PROFILE=1
+  // 跳过本步,避免重复构建与平台差异。tar 缺失时直接报错退出,防止 CI 漏拉
+  // artifact 后静默产出无 profile 的安装包。
+  if (process.env.DSH_SKIP_PROFILE === '1') {
+    if (fs.existsSync(OUTPUT_PATH)) {
+      console.log(`[build-web-profile] DSH_SKIP_PROFILE=1, tar exists, skip: ${OUTPUT_PATH}`);
+      process.exit(0);
+    }
+    console.error(`[build-web-profile] DSH_SKIP_PROFILE=1 but ${OUTPUT_PATH} missing (CI download-artifact 漏拉?); refusing to build`);
+    process.exit(1);
+  }
+
+  const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
+  buildWebProfileTar({
+    profileName: manifest.profile,
+    packages: manifest.packages,
+    outputPath: OUTPUT_PATH,
+    applyPickerPatch: process.env.DSH_PICKER_BROWSE === '1',
+  });
+}
+
+if (require.main === module) main();
+
+module.exports = { buildWebProfileTar };

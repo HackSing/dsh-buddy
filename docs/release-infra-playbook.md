@@ -103,6 +103,28 @@ gh release upload "$TAG" dist/*.dmg --clobber
 | cron 首跑幻觉 | 上游没有新版本时，值班工作流只走"版本相同→跳过"的快路径，绿色≠完整链路验证过 | 用 workflow_dispatch + 已知旧版本号强制跑一次完整验证 |
 | tag 漂移 | tag 与 manifest 版本不一致，产物命名错乱 | 版本守卫，构建前快速失败 |
 
+## 附：插件热更通道（滚动 release）
+
+dsh 本体更新必须走整包发版（件一→件二→件三），但预装插件（`plugins/preinstall-manifest.json` 那批）不必——它们住在用户目录的 `DSH_HOME/profiles` 里，可以运行时替换。本仓的实现是第四条链：
+
+```
+插件上游发新版 ──→ node scripts/build-plugin-channel.js
+                      按 registry latest 重建成品 tar + plugin-channel.json
+                      gh release upload plugin-channel … --clobber   # 滚动 tag 覆盖
+                              │
+用户侧 ──────────────→ 客户端节流检测 channel JSON
+                      → 弹窗确认 → 停 dsh → 下载校验 sha256
+                      → installBundledProfile 替换 profile → 重启 dsh
+```
+
+设计要点（与三件套同一套哲学）：
+
+1. **channel JSON 是「能下到什么」的唯一真源**，不是 npm registry——registry 有新版到发布侧出包之间有空窗，客户端只信 channel 就不会提示一个下不到的更新；
+2. **更新物以成品 tar 分发，不在用户机上跑 pnpm**：内嵌 dsh 不带 pnpm，且随包 tar 解出的 profile 其 pnpm 维护通道在终端机上是坏的（virtualStoreDir 漂移）——构建侧复用 [build-web-profile.js](../scripts/build-web-profile.js) 的同一条链路，安装侧复用 [bundled-profile.js](../lib/bundled-profile.js) 的备份/回滚；
+3. **滚动 release 用固定 tag**（本仓为 `plugin-channel`），asset 名恒定、`--clobber` 覆盖，客户端 URL 永不变；发错了把 channel JSON 改回旧版本集合，客户端下个节流窗口自然收敛；
+4. **`minDshVersion` 门槛**：插件可能依赖新 dsh 的能力（如 rc.7 的 keyed slot），channel 声明所需下限，客户端内嵌 dsh 不够新时只提示不安装；
+5. **升级判定带方向**：本地 profile 版本领先于随包清单时不得回滚（热更的成果不能被下次启动的旧安装包抹掉），见 `profileUpgradeDecision`。
+
 ## 成本
 
 公开仓库的 GitHub Actions 免费（含 macOS/Windows runner）。CI 全用 runner 自带工具（`gh`、`npm`），零第三方 action；本机 Windows 打包入口是 `scripts/dist-win.bat`（清 IDE 注入的环境变量 + 输出目录锁预检），tar 操作用项目已依赖的 node-tar，不依赖系统 tar。

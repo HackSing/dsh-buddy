@@ -148,9 +148,31 @@ function stepInstall(ctx) {
     path.join(ctx.workspace, 'package.json'),
     `${JSON.stringify({ name: 'dsh-compat-probe', version: '0.0.0', private: true }, null, 2)}\n`
   );
-  const log = npm(['install', '--no-audit', '--no-fund', `${DSH_PKG}@${ctx.version}`], {
-    cwd: ctx.workspace,
-  });
+  // --legacy-peer-deps:npm 11 的严格 peer 解析在 dsh 这棵 500+ 包的树上会陷入
+  // 病态回溯(2026-08-20 实测:npm 11.12.1 / win32,15 分钟 CPU 打满仍停在解析阶段,
+  // 加此旗标 35s 装完 429 包)。代价是 peer 不再自动安装,而 dsh 树里有一批包
+  // 只以 peer 形态被引用(dsh-app-boot 的 cordis-plugin-group、dsh-agent-presets
+  // 的 dsh-scope 等)——仓库 dependencies 里那 19 个 @deepseek-ai 显式 pin 正是
+  // 为此存在,探针安装时整组同步带上,与发布物保持同源,缺一个就在这里红灯。
+  const repoDeps = JSON.parse(
+    fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')
+  ).dependencies;
+  const extras = Object.entries(repoDeps)
+    .filter(([name]) => name.startsWith('@deepseek-ai/') && name !== DSH_PKG)
+    .map(([name, version]) => `${name}@${version}`);
+  const log = npm(
+    [
+      'install',
+      '--no-audit',
+      '--no-fund',
+      '--legacy-peer-deps',
+      `${DSH_PKG}@${ctx.version}`,
+      ...extras,
+    ],
+    {
+      cwd: ctx.workspace,
+    }
+  );
   const pkgDir = path.join(ctx.workspace, 'node_modules', ...DSH_PKG.split('/'));
   const entry = binEntryFrom(pkgDir);
   if (!entry) throw stepError(`装包成功但无法从 ${pkgDir} 的 bin 字段解析出入口文件`, log);
@@ -290,7 +312,14 @@ async function main() {
   try {
     results = await runSteps(ctx);
   } finally {
-    fs.rmSync(root, { recursive: true, force: true });
+    // 清理失败不得吞掉验证结论:Windows 上 rm 会撞文件锁(dsh 子进程未退净、
+    // Defender 正在扫描),此前 finally 里的 rm 抛错会直接杀死 main,报告丢失,
+    // 验证结果归零——2026-08-20 连续两轮实测踩中。加有限重试,仍失败则留现场。
+    try {
+      fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
+    } catch (err) {
+      console.error(`[verify-dsh-compat] 临时目录清理失败,现场保留在 ${root}: ${err.message}`);
+    }
   }
 
   const { markdown, summary } = renderReport(ctx, results);

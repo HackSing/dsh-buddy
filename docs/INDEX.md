@@ -20,6 +20,7 @@
 - [Anchored Standard 预设：锚定后开放 prompt section 与插件工具发现](plans/anchored-phased-prompt.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-18 核对）；关键符号：`createEpochPromotion`、`sealSectionsUntilPromotion`、`UNLOCKABLE_INDEX`、`installBundledPresets`
 - [预装 dsh-better-sidebar:内嵌 dsh 升 rc.7 与 profile 二进制断言白名单化](plans/better-sidebar-preinstall.md) — 状态：有效（实施中）；关键符号：`verify-profile-tar`、`dsh-better-sidebar`、`DSH_VERSION`、`prebuilds`
 - [存量 profile 随包升级：幂等跳过改为版本比对后的备份替换](plans/existing-profile-upgrade.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-19 核对）；关键符号：`installBundledProfile`、`preinstall-manifest`、`profileUpgradeDecision`、`dsh.profile.bundles`
+- [dsh 上游与预装插件的运行时更新通道](plans/dsh-upstream-update-channel.md) — 状态：有效（实施中）；关键符号：`profileUpgradeDecision`、`installBundledProfile`、`checkPluginChannel`、`plugin-channel.json`
 <!-- docs-harness:plans-index:end -->
 
 <!-- docs-harness:knowledge-index:start -->
@@ -33,6 +34,7 @@
 - [Electron 当 Node 跑内嵌 dsh 的原生能力边界：external buffer 被禁](knowledge/electron-external-buffer-limit.md) — 状态：有效（现行事实）；关键符号：`readUtf16`、`patch-dsh-picker`、`DSH_PICKER_BROWSE`、`browse-picker-patch`
 - [complete persona 压制插件 prompt section 的根因与相位化密封方案](knowledge/anchored-complete-persona.md) — 状态：有效（现行事实）；关键符号：`sealSectionsUntilPromotion`、`extraIndex`、`installBundledPresets`、`complete`
 - [预装插件存量缺口与 CI 安装位污染](knowledge/preinstall-existing-user-gap.md) — 状态：有效（现行事实）；关键符号：`installBundledProfile`、`preinstall-manifest`、`virtualStoreDir`、`healProfilesModuleFallback`
+- [插件热更通道:滚动 release channel + 成品 tar 分发,运行时复用 bundled-profile 安装链路](knowledge/plugin-channel-hot-update.md) — 状态：有效（现行事实）；关键符号：`checkPluginChannel`、`applyPluginUpdate`、`plugin-channel.json`、`profileUpgradeDecision`
 <!-- docs-harness:knowledge-index:end -->
 
 <!-- docs-harness:acceptance-index:start -->
@@ -49,6 +51,7 @@
 - [Anchored 预设相位化开放 prompt section 与插件发现的验收](acceptance/anchored-phased-prompt.md) — 状态：已验收-仅追溯；关键符号：`sealSectionsUntilPromotion`、`extraIndex`、`installBundledPresets`、`createEpochPromotion`
 - [better-sidebar 预装与 rc.7 升级验收](acceptance/better-sidebar-preinstall.md) — 状态：有效（待验收）；关键符号：`verify-profile-tar`、`dsh-better-sidebar`、`DSH_VERSION`、`prebuilds`
 - [存量 profile 随包升级验收：四态判定 + 端到端旧 profile 升级](acceptance/existing-profile-upgrade.md) — 状态：已验收-仅追溯；关键符号：`installBundledProfile`、`profileUpgradeDecision`
+- [dsh 上游与预装插件的运行时更新通道验收](acceptance/dsh-upstream-update-channel.md) — 状态：有效（待验收）；关键符号：`profileUpgradeDecision`、`installBundledProfile`、`checkPluginChannel`、`plugin-channel.json`
 <!-- docs-harness:acceptance-index:end -->
 
 <!-- docs-harness:adr-index:start -->

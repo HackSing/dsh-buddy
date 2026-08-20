@@ -1,0 +1,38 @@
+> 状态：有效（现行事实）
+<!-- docs-harness:knowledge-document/v1 -->
+
+# 插件热更通道:滚动 release channel + 成品 tar 分发,运行时复用 bundled-profile 安装链路
+
+- 修订：1
+- 关键符号：`checkPluginChannel`、`applyPluginUpdate`、`plugin-channel.json`、`profileUpgradeDecision`
+- 资产指纹：`sha256:6fe968f78346d56fb4c8459b3b3cf8bdd52fa2ff9304ee51ecf39156f5a53150`
+
+## 摘要
+
+预装插件的运行时热更以 GitHub 滚动 release(tag plugin-channel)的 plugin-channel.json 为唯一真源,客户端节流检测→弹窗确认→停 dsh→下载 sha256 校验→installBundledProfile 替换→重启 dsh;profileUpgradeDecision 比较带方向,本地领先不被随包旧清单回滚(2026-08-20 L3 验收通过)
+
+## 事实
+
+### `channel.rolling-release-source`
+
+plugin-channel.json(滚动 release 固定 tag plugin-channel 的 asset)是「可下载更新」的唯一真源:含 packages 版本集合+tarball.url+sha256+minDshVersion,schema 为 dsh-buddy/plugin-channel/v1;npm registry 只用于 dsh 本体 dist-tags 提示层,客户端不拿 registry 当插件更新依据,避免「上游已发版但发布侧未出包」的空窗
+
+证据：`lib/plugin-channel.js`、`scripts/build-plugin-channel.js`
+
+### `channel.no-user-pnpm`
+
+热更安装不在用户机上跑 dsh plugin add:内嵌 dsh 不带 pnpm 且随包 profile 的 pnpm 维护通道已坏(virtualStoreDir 漂移),更新物为成品 tar,由 build-plugin-channel.js 复用 build-web-profile.js 链路构建,客户端经 lib/plugin-update.js 下载(sha256 强校验,staging+rename)后调 installBundledProfile 安装,全程复用随包 profile 的备份/回滚路径
+
+证据：`lib/plugin-update.js`、`scripts/build-plugin-channel.js`、`lib/bundled-profile.js`
+
+### `channel.directional-decision`
+
+profileUpgradeDecision 的版本比较带方向:profile 中全部清单包版本 ≥ manifest 即 up-to-date(运行时热更领先于随包清单时不得回滚),仅落后/缺包/版本不可解析才 upgrade;dsh 本体全是 0.1.0-rc.N 形态,update-check 的 parseVersion 会丢弃 rc 后缀,本体比较须用 plugin-channel.js 的 compareRelease(预发布感知)
+
+证据：`lib/bundled-profile.js`、`lib/plugin-channel.js`、`lib/update-check.js`
+
+### `channel.main-wiring`
+
+main.js 接线:schedulePluginChannelCheck 在 createWindow 后与 scheduleUpdateCheck 并列(不进启动链),菜单「检查插件更新」走 frameless-window 的 help:check-plugin-update 动作;确认更新后 runPluginInstall 先 killDsh 再装再 ensureDsh 重启并刷新窗口(无边框窗用 win.reloadContent,macOS 用 win.loadURL);channel 的 minDshVersion 高于内嵌 DSH_VERSION 时只提示不安装
+
+证据：`main.js`、`lib/frameless-window.js`

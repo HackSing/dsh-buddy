@@ -1,0 +1,166 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "dsh 上游与预装插件的运行时更新通道验收",
+  "key_symbols": [
+    "profileUpgradeDecision",
+    "installBundledProfile",
+    "checkPluginChannel",
+    "plugin-channel.json"
+  ],
+  "objective": "验证插件热更通道全链路：检测→确认→下载校验→安装→备份→dsh 重启生效；热更结果不被随包旧 manifest 回滚；损坏包不污染现有 profile；失败不阻断 dsh 启动。",
+  "plan_ref": "docs/plans/dsh-upstream-update-channel.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "纯逻辑单测全绿：profileUpgradeDecision 方向性四分支、channel JSON 解析与版本比对、sha256 校验失败路径",
+      "acceptance_type": "contract_check",
+      "layer": "L1",
+      "evidence_layer": null,
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260820T050509-e98bdcb7a5",
+          "objective_fingerprint": "sha256:59df0c8cbbb3ee30a9f16257f8eeb50678b5b7f0193b9a64d62f9f66e5e5deef",
+          "acceptance_type": "contract_check",
+          "status": "passed",
+          "layer": "L1",
+          "evidence_layer": null,
+          "method": "node --test 全量(279 通过/0 失败),覆盖 profileUpgradeDecision 方向性四分支(test/bundled-profile.test.mjs 8 例)、channel JSON 解析/版本比对/rc 预发布比较/节流与通知一次语义(test/plugin-channel.test.mjs 10 例)、下载 sha256 校验失败不污染现有 profile/备份回滚(test/plugin-update.test.mjs 5 例)",
+          "evidence_refs": [
+            "build/test-output-batch1-3.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-20T05:05:09+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "端到端热更流程：本地静态服务器挂真 channel JSON 与新版 tar，驱动检测→下载→安装，断言 profile 版本更新、旧目录备份存在、dsh 启动探测 HTTP 200",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260820T052439-002bb914cc",
+          "objective_fingerprint": "sha256:59df0c8cbbb3ee30a9f16257f8eeb50678b5b7f0193b9a64d62f9f66e5e5deef",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "build/acceptance-runtime.mjs 真实流程：随包 web-profile.tar.gz 装入临时 DSH_HOME → 构造版本抬升的新 tar → 本地 http 服务器挂 plugin-channel.json + tar → checkPluginChannel 真实 HTTP 检测(notified, 8 包更新) → applyPluginUpdate 下载安装(upgraded, 旧目录备份存在, deps 已抬升) → 以更新后 profile 真启动 dsh 探测 HTTP <500",
+          "evidence_refs": [
+            "build/acceptance-runtime.log"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-20T05:24:39+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "回滚免疫与损坏包防护：热更后模拟随包旧 manifest 启动不替换 profile；sha256 不符的包不触碰现有 profile 且错误可见",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260820T052439-ea502281bb",
+          "objective_fingerprint": "sha256:59df0c8cbbb3ee30a9f16257f8eeb50678b5b7f0193b9a64d62f9f66e5e5deef",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "build/acceptance-runtime.mjs step 6-7:热更后用随包旧 manifest 再次 installBundledProfile 返回 up-to-date 不替换(回滚免疫);sha256 全零的损坏包 applyPluginUpdate 返回 failed 且 profile deps 原样不变",
+          "evidence_refs": [
+            "build/acceptance-runtime.log"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-20T05:24:39+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "真实发布通道：GitHub 滚动 release 上传 channel 与 tar，客户端真拉取完成一次热更，由用户确认",
+      "acceptance_type": "user_acceptance",
+      "layer": "L5",
+      "evidence_layer": null,
+      "status": "pending",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260820T052539-6d410bebb1",
+          "objective_fingerprint": "sha256:59df0c8cbbb3ee30a9f16257f8eeb50678b5b7f0193b9a64d62f9f66e5e5deef",
+          "acceptance_type": "user_acceptance",
+          "status": "user_pending",
+          "layer": "L5",
+          "evidence_layer": null,
+          "method": null,
+          "evidence_refs": [],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-20T05:25:39+00:00",
+          "user_handoff": {
+            "automatically_verified": [
+              "L1 单测 279 全绿",
+              "L3 本地运行时全链路通过(检测/安装/备份/dsh HTTP 200/回滚免疫/损坏包防护)"
+            ],
+            "user_checks": [
+              "GitHub 滚动 release plugin-channel 上传后客户端能检测到并提示",
+              "真实热更后 dsh 内插件功能正常"
+            ],
+            "steps": [
+              "运行 node scripts/build-plugin-channel.js 生成 build/plugin-channel/ 产物",
+              "按脚本结尾提示用 gh release create/upload 发布到滚动 tag plugin-channel",
+              "用开发态或打包态应用触发菜单「检查插件更新」,确认检测与安装提示出现",
+              "确认热更完成后 dsh 内插件可用"
+            ],
+            "environment_ready": true
+          }
+        }
+      ]
+    }
+  ],
+  "status": "pending",
+  "revision": 5,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:438779519c894b64a87c5482d21ca95427b08453182e8ccc1e10b64bd953b1c2",
+      "updated_at": "2026-08-20T04:48:22+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:543eee7c533f98fe0a6dc127eecc0481973de35dd77d3a2b39508d8ff540806b",
+      "updated_at": "2026-08-20T05:05:09+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:24c8a8ce0a0df631bef4d5933f5f77de244cd37fee8b7a22e06779cdf6da0b30",
+      "updated_at": "2026-08-20T05:24:39+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:f3a388edf4eb291aadaa06d37c5f0b2f1ea865701366babe1022f10f5f88f13b",
+      "updated_at": "2026-08-20T05:24:39+00:00"
+    }
+  ],
+  "created_at": "2026-08-20T04:48:22+00:00",
+  "updated_at": "2026-08-20T05:25:39+00:00",
+  "settled_at": null,
+  "asset_fingerprint": "sha256:721cdf1191e3b20786a4ab52af3f34c4e7ff8414b0a958df4d587a607cfa904f"
+}

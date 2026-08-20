@@ -11,6 +11,8 @@ const { probeHttp, waitForHttp } = require('./lib/http-probe');
 const { killProcessTree } = require('./lib/process-tree');
 const { createDshLogger } = require('./lib/dsh-log');
 const { checkForUpdate, UPDATE_OUTCOME, RELEASES_PAGE_URL } = require('./lib/update-check');
+const { checkPluginChannel, CHANNEL_OUTCOME } = require('./lib/plugin-channel');
+const { applyPluginUpdate, PLUGIN_UPDATE_OUTCOME } = require('./lib/plugin-update');
 const {
   AUTO_UPDATE_OUTCOME,
   isAutoUpdateSupported,
@@ -24,7 +26,7 @@ const preinstallManifest = require('./plugins/preinstall-manifest.json');
 // 默认走「内嵌 dsh」:用 Electron 自带的 Node 运行时执行随包分发的 dsh,用户机器无需 Node。
 // 参考 https://github.com/deepseek-ai/deepseek-harness#run
 const DSH_PKG = '@deepseek-ai/dsh';
-const DSH_VERSION = '0.1.0-rc.7'; // 与 package.json dependencies 保持一致(dsh 仍是 developer preview)
+const DSH_VERSION = '0.1.0-rc.8'; // 与 package.json dependencies 保持一致(dsh 仍是 developer preview)
 const DSH_URL = process.env.DSH_URL || 'http://127.0.0.1:3080';
 // ----------------
 
@@ -348,6 +350,164 @@ async function checkUpdateManually() {
   }
 }
 
+// ---- 插件热更与 dsh 上游检测 ----
+
+// dsh 上游(本体)发新版的信息提示:本体获取走应用整包更新通道,
+// 这里只负责让用户知道「有新东西在路上」,每个版本只提示一次(由检测层记账)。
+async function notifyDshUpstream({ version }) {
+  await dialog.showMessageBox({
+    type: 'info',
+    title: 'DSH Buddy',
+    message: `dsh 上游已发布新版本 ${version}`,
+    detail:
+      `当前内嵌 dsh ${DSH_VERSION}。\n` +
+      'DSH Buddy 完成适配后会通过应用更新推送,届时按提示重启安装即可。',
+    buttons: ['OK'],
+    noLink: true,
+  });
+}
+
+// 执行插件热更:壳托管的 dsh 先停后装再重启(运行中的 dsh 加载的是旧插件,
+// 且 Windows 上运行中的文件锁会挡住替换);复用的外部 dsh 不在此列——
+// 只安装,生效与否由用户自行重启那个进程决定。
+// 安装成功后刷新窗口内容,让页面指向重启后的 dsh。
+async function runPluginInstall({ update, dshHome }) {
+  const restarting = dshProc !== null;
+  if (restarting) {
+    killDsh(); // killDsh 先把 dshProc 置空,exit 监听不会误报「意外退出」
+    if (dshLog) {
+      dshLog.close();
+      dshLog = null;
+    }
+  }
+  const result = await applyPluginUpdate({
+    update,
+    dshHome,
+    profileName: preinstallManifest.profile,
+    downloadDir: app.getPath('userData'),
+  });
+  const succeeded =
+    result.outcome === PLUGIN_UPDATE_OUTCOME.installed ||
+    result.outcome === PLUGIN_UPDATE_OUTCOME.upgraded;
+  if (restarting && succeeded) {
+    const ok = await ensureDsh();
+    if (ok && win) {
+      if (typeof win.reloadContent === 'function') win.reloadContent(); // 无边框窗口
+      else win.loadURL(DSH_URL); // macOS BrowserWindow
+    }
+  }
+  return result;
+}
+
+// 插件更新提示:列出变化;installable=false(channel 要求更高的内嵌 dsh)时
+// 只提示不安装。确认后走 runPluginInstall,结果三态各自呈现。
+async function notifyPluginUpdate({ update, dshHome }) {
+  const lines = update.updates.map((u) => `${u.name}: ${u.from ?? '未安装'} → ${u.to}`);
+  if (!update.installable) {
+    await dialog.showMessageBox({
+      type: 'info',
+      title: 'DSH Buddy',
+      message: '内置插件有更新',
+      detail:
+        `${lines.join('\n')}\n\n` +
+        `这批插件要求 dsh ${update.minDshVersion} 及以上,请先更新 DSH Buddy 应用本体后再接收插件更新。`,
+      buttons: ['OK'],
+      noLink: true,
+    });
+    return;
+  }
+  const { response } = await dialog.showMessageBox({
+    type: 'info',
+    title: 'DSH Buddy',
+    message: `内置插件有 ${update.updates.length} 项更新`,
+    detail: `${lines.join('\n')}\n\n现在更新?dsh 将短暂重启,无需重装应用。`,
+    buttons: ['立即更新', '稍后'],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  });
+  if (response !== 0) return;
+  const result = await runPluginInstall({ update, dshHome });
+  console.log(
+    `[dsh-buddy] plugin update: ${result.outcome}` +
+      (result.detail ? ` (${result.detail})` : '') +
+      (result.backup ? ` (旧版备份于 profiles/${result.backup})` : '')
+  );
+  if (result.outcome === PLUGIN_UPDATE_OUTCOME.failed) {
+    dialog.showMessageBox({
+      type: 'error',
+      title: 'DSH Buddy',
+      message: '插件更新失败',
+      detail: `${result.detail}\n\n现有插件未受影响,可稍后重试。`,
+      buttons: ['OK'],
+      noLink: true,
+    });
+  } else if (result.outcome === PLUGIN_UPDATE_OUTCOME.preserved) {
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'DSH Buddy',
+      message: '插件更新已跳过:当前 profile 存在清单外的插件,已保留原样未覆盖。',
+      detail: (result.extras || []).join('\n'),
+      buttons: ['OK'],
+      noLink: true,
+    });
+  }
+}
+
+// 共用的 channel 调用参数(检测层不感知 electron,边界集中在这一处)。
+function pluginChannelArgs() {
+  const dshHome = defaultDshHome(process.env, os.homedir());
+  return {
+    profileDir: path.join(dshHome, 'profiles', preinstallManifest.profile),
+    stateDir: app.getPath('userData'),
+    currentDshVersion: DSH_VERSION,
+    dshHome,
+  };
+}
+
+// 启动后的插件 channel 检查:与 scheduleUpdateCheck 同一哲学——不进启动链,
+// 离线/超时/节流都由检测层折叠为具名 outcome,这里只落一行日志。
+// 确认更新后停 dsh→装→重启,与手动入口共用 notifyPluginUpdate 一条路径。
+function schedulePluginChannelCheck() {
+  const { dshHome, ...args } = pluginChannelArgs();
+  checkPluginChannel({
+    ...args,
+    notify: ({ update }) => notifyPluginUpdate({ update, dshHome }),
+  })
+    .then(({ outcome, detail, dshCore }) => {
+      console.log(`[dsh-buddy] plugin channel: ${outcome}${detail ? ` (${detail})` : ''}`);
+      if (dshCore && dshCore.outcome === 'update-available' && !dshCore.alreadyNotified) {
+        return notifyDshUpstream({ version: dshCore.latest });
+      }
+      return undefined;
+    })
+    .catch((err) => {
+      console.log(`[dsh-buddy] plugin channel skipped: ${err.message}`);
+    });
+}
+
+// 菜单「检查插件更新」:显式用户意图,绕过节流;已提示过的更新在用户
+// 显式点击时再提示一次(与 checkUpdateManually 的 alreadyNotified 处理一致)。
+async function checkPluginUpdateManually() {
+  const { dshHome, ...args } = pluginChannelArgs();
+  try {
+    const { outcome, detail, update } = await checkPluginChannel({
+      ...args,
+      notify: ({ update: u }) => notifyPluginUpdate({ update: u, dshHome }),
+      force: true,
+    });
+    if (outcome === CHANNEL_OUTCOME.upToDate) {
+      showCheckResult('插件已是最新', '内置插件与发布通道一致。');
+    } else if (outcome === CHANNEL_OUTCOME.alreadyNotified && update) {
+      await notifyPluginUpdate({ update, dshHome });
+    } else if (outcome !== CHANNEL_OUTCOME.notified) {
+      showCheckResult('检查插件更新失败', `网络或服务不可用(${detail || outcome}),请稍后重试。`);
+    }
+  } catch (err) {
+    showCheckResult('检查插件更新失败', `${err.message},请稍后重试。`);
+  }
+}
+
 // 启动后的更新检查:刻意不 await,不进启动链,也不因失败影响任何既有流程。
 // 平台分流:Windows 打包态走应用内自动更新(后台下载,就绪后提示重启安装);
 // 其余走提示式通道——节流跳过、仓库还没发过 release、离线/超时/限流都是可预期状态,
@@ -387,6 +547,7 @@ function createWindow() {
       dshUrl: DSH_URL,
       version: app.getVersion(),
       onCheckUpdate: checkUpdateManually,
+      onCheckPluginUpdate: checkPluginUpdateManually,
     });
     win.on('closed', () => (win = null));
     return;
@@ -434,6 +595,7 @@ if (!app.requestSingleInstanceLock()) {
     }
     createWindow();
     scheduleUpdateCheck(); // 窗口出来之后再查,全程与启动链解耦
+    schedulePluginChannelCheck(); // 插件热更检测,同样解耦
   });
 }
 
