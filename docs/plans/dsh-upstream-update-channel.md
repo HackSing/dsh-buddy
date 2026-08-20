@@ -1,9 +1,9 @@
-> 状态：有效（实施中）
+> 状态：已实施-仅追溯（代码已是真源，2026-08-20 核对）
 <!-- docs-harness:plan-document/v1 -->
 
 # dsh 上游与预装插件的运行时更新通道
 
-- 冻结合同：`sha256:b8a4288f0697f83cf37f70a685308ad21d50c439b21de403cbe8c4b28da7e17c`
+- 冻结合同：`sha256:3ca6eab1a0e1b88faffd9ec8f76606ea6c2591e770f95d96ad6828029b2341f5`
 - 关键符号：`profileUpgradeDecision`、`installBundledProfile`、`checkPluginChannel`、`plugin-channel.json`
 
 ## 背景

@@ -41,10 +41,12 @@
   "governance": {
     "acceptance_required": true,
     "knowledge_impact": "updated",
-    "updated_knowledge_refs": [],
+    "updated_knowledge_refs": [
+      "docs/knowledge/plugin-channel-hot-update.json"
+    ],
     "unchanged_reason": null,
-    "governance_settled_at": null
+    "governance_settled_at": "2026-08-20T11:42:44+00:00"
   },
   "frozen_at": "2026-08-20T04:36:00+00:00",
-  "plan_fingerprint": "sha256:b8a4288f0697f83cf37f70a685308ad21d50c439b21de403cbe8c4b28da7e17c"
+  "plan_fingerprint": "sha256:3ca6eab1a0e1b88faffd9ec8f76606ea6c2591e770f95d96ad6828029b2341f5"
 }

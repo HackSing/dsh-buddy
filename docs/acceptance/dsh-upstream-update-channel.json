@@ -98,7 +98,7 @@
       "acceptance_type": "user_acceptance",
       "layer": "L5",
       "evidence_layer": null,
-      "status": "pending",
+      "status": "passed",
       "records": [
         {
           "schema_version": "docs-harness/acceptance-record/v3",
@@ -131,12 +131,33 @@
             ],
             "environment_ready": true
           }
+        },
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260820T114231-b426ff545a",
+          "objective_fingerprint": "sha256:59df0c8cbbb3ee30a9f16257f8eeb50678b5b7f0193b9a64d62f9f66e5e5deef",
+          "acceptance_type": "user_acceptance",
+          "status": "passed",
+          "layer": "L5",
+          "evidence_layer": null,
+          "method": "用户在真实环境完整走通两条链路：1) v0.1.0 应用内经 electron-updater 提示并整包升级到 v0.2.2(期间修复 latest 被 plugin-channel 抢占导致的 404);2) v0.2.2 内「检查插件更新」检测到通道 8 个插件新版本,确认后进度浮层显示 24.6/127.4 MB 下载,安装完成 dsh 自动重启、页面刷新,插件功能正常。用户原话确认:「装完了,插件都正常」。",
+          "evidence_refs": [
+            "build/acceptance-runtime.log"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-20T11:42:31+00:00",
+          "user_confirmation": {
+            "confirmed_by": "user",
+            "confirmation": "装完了，插件都正常"
+          }
         }
       ]
     }
   ],
-  "status": "pending",
-  "revision": 5,
+  "status": "passed",
+  "revision": 7,
   "revision_history": [
     {
       "revision": 1,
@@ -157,10 +178,21 @@
       "revision": 4,
       "asset_fingerprint": "sha256:f3a388edf4eb291aadaa06d37c5f0b2f1ea865701366babe1022f10f5f88f13b",
       "updated_at": "2026-08-20T05:24:39+00:00"
+    },
+    {
+      "revision": 5,
+      "asset_fingerprint": "sha256:721cdf1191e3b20786a4ab52af3f34c4e7ff8414b0a958df4d587a607cfa904f",
+      "updated_at": "2026-08-20T05:25:39+00:00"
+    },
+    {
+      "revision": 6,
+      "asset_fingerprint": "sha256:39a65648fc7a02705a041bf67e31ec629ded04971b77c9f3388a2046d1fdaae1",
+      "updated_at": "2026-08-20T11:42:31+00:00"
     }
   ],
   "created_at": "2026-08-20T04:48:22+00:00",
-  "updated_at": "2026-08-20T05:25:39+00:00",
-  "settled_at": null,
-  "asset_fingerprint": "sha256:721cdf1191e3b20786a4ab52af3f34c4e7ff8414b0a958df4d587a607cfa904f"
+  "updated_at": "2026-08-20T11:42:38+00:00",
+  "settled_at": "2026-08-20T11:42:38+00:00",
+  "asset_fingerprint": "sha256:a722571e331a427133908665d049ce3cac9e52f24e795b51cb4cbab584fea314",
+  "replacement": null
 }

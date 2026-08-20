@@ -1,11 +1,11 @@
-> 状态：有效（待验收）
+> 状态：已验收-仅追溯
 <!-- docs-harness:acceptance-document/v1 -->
 
 # dsh 上游与预装插件的运行时更新通道验收
 
-- 修订：5
+- 修订：7
 - 关键符号：`profileUpgradeDecision`、`installBundledProfile`、`checkPluginChannel`、`plugin-channel.json`
-- 资产指纹：`sha256:721cdf1191e3b20786a4ab52af3f34c4e7ff8414b0a958df4d587a607cfa904f`
+- 资产指纹：`sha256:a722571e331a427133908665d049ce3cac9e52f24e795b51cb4cbab584fea314`
 - 关联方案：`docs/plans/dsh-upstream-update-channel.json`
 
 ## 验收目标
@@ -37,7 +37,7 @@
 
 ### `c4` 真实发布通道：GitHub 滚动 release 上传 channel 与 tar，客户端真拉取完成一次热更，由用户确认
 
-- 状态：pending
+- 状态：passed
 - 类型：user_acceptance
 - 层级：L5
-- 证据：
+- 证据：`build/acceptance-runtime.log`
