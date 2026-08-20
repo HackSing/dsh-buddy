@@ -30,8 +30,12 @@ jobs:
           node-version: 24
 
       # dsh plugin 子命令把插件安装转发给 pnpm
+      # 钉住 pnpm 10:corepack 默认拉最新(v11 起 ignored builds 会直接报错退出,
+      # node-pty 的构建脚本被忽略时 dsh plugin add 整链失败;v10 仅告警)
       - name: 启用 pnpm
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.0 --activate
 
       # 构建 profile 只需 @deepseek-ai/dsh 的生产树,不装 electron-builder
       # --legacy-peer-deps:dsh 插件树 peer 链在 npm 11 严格解析下会 ERESOLVE/病态回溯,

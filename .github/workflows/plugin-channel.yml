@@ -24,8 +24,11 @@ jobs:
           node-version: 24
 
       # dsh plugin 子命令把插件安装转发给 pnpm(与 release.yml 的 profile job 同款)
+      # 钉住 pnpm 10:v11 起 ignored builds 报错退出(node-pty),v10 仅告警
       - name: 启用 pnpm
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.0 --activate
 
       # 构建只需 @deepseek-ai/dsh 的生产树;--legacy-peer-deps 与本仓 lockfile 的
       # 生成方式一致(npm 严格 peer 解析在 dsh 依赖树上病态回溯,见 verify-dsh-compat.js)
