@@ -3,9 +3,9 @@
 
 # 插件按包增量更新验收
 
-- 修订：1
+- 修订：3
 - 关键符号：`applyPluginUpdate`、`installBundledProfile`、`buildWebProfileTar`、`checkPluginChannel`
-- 资产指纹：`sha256:f4a2845a176dc407cbba8360de930451f587cb8d803dd650cab94a6258c2f8f5`
+- 资产指纹：`sha256:4c3479614f5f0058e11c58322c2575b77edeb532ae850569191d1032ccd137fe`
 - 关联方案：`docs/plans/plugin-incremental-update.json`
 - 关联知识：`docs/knowledge/plugin-channel-hot-update.json`
 
@@ -17,17 +17,17 @@
 
 ### `c1` 依赖闭包计算/垃圾回收/schema 分流单测全绿
 
-- 状态：pending
+- 状态：passed
 - 类型：contract_check
 - 层级：L1
-- 证据：尚无
+- 证据：`test/profile-closure.test.mjs`、`test/plugin-channel-slice.test.mjs`、`test/plugin-update-slices.test.mjs`、`test/plugin-channel.test.mjs`、`test/plugin-update.test.mjs`
 
 ### `c2` 真实 profile 外科替换后 dsh 启动 HTTP 200、目标插件版本断言、非目标插件不受影响、失败回滚
 
-- 状态：pending
+- 状态：passed
 - 类型：behavior_acceptance
 - 层级：L3
-- 证据：尚无
+- 证据：`build/acceptance-runtime-v2.log`
 
 ### `c3` 打包安装态验证(随包 profile + 增量热更链路)
 

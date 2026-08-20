@@ -19,8 +19,30 @@
       "acceptance_type": "contract_check",
       "layer": "L1",
       "evidence_layer": null,
-      "status": "pending",
-      "records": []
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260820T123136-ad15831ce5",
+          "objective_fingerprint": "sha256:26c915a55c14bdf69279df21c62820f4cc1822b268cb50728dd68179ac1f2450",
+          "acceptance_type": "contract_check",
+          "status": "passed",
+          "layer": "L1",
+          "evidence_layer": null,
+          "method": "node --test 全仓 313/313 全绿:profile-closure 10 例(闭包传递/共享依赖不入删除集/peer 后缀含 @ 的键/缺失目录容忍/真实 lockfile 集成)、切片 4 例(闭包 tar 内容/slug/v2 JSON 形状/sha256 一致)、parseChannelV2 与 v2 分流 2 例、v2 外科安装 5 例(只换目标插件/删除集不误删/簿记后落/中途失败原 profile 不动/preserved/聚合进度递增)",
+          "evidence_refs": [
+            "test/profile-closure.test.mjs",
+            "test/plugin-channel-slice.test.mjs",
+            "test/plugin-update-slices.test.mjs",
+            "test/plugin-channel.test.mjs",
+            "test/plugin-update.test.mjs"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-20T12:31:36+00:00"
+        }
+      ]
     },
     {
       "id": "c2",
@@ -28,8 +50,26 @@
       "acceptance_type": "behavior_acceptance",
       "layer": "L3",
       "evidence_layer": "local_runtime",
-      "status": "pending",
-      "records": []
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260820T123342-9374b6e583",
+          "objective_fingerprint": "sha256:26c915a55c14bdf69279df21c62820f4cc1822b268cb50728dd68179ac1f2450",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "build/acceptance-runtime-v2.mjs 三场景(真实旧 profile 0.2.2 系列 + 真实切片产物 build/plugin-channel-v2/,fetchImpl 注入本地文件):场景1 单插件 git-graph 外科更新 → upgraded、备份 web.backup-0.2.2 存在、git-graph 磁盘 0.2.5 其余 7 插件不变、内嵌 dsh 启动 HTTP 200、git-graph bundle sha256 == 新版 spike 基准而 task-board bundle 仍是旧版;场景2 git-graph+task-board 双插件 → 两者磁盘均 0.2.5、HTTP 200、两 bundle 均等于新版基准;场景3 task-board sha256 故意改错 → 整体 failed(detail 指向 sha256 不符)、8 插件磁盘版本全旧、profiles 下无 staging/备份残留、下载目录无半成品、原 profile 直接起 dsh HTTP 200 证明未受污染;全部 dsh 进程 taskkill /T /F 回收,3082 无孤儿监听",
+          "evidence_refs": [
+            "build/acceptance-runtime-v2.log"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-20T12:33:42+00:00"
+        }
+      ]
     },
     {
       "id": "c3",
@@ -51,10 +91,21 @@
     }
   ],
   "status": "pending",
-  "revision": 1,
-  "revision_history": [],
+  "revision": 3,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:f4a2845a176dc407cbba8360de930451f587cb8d803dd650cab94a6258c2f8f5",
+      "updated_at": "2026-08-20T11:48:03+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:8e830cecd4d7a48fa829119a44732861542706e82a1f6064328e6af8cf2a9a03",
+      "updated_at": "2026-08-20T12:31:36+00:00"
+    }
+  ],
   "created_at": "2026-08-20T11:48:03+00:00",
-  "updated_at": "2026-08-20T11:48:03+00:00",
+  "updated_at": "2026-08-20T12:33:42+00:00",
   "settled_at": null,
-  "asset_fingerprint": "sha256:f4a2845a176dc407cbba8360de930451f587cb8d803dd650cab94a6258c2f8f5"
+  "asset_fingerprint": "sha256:4c3479614f5f0058e11c58322c2575b77edeb532ae850569191d1032ccd137fe"
 }
