@@ -1,0 +1,61 @@
+> 状态：有效（实施中）
+<!-- docs-harness:plan-document/v1 -->
+
+# 插件按包增量更新(拆包发布 + 单插件外科替换)
+
+- 冻结合同：`sha256:0bda7f528a98682f30ca0cbc7d5e7597318d7cf73266a2e76be6778ded55feef`
+- 关键符号：`applyPluginUpdate`、`installBundledProfile`、`buildWebProfileTar`、`checkPluginChannel`
+
+## 背景
+
+当前插件热更通道(见 docs/plans/dsh-upstream-update-channel.md,已实施)以整包成品 tar 分发:任一插件更新,客户端都要下载约 127MB 全量 profile。预装插件会越来越多,下载量随插件总数线性膨胀,用户明确要求改为按插件拆包、只更新变化的插件。约束不变:用户机没有 pnpm(内嵌 dsh 不带,随包 profile 的 pnpm 维护通道已坏),更新物仍须是构建侧产出的成品。
+
+## 目标
+
+插件更新时客户端只下载发生变化的插件闭包(插件本体+其依赖),单插件更新下载量从 127MB 降到单插件量级(小插件 MB 级,skin-center 级大插件数十 MB);保持既有不变量:sha256 强校验、原子替换、旧版备份可回滚、失败不污染现有 profile、minDshVersion 门槛。
+
+## 非目标
+
+不改 dsh 本体更新通道(electron-updater 整包保持不变);不处理清单外用户自装插件的更新;不做断点续传/分块下载;不缩小首次安装体积(随包 profile 仍整包分发);不改动 dsh 加载插件的运行时机制。
+
+## 成功标准
+
+1) 单插件上游发新版后,客户端只下载该插件闭包并完成热更,dsh 重启后插件版本正确、功能正常;2) 多插件同时更新时总下载量 ≈ 各插件闭包之和而非全量;3) 任一插件下载/校验失败时,已下载部分不留半成品,现有 profile 原样可用;4) 新旧通道格式不互误导:旧客户端读新通道给出「需更新应用」类提示而非误装。
+
+## 执行范围
+
+发布侧:scripts/build-plugin-channel.js 切片逻辑、.github/workflows/plugin-channel.yml;通道格式:plugin-channel.json schema 升级;客户端:lib/plugin-channel.js(检测/schema 分流)、lib/plugin-update.js(逐插件下载+外科替换)、lib/bundled-profile.js(备份/回滚复用与扩展)、main.js(接线与进度浮层复用);测试:test/plugin-channel.test.mjs、test/plugin-update.test.mjs 及新增切片测试。
+
+## 执行内容
+
+1. 技术验证 spike(先行门禁):从整包 profile 切出单插件闭包(.pnpm 虚拟存储按 lockfile 计算依赖闭包,键控 name@version 天然去重),外科替换进真实 profile 副本(package.json/pnpm-lock.yaml/.modules.yaml 等簿记文件整体换新),启动内嵌 dsh 验证插件装载与 HTTP 200;spike 不过则回退整包方案,不进入后续批次。2. 发布侧:全量构建链路不变(复用 buildWebProfileTar),构建后按插件切片,每插件一个 tar;channel JSON 升 schema v2,packages[] 每项携带独立 tarball{url,sha256,size},保留 minDshVersion 与包列表;滚动 release 资产按插件命名,--clobber 幂等覆盖。3. 安装侧:lib/plugin-update.js 改为逐插件下载校验;解包覆盖进 profile;.pnpm 垃圾回收=删除新 lockfile 不再引用的旧条目;簿记文件随通道元数据整体替换;复用 installBundledProfile 的备份(rename 旧 profile)与回滚语义:任一插件失败,本次更新整体不落盘。4. 检测层:checkPluginChannel 逐插件比较(现有 compareRelease 复用),schema v1/v2 分流,v1 客户端遇 v2 通道报「需更新应用本体」。5. UI:进度浮层(lib/update-overlay.js)复用,逐插件显示进度与累计量。
+
+## 验收方案
+
+L1 单测:依赖闭包计算、垃圾回收集合运算、schema v1/v2 分流与逐插件比较;L3 本地运行时:真实 profile 外科替换后 dsh 启动 HTTP 200、目标插件版本断言、非目标插件不受影响、失败回滚;L4 打包安装态验证;L5 用户验收:真实发布一个单插件新版本,客户端只下载该插件并完成热更。acceptance_required=true。
+
+## 是否需要 Acceptance 资产闭环
+
+```json
+true
+```
+
+## Knowledge 影响
+
+updated
+
+## 约束
+
+用户机无 pnpm,一切 pnpm 操作只能在发布侧;Windows profile 为 junction 布局,解包沿用 installBundledProfile 已实证的实体化/符号链接双分支;.pnpm 条目可能带 peer 哈希后缀,闭包计算必须以 lockfile 为准而非目录名猜解。
+
+## 风险与回滚
+
+风险1:外科替换后簿记不一致致 dsh 起不来——spike 先行验证,不过则整体回退整包方案;风险2:共享依赖版本交叉(插件 A 升级带入新版共享依赖影响插件 B)——闭包与垃圾回收均以新 lockfile 为准,只删无引用条目,共享条目同名覆盖幂等;风险3:新旧客户端/通道格式错配——schema_version 强校验分流。回滚:通道 JSON 改回 v1 整包格式,客户端下个节流窗口自然收敛。
+
+<!-- docs-harness:plan-governance:start -->
+## 资产治理
+
+- 关联验收：`docs/acceptance/plugin-incremental-update.json`
+- 需要 Acceptance：true
+- Knowledge 影响：updated
+<!-- docs-harness:plan-governance:end -->
