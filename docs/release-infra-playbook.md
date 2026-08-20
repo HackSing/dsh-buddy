@@ -121,7 +121,7 @@ dsh 本体更新必须走整包发版（件一→件二→件三），但预装�
 
 1. **channel JSON 是「能下到什么」的唯一真源**，不是 npm registry——registry 有新版到发布侧出包之间有空窗，客户端只信 channel 就不会提示一个下不到的更新；
 2. **更新物以成品 tar 分发，不在用户机上跑 pnpm**：内嵌 dsh 不带 pnpm，且随包 tar 解出的 profile 其 pnpm 维护通道在终端机上是坏的（virtualStoreDir 漂移）——构建侧复用 [build-web-profile.js](../scripts/build-web-profile.js) 的同一条链路，安装侧复用 [bundled-profile.js](../lib/bundled-profile.js) 的备份/回滚；
-3. **滚动 release 用固定 tag**（本仓为 `plugin-channel`），asset 名恒定、`--clobber` 覆盖，客户端 URL 永不变；发错了把 channel JSON 改回旧版本集合，客户端下个节流窗口自然收敛；
+3. **滚动 release 用固定 tag**（本仓为 `plugin-channel`），asset 名恒定、`--clobber` 覆盖，客户端 URL 永不变；发错了把 channel JSON 改回旧版本集合，客户端下个节流窗口自然收敛。**该 release 必须保持 prerelease 标记**（workflow 里 `gh release create --prerelease`）：它只是数据通道，一旦以正式 release 身份占住 `/releases/latest`，electron-updater 会到它下面找 `latest.yml` 得到 404，旧版应用「检查更新」直接报错；
 4. **`minDshVersion` 门槛**：插件可能依赖新 dsh 的能力（如 rc.7 的 keyed slot），channel 声明所需下限，客户端内嵌 dsh 不够新时只提示不安装；
 5. **升级判定带方向**：本地 profile 版本领先于随包清单时不得回滚（热更的成果不能被下次启动的旧安装包抹掉），见 `profileUpgradeDecision`。
 

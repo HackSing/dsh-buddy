@@ -40,9 +40,11 @@ jobs:
         run: node scripts/build-plugin-channel.js
 
       # create || true + upload --clobber:tag 已存在时幂等覆盖(与 release.yml 同一手法)
+      # --prerelease 必须带:该 release 只是数据通道,若占住 /releases/latest,
+      # electron-updater 会到这里找 latest.yml 得到 404(旧版应用检查更新直接报错)
       - name: 上传滚动 release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create plugin-channel --title "Plugin Channel" --notes "滚动插件更新通道" || true
+          gh release create plugin-channel --title "Plugin Channel" --notes "滚动插件更新通道" --prerelease || true
           gh release upload plugin-channel build/plugin-channel/plugin-channel.json build/plugin-channel/web-profile-plugins.tar.gz --clobber
