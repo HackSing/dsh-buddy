@@ -176,4 +176,5 @@ jobs:
       - name: 发布草稿 Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "$GITHUB_REF_NAME" --draft=false
+        # publish job 不 checkout,gh 无 git remote 可推断仓库,必须显式 --repo
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false --repo "$GITHUB_REPOSITORY"
