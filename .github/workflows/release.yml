@@ -58,6 +58,19 @@ jobs:
           path: build/web-profile.tar.gz
           if-no-files-found: error
 
+      # 草稿先行:Release 以 draft 身份创建,双平台产物传完前对外不可见——
+      # electron-updater 只认已发布的 latest release,草稿期检查更新不会踩到
+      # "latest.yml 还没传上来"的空窗 404。末尾 publish job 统一转正。
+      - name: 创建草稿 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          prerelease=""
+          case "$tag" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$tag" --draft --title "$tag" --generate-notes $prerelease || true
+
   macos:
     runs-on: macos-14
     timeout-minutes: 30
@@ -97,17 +110,13 @@ jobs:
       - name: 构建 dmg(使用分发的 profile)
         run: DSH_SKIP_PROFILE=1 npm run dist
 
-      - name: 创建 Release 并上传 dmg
+      # 草稿已由 profile job 创建,这里只上传;草稿对外不可见,无空窗
+      - name: 上传 dmg 到草稿 Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          tag="$GITHUB_REF_NAME"
-          prerelease=""
-          case "$tag" in *-*) prerelease="--prerelease" ;; esac
-          # 双平台任务并行,谁先到谁创建;已存在则忽略失败继续上传
-          gh release create "$tag" --title "$tag" --generate-notes $prerelease || true
-          gh release upload "$tag" dist/*.dmg --clobber
+          gh release upload "$GITHUB_REF_NAME" dist/*.dmg --clobber
 
   windows:
     runs-on: windows-latest
@@ -146,16 +155,25 @@ jobs:
       - name: 构建 Windows 安装包(nsis x64,使用分发的 profile)
         run: DSH_SKIP_PROFILE=1 npm run dist:win
 
-      - name: 上传安装包到 Release
+      # 草稿已由 profile job 创建,这里只上传
+      - name: 上传安装包到草稿 Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           tag="$GITHUB_REF_NAME"
-          prerelease=""
-          case "$tag" in *-*) prerelease="--prerelease" ;; esac
-          gh release create "$tag" --title "$tag" --generate-notes $prerelease || true
           gh release upload "$tag" dist/*.exe --clobber
           # 应用内自动更新(electron-updater)的元数据:latest.yml 记录版本与 sha512,
           # blockmap 供差量下载;缺了它们应用内更新查不到新包
           gh release upload "$tag" dist/latest.yml dist/*.exe.blockmap --clobber
+
+  # 双平台产物全部进草稿后统一转正:转正前 /releases/latest 仍指向上一版,
+  # 用户端检查更新在整个构建窗口期看到的都是"已是最新",不再有空窗 404
+  publish:
+    runs-on: ubuntu-latest
+    needs: [profile, macos, windows]
+    steps:
+      - name: 发布草稿 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false

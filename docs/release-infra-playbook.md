@@ -102,6 +102,9 @@ gh release upload "$TAG" dist/*.dmg --clobber
 | Release 不触发级联 | `GITHUB_TOKEN` 创建的 Release 不会触发其他 workflow | GitHub 防递归的刻意设计；确需级联用 PAT |
 | cron 首跑幻觉 | 上游没有新版本时，值班工作流只走"版本相同→跳过"的快路径，绿色≠完整链路验证过 | 用 workflow_dispatch + 已知旧版本号强制跑一次完整验证 |
 | tag 漂移 | tag 与 manifest 版本不一致，产物命名错乱 | 版本守卫，构建前快速失败 |
+| 发版空窗 404 | 双平台打包并行，先完成的 job 创建 Release 后，electron-updater 的 latest 即指向它，但另一平台的 latest.yml 还没传完——构建窗口期内用户点「检查更新」收到满屏 404 堆栈 | Release 草稿先行：profile job 建 draft，双平台产物传完由末尾 publish job 统一转正，转正前 latest 始终指向上一版；客户端再把 "latest.yml 404" 识别为窗口期折叠为「已是最新」兜底残缺 Release（`isPendingReleaseError`）|
+| pnpm v11 ignored builds | CI corepack 默认拉最新 pnpm，v11 起 node-pty 构建脚本被忽略直接报错退出，profile 构建 5 秒即挂 | 两个 workflow 钉住 `corepack prepare pnpm@10.33.0 --activate` |
+| 通道抢占 latest | 数据通道 release 以正式身份晚于版本 release 发布，抢占 /releases/latest，整包更新摸到通道里的 latest.yml 404 | 通道 release 永远 `--prerelease`（见下节）|
 
 ## 附：插件热更通道（滚动 release）
 
