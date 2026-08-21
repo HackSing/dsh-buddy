@@ -18,7 +18,7 @@
     { "name": "@linxin666/dsh-client-ui-web-ui-settings", "version": "0.2.2" },
     {
       "name": "@aiwaretop/dsh-docs-harness",
-      "version": "0.1.3",
+      "version": "0.2.0",
       "license": "MIT",
       "comment": "本仓自研的治理插件,源码唯一真源在 https://github.com/HackSing/docs-harness;已发布 npm,与其余六件套走同一条 registry 安装链路。旧的非 scoped 名 dsh-docs-harness 未发布,存量用户手工补装过旧名的需先 remove 再 add 本条"
     },
