@@ -1,0 +1,16 @@
+{
+  "name": "dsh-buddy-title-repair",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Host plugin shipped by the DSH Buddy desktop shell: repairs missing session-title projection-cache rows at dsh boot",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}

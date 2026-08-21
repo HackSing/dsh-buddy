@@ -4,11 +4,13 @@ const os = require('os');
 const path = require('path');
 const { installBundledPresets, defaultDshHome } = require('./lib/bundled-presets');
 const { installBundledProfile } = require('./lib/bundled-profile');
+const { installTitleRepair } = require('./lib/title-repair-install');
+const { waitForTitlesSettled } = require('./lib/session-titles');
 const { createFramelessWindow } = require('./lib/frameless-window');
 const { attachDragStrip } = require('./lib/immersive-titlebar');
 const { binEntryFrom } = require('./lib/dsh-entry');
 const { probeHttp, waitForHttp } = require('./lib/http-probe');
-const { killProcessTree } = require('./lib/process-tree');
+const { killProcessTree, killProcessTreeAfterGrace } = require('./lib/process-tree');
 const { createDshLogger } = require('./lib/dsh-log');
 const { checkForUpdate, UPDATE_OUTCOME, RELEASES_PAGE_URL } = require('./lib/update-check');
 const { checkPluginChannel, CHANNEL_OUTCOME } = require('./lib/plugin-channel');
@@ -34,6 +36,11 @@ let dshProc = null;
 let dshLog = null; // dsh 子进程输出捕获器,仅在本壳拉起 dsh 时创建(复用外部服务时保持 null)
 let win = null;
 let quitting = false;
+let installPending = false; // quitAndInstall 已触发:下一次退出是安装态,不走宽限强杀
+
+// 日常退出的宽限时长:dsh 会话日志写后批窗口 200ms(dsh-session-persistence
+// writeBatchMaxDelayMs),1s 覆盖 deadline 触发 + 落盘耗时,见 lib/process-tree.js。
+const QUIT_GRACE_MS = 1000;
 
 // 从 DSH_URL 反推监听地址,让 DSH_URL 单个变量同时决定「探测哪里」和「拉起在哪里」
 function parseTarget(url) {
@@ -303,7 +310,12 @@ async function notifyUpdateReady({ version }) {
     cancelId: 1,
     noLink: true,
   });
-  if (response === 0) quitAndInstall(); // 退出时 before-quit 的 dsh 进程树回收照常执行
+  // 安装态退出不走宽限强杀:宽限期内 dsh 子进程仍持有 app 目录文件锁,
+  // 可能撞上 NSIS 安装器的文件替换。安装丢失的投影尾帧由下次启动的标题修复自愈。
+  if (response === 0) {
+    installPending = true;
+    quitAndInstall(); // 退出时 before-quit 的 dsh 进程树回收照常执行
+  }
 }
 
 // 手动检查(菜单「检查更新」)的信息弹窗:三态反馈共用一个入口。
@@ -621,11 +633,36 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     ensureBundledAssets();
+    // 标题修复插件:装进 profile 并补挂载行,由 dsh 启动时执行投影缓存回写。
+    // 增强项而非启动前置:装不上只退化回旧行为(点击会话才刷新标题),只记日志。
+    let titleRepairReady = false;
+    try {
+      const dshHome = defaultDshHome(process.env, os.homedir());
+      const summary = installTitleRepair({
+        pluginsRoot: resolvePluginsRoot(),
+        profileDir: path.join(dshHome, 'profiles', preinstallManifest.profile),
+      });
+      titleRepairReady = true;
+      if (summary.plugin !== 'current' || summary.patch !== 'already') {
+        console.log(`[dsh-buddy] title repair: plugin ${summary.plugin}, patch ${summary.patch}`);
+      }
+    } catch (err) {
+      console.warn(`[dsh-buddy] title repair install skipped: ${err.message}`);
+    }
     const ok = await ensureDsh();
     if (!ok) {
       // 失败详情已由 ensureDsh 通过 showDshFailure 呈现(含日志路径与最近输出)
       app.quit();
       return;
+    }
+    // 首屏标题就绪门:只在本壳拉起的 dsh 且修复插件就位时等待——外部复用的
+    // dsh 没有修复插件,等只会白等;超时也照常放行,退化为点击刷新。
+    if (titleRepairReady && dshProc) {
+      const gate = await waitForTitlesSettled(DSH_URL);
+      console.log(
+        `[dsh-buddy] session titles ${gate.settled ? 'settled before first paint' : 'not fully settled (timed out), continuing'}` +
+          (gate.error ? `: ${gate.error}` : '')
+      );
     }
     createWindow();
     scheduleUpdateCheck(); // 窗口出来之后再查,全程与启动链解耦
@@ -636,17 +673,21 @@ if (!app.requestSingleInstanceLock()) {
 // 退出时整组回收 dsh 进程树,不留孤儿(复用的外部服务不在此列:dshProc 为空)
 // expectedExit 必须先于 kill 置位:exit 事件异步到达,晚一步就会被
 // exit 监听误判为「意外退出」(插件热更重启链路实测踩过,code 1 + app.quit)。
-function killDsh() {
+// graceMs:Windows 下改用宽限强杀(见 lib/process-tree.js),给 dsh 的写后日志
+// 留 drain 窗口;POSIX 是 SIGTERM 优雅停机,grace 参数无效果。
+function killDsh({ graceMs } = {}) {
   if (!dshProc) return;
   const proc = dshProc;
   proc.expectedExit = true;
   dshProc = null;
-  killProcessTree(proc.pid);
+  if (graceMs) killProcessTreeAfterGrace(proc.pid, graceMs);
+  else killProcessTree(proc.pid);
 }
 
 app.on('before-quit', () => {
   quitting = true;
-  killDsh();
+  // 宽限只给日常退出(关窗/Cmd+Q):安装态退出(quitAndInstall)立即杀,见 notifyUpdateReady。
+  killDsh({ graceMs: installPending ? 0 : QUIT_GRACE_MS });
   if (dshLog) {
     dshLog.close();
     dshLog = null;

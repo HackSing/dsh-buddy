@@ -38,6 +38,7 @@
 - [预装插件存量缺口与 CI 安装位污染](knowledge/preinstall-existing-user-gap.md) — 状态：有效（现行事实）；关键符号：`installBundledProfile`、`preinstall-manifest`、`virtualStoreDir`、`healProfilesModuleFallback`
 - [插件热更通道:滚动 release channel + 成品 tar 分发,运行时复用 bundled-profile 安装链路](knowledge/plugin-channel-hot-update.md) — 状态：有效（现行事实）；关键符号：`checkPluginChannel`、`applyPluginUpdate`、`plugin-channel.json`、`profileUpgradeDecision`
 - [dsh Web UI 插件开发规范:包结构/cordis patch 加载/settings.section 注册/DOM 注入自愈/出壳通道,详细指南落 docs/dsh-web-ui-plugin-guide.md](knowledge/dsh-web-ui-plugin-guide.md) — 状态：有效（现行事实）；关键符号：`dsh.client`、`cordis.patch.yml`、`settings.section`、`ctx.slots.register`
+- [会话列表标题链路:投影缓存是唯一冷源,强杀丢尾帧,coldSnapshot 可修复](knowledge/session-title-projection-cache.md) — 状态：有效（现行事实）；关键符号：`coldSnapshot`、`session_projcache`、`writeBatchMaxDelayMs`、`dsh-buddy-title-repair`
 <!-- docs-harness:knowledge-index:end -->
 
 <!-- docs-harness:acceptance-index:start -->
