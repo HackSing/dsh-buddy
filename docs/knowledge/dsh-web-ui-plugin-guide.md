@@ -3,13 +3,13 @@
 
 # dsh Web UI 插件开发规范:包结构/cordis patch 加载/settings.section 注册/DOM 注入自愈/出壳通道,详细指南落 docs/dsh-web-ui-plugin-guide.md
 
-- 修订：4
+- 修订：5
 - 关键符号：`dsh.client`、`cordis.patch.yml`、`settings.section`、`ctx.slots.register`
-- 资产指纹：`sha256:37c8922d8401066e8eb0acd4fc8f8fc4c5e9b4012e27ba9ad12efffcb241f508`
+- 资产指纹：`sha256:6a276ffd38898cb27d5baf2c1f2291926c65cf4c6799bf931ec9683739fea479`
 
 ## 摘要
 
-dsh Web UI 插件=package.json 声明 dsh.client + exports[./client] + cordis.patch.yml insert 即被 loader 发现;主入口 exports[.] 是强制契约(纯 client 插件也要 no-op host stub,缺失崩整个 dsh boot);设置页走 settings.section list slot 注册(避开 rc.7 keyed slot 红线),面板外 UI 用纯 DOM+MutationObserver 自愈注入;插件无 Electron 先例,出壳唯一通道是 window.open 经壳 setWindowOpenHandler,详细规范与模板见 docs/dsh-web-ui-plugin-guide.md(2026-08-20 实机装包验证)
+dsh Web UI 插件=package.json 声明 dsh.client + exports[./client] + cordis.patch.yml insert 即被 loader 发现;主入口 exports[.] 是强制契约(纯 client 插件也要 no-op host stub,缺失崩整个 dsh boot);设置页走 settings.section list slot 注册(避开 rc.7 keyed slot 红线),面板外 UI 用纯 DOM+MutationObserver 自愈注入;插件无 Electron 先例,出壳唯一通道是 window.open 经壳 setWindowOpenHandler,详细规范与模板见 docs/dsh-web-ui-plugin-guide.md(2026-08-20 实机装包验证;2026-08-21 dsh 0.1.1-rc.1 升级重验:settings.section/keyed slot 契约与网关白名单无变化,8 预装插件浏览器实证可用)
 
 ## 事实
 

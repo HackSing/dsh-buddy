@@ -116,9 +116,9 @@ scripts\dist-win.bat # 本机 Windows 打包入口:清 IDE 注入的 ELECTRON_* 
 |------|--------|------|
 | `DSH_URL` | `http://127.0.0.1:3080` | Web UI 地址;同时决定内嵌 dsh 的 `--host` / `--port` |
 | `DSH_CMD` | *(未设置)* | 设置后走逃生通道,自定义启动器命令 |
-| `DSH_ARGS` | `@deepseek-ai/dsh@0.1.0-rc.6 web` | 逃生通道的启动参数(仅在 `DSH_CMD`/`DSH_ARGS` 任一被设置时生效) |
+| `DSH_ARGS` | `@deepseek-ai/dsh@0.1.1-rc.1 web` | 逃生通道的启动参数(仅在 `DSH_CMD`/`DSH_ARGS` 任一被设置时生效) |
 
-> dsh 版本在 `dependencies` 中钉死为 `0.1.0-rc.6`——它仍处于 developer preview,有破坏性变更风险。
+> dsh 版本在 `dependencies` 中钉死为 `0.1.1-rc.1`——它仍处于 developer preview,有破坏性变更风险。
 
 ## Roadmap
 

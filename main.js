@@ -29,7 +29,7 @@ const preinstallManifest = require('./plugins/preinstall-manifest.json');
 // 默认走「内嵌 dsh」:用 Electron 自带的 Node 运行时执行随包分发的 dsh,用户机器无需 Node。
 // 参考 https://github.com/deepseek-ai/deepseek-harness#run
 const DSH_PKG = '@deepseek-ai/dsh';
-const DSH_VERSION = '0.1.0-rc.8'; // 与 package.json dependencies 保持一致(dsh 仍是 developer preview)
+const DSH_VERSION = '0.1.1-rc.1'; // 与 package.json dependencies 保持一致(dsh 仍是 developer preview)
 const DSH_URL = process.env.DSH_URL || 'http://127.0.0.1:3080';
 // ----------------
 

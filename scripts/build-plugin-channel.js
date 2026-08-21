@@ -86,7 +86,7 @@ async function resolvePackages(pinsFile) {
 
 // minDshVersion 取「插件实际要求的 dsh 版本」与「本仓内嵌版本」的较大者:
 // 扫各包 peerDependencies 里 @deepseek-ai/dsh-* 的 rc 版本声明——插件上游换 dsh
-// 版本时(peer 从 rc.7 抬到 rc.8),通道门槛必须跟着抬,否则等于向旧客户端
+// 版本时(peer 从 rc.8 抬到 0.1.1-rc.1),通道门槛必须跟着抬,否则等于向旧客户端
 // 担保一个它跑不动的插件集合;客户端内嵌 dsh 不够新时只提示不安装
 // (installable=false,见 lib/plugin-channel.js)。
 function computeMinDshVersion(packages, embeddedVersion) {

@@ -1,6 +1,6 @@
 # dsh Web UI 插件开发指南
 
-> 状态：有效（2026-08-20 基于本机安装包与 dsh 0.1.0-rc.8 源码核对）
+> 状态：有效（2026-08-21 基于本机安装包与 dsh 0.1.1-rc.1 源码核对：slot 契约与网关白名单经上游 diff 与浏览器实证均无变化）
 
 本指南沉淀 dsh Web UI 插件（浏览器侧 UI 插件）的开发规范与可照搬的示例，
 供后续编写新插件时直接参考。所有结论均以本机 `~/.dsh/profiles/web/node_modules/`
@@ -218,8 +218,8 @@ padding。要让整片区域可拖，需把中间层容器一并设 `drag`，交
 
 ## 7. 版本兼容性约束与坑
 
-- 当前基线：dsh `@deepseek-ai/dsh@0.1.0-rc.8`（本仓 `package.json`），
-  插件 devDependencies 钉 `^0.1.0-rc.8`。
+- 当前基线：dsh `@deepseek-ai/dsh@0.1.1-rc.1`（本仓 `package.json`），
+  插件 devDependencies 钉 `^0.1.1-rc.1`。
 - keyed slot 红线见 3.3；rc.6→rc.8 官方 apiproxy 只放行硬编码命名空间，
   家族插件靠 `webUiSettings` 桥兜底（`dsh-client-ui-web-ui-settings/lib/client.js:14-24`），
   不读写第三方命名空间的插件不受影响。
