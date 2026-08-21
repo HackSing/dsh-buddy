@@ -121,12 +121,19 @@ jobs:
           for f in *" "*; do mv -- "$f" "${f// /-}"; done
 
       # 草稿已由 profile job 创建,这里只上传;草稿对外不可见,无空窗
-      - name: 上传 dmg 到草稿 Release
+      # zip 与 blockmap 是 electron-updater 的 macOS 通道硬要求:MacUpdater 只认 zip
+      # (找不到就抛 ERR_UPDATER_ZIP_FILE_NOT_FOUND),dmg 再全也顶不上。
+      # 但该通道当前对 macOS 是关的(见 lib/auto-update.js:isAutoUpdateSupported 只放行 win32):
+      # Squirrel.Mac 换装要校验新包满足旧包的 designated requirement,而 ad-hoc 签名的 DR 是
+      # cdhash 绑定(实测 `codesign -d -r-` => cdhash H"..."),跨版本必然不匹配。
+      # 故 zip 此刻是为「Developer ID 签名就绪」预留的:证书到位后只需放开 darwin 分支,
+      # 发布侧不必再改。人工下载仍走 dmg。
+      - name: 上传 mac 产物到草稿 Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release upload "$GITHUB_REF_NAME" dist/*.dmg dist/latest-mac.yml --clobber
+          gh release upload "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip dist/*.zip.blockmap dist/latest-mac.yml --clobber
 
   windows:
     runs-on: windows-latest

@@ -1,7 +1,7 @@
 {
   "name": "dsh-buddy",
   "productName": "DSH Buddy",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "A desktop buddy for DeepSeek Harness",
   "main": "main.js",
   "scripts": {
@@ -49,11 +49,11 @@
   "allowScripts": {
     "electron@38.8.6": true,
     "@google/genai@1.52.0": true,
-    "koffi@3.1.5": true,
-    "node-pty@1.1.0": true,
     "protobufjs@7.6.5": true,
     "electron-winstaller@5.4.0": true,
-    "@deepseek-ai/dsh-subprocess-local@0.1.1-rc.1": true
+    "@deepseek-ai/dsh-subprocess-local@0.1.1-rc.1": true,
+    "koffi@3.1.6": true,
+    "node-pty@1.2.0-beta.15": true
   },
   "build": {
     "appId": "com.dshbuddy.app",
@@ -77,6 +77,10 @@
           "arch": "arm64"
         },
         {
+          "target": "zip",
+          "arch": "arm64"
+        },
+        {
           "target": "dir",
           "arch": "arm64"
         }
@@ -85,6 +89,7 @@
       "category": "public.app-category.developer-tools",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
+      "identity": "-",
       "entitlements": "assets/entitlements.mac.plist",
       "entitlementsInherit": "assets/entitlements.mac.plist"
     },
