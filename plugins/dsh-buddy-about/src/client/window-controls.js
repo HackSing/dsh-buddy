@@ -8,8 +8,10 @@
  * are real user activations, so window.open('dsh-buddy://win-*') reaches the
  * shell's setWindowOpenHandler (batch-1 verified path).
  *
- * Bridge gate: the controls are meaningless in a plain browser, so they mount
- * only once window.__DSH_BUDDY__ exists. The shell injects the bridge after
+ * Bridge gate: the controls are meaningless in a plain browser and duplicate
+ * the titlebar buttons under the native/legacy shells, so they mount only
+ * once window.__DSH_BUDDY__ exists AND the shell opted in via
+ * windowControls: true (borderless mode). The shell injects the bridge after
  * did-finish-load, which postdates plugin apply — we listen for
  * BUDDY_INFO_EVENT and mount when the bridge lands. The same event fires on
  * maximize/unmaximize and drives the maximize/restore icon switch.
@@ -34,7 +36,7 @@ import {
   WIN_CONTROLS_ATTRIBUTE,
   WIN_CONTROLS_SELECTOR,
 } from '../shared/constants.js';
-import { hasBuddyBridge, readBuddyMaximized } from '../shared/shell-bridge.js';
+import { readBuddyMaximized, readBuddyWindowControls } from '../shared/shell-bridge.js';
 
 /** Per-button control key used for lookup and the maximize-icon swap. */
 const CONTROL_KEY_ATTRIBUTE = 'data-dsh-buddy-control';
@@ -164,8 +166,9 @@ export function mountWindowControls({ t }) {
   });
 
   const tryPlace = () => {
-    // Bridge gate: no __DSH_BUDDY__ -> plain browser -> nothing to mount.
-    if (!hasBuddyBridge(window.__DSH_BUDDY__)) return;
+    // Bridge gate: only a borderless shell injects windowControls: true;
+    // plain browser / native / legacy shells -> nothing to mount.
+    if (!readBuddyWindowControls(window.__DSH_BUDDY__)) return;
     ensureDragStyle();
     if (anchor !== undefined && !anchor.isConnected) {
       anchorObserver.disconnect();

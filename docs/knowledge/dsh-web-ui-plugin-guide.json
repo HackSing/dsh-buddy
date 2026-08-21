@@ -44,7 +44,7 @@
     },
     {
       "id": "plugin.shell-bridge",
-      "statement": "插件运行在无 preload 的普通浏览器上下文,生态内无访问 Electron 的先例;出壳通道是 window.open('dsh-buddy://<action>') 经壳 setWindowOpenHandler 拦截 dispatch(已实机落地 lib/buddy-scheme.js)。实测三点:handler 返回 deny 时页面侧 window.open 得 null 是正常语义非拦截;无用户激活的合成调用会被 Chromium popup blocker 拦在壳之前;动作 id 用扁平连字符(冒号会被 URL 解析器当端口分隔符)。壳→页方向用 webContents.executeJavaScript 注入 window.__DSH_BUDDY__ 并 dispatch dsh-buddy:info 事件",
+      "statement": "插件运行在无 preload 的普通浏览器上下文,生态内无访问 Electron 的先例;出壳通道是 window.open('dsh-buddy://<action>') 经壳 setWindowOpenHandler 拦截 dispatch(已实机落地 lib/buddy-scheme.js)。实测三点:handler 返回 deny 时页面侧 window.open 得 null 是正常语义非拦截;无用户激活的合成调用会被 Chromium popup blocker 拦在壳之前;动作 id 用扁平连字符(冒号会被 URL 解析器当端口分隔符)。壳→页方向用 webContents.executeJavaScript 注入 window.__DSH_BUDDY__={version,isMaximized,windowControls} 并 dispatch dsh-buddy:info 事件;windowControls 是壳对页面插件接管窗口控制/拖拽的显式授权,仅 borderless 模式为 true,native/legacy 与缺字段旧壳一律 false(插件侧 === true 才挂载,2026-08-21 方案A落地)",
       "source_refs": [
         "docs/dsh-web-ui-plugin-guide.md",
         "lib/buddy-scheme.js",
@@ -62,7 +62,7 @@
     }
   ],
   "status": "active",
-  "revision": 3,
+  "revision": 4,
   "revision_history": [
     {
       "revision": 1,
@@ -73,9 +73,14 @@
       "revision": 2,
       "asset_fingerprint": "sha256:6c31da38eb3df8311e2310d7dcfaee54091143a368452323ae4c9299fc100aba",
       "updated_at": "2026-08-20T14:35:18+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:e5b0063c7f8fc8fb234023679b088394ca8194f37e148f1e7f1052f7d5670a0f",
+      "updated_at": "2026-08-20T16:00:18+00:00"
     }
   ],
   "created_at": "2026-08-20T13:37:06+00:00",
-  "updated_at": "2026-08-20T16:00:18+00:00",
-  "asset_fingerprint": "sha256:e5b0063c7f8fc8fb234023679b088394ca8194f37e148f1e7f1052f7d5670a0f"
+  "updated_at": "2026-08-21T05:47:31+00:00",
+  "asset_fingerprint": "sha256:37c8922d8401066e8eb0acd4fc8f8fc4c5e9b4012e27ba9ad12efffcb241f508"
 }

@@ -17,18 +17,20 @@ const { BUDDY_ACTIONS } = require('../lib/buddy-scheme.js');
 
 // ---- resolveWindowMode ----
 
-test('resolveWindowMode:缺省/空值/其他取值一律 borderless', () => {
-  assert.equal(resolveWindowMode(undefined), 'borderless');
-  assert.equal(resolveWindowMode({}), 'borderless');
-  assert.equal(resolveWindowMode({ [WINDOW_MODE_ENV]: '' }), 'borderless');
-  assert.equal(resolveWindowMode({ [WINDOW_MODE_ENV]: 'borderless' }), 'borderless');
-  assert.equal(resolveWindowMode({ [WINDOW_MODE_ENV]: '1' }), 'borderless');
-  // 大小写敏感:只有精确 'legacy' 回退
-  assert.equal(resolveWindowMode({ [WINDOW_MODE_ENV]: 'LEGACY' }), 'borderless');
+test('resolveWindowMode:缺省/空值/其他取值一律 legacy(自绘标题栏)', () => {
+  assert.equal(resolveWindowMode(undefined), 'legacy');
+  assert.equal(resolveWindowMode({}), 'legacy');
+  assert.equal(resolveWindowMode({ [WINDOW_MODE_ENV]: '' }), 'legacy');
+  assert.equal(resolveWindowMode({ [WINDOW_MODE_ENV]: 'legacy' }), 'legacy');
+  assert.equal(resolveWindowMode({ [WINDOW_MODE_ENV]: '1' }), 'legacy');
+  // 大小写敏感:只有精确小写取值才切换
+  assert.equal(resolveWindowMode({ [WINDOW_MODE_ENV]: 'NATIVE' }), 'legacy');
+  assert.equal(resolveWindowMode({ [WINDOW_MODE_ENV]: 'Borderless' }), 'legacy');
 });
 
-test('resolveWindowMode:精确 legacy 回退旧窗口', () => {
-  assert.equal(resolveWindowMode({ [WINDOW_MODE_ENV]: 'legacy' }), 'legacy');
+test('resolveWindowMode:精确 native/borderless 切对应模式', () => {
+  assert.equal(resolveWindowMode({ [WINDOW_MODE_ENV]: 'native' }), 'native');
+  assert.equal(resolveWindowMode({ [WINDOW_MODE_ENV]: 'borderless' }), 'borderless');
 });
 
 // ---- buildAppMenuTemplate ----
@@ -89,22 +91,45 @@ test('buildAppMenuTemplate:separator 转 { type: "separator" },locale 回退 en'
   assert.deepEqual(fallback.map((m) => m.label), ['File', 'Edit', 'View', 'Navigate', 'Help']);
 });
 
-// ---- 两条窗口路径的一致性(源码级契约) ----
+// ---- 三条窗口路径的一致性(源码级契约) ----
 
-test('契约:两条创建路径都走共享 helper(拦截/注入/浮层)', () => {
+test('契约:三条创建路径都走共享 helper(拦截/注入/浮层)', () => {
   const source = readFileSync(new URL('../lib/frameless-window.js', import.meta.url), 'utf8');
-  for (const fn of ['createBorderlessWindow', 'createFramelessWindow']) {
+  for (const fn of ['createNativeWindow', 'createBorderlessWindow', 'createFramelessWindow']) {
     const body = source.slice(source.indexOf(`function ${fn}`));
     for (const helper of ['attachWindowOpenHandler', 'attachBuddyInfo', 'attachContentExtras']) {
       assert.ok(body.includes(`${helper}(`), `${fn} 未调用 ${helper}`);
     }
   }
-  // 共享 helper 只定义一次,且两条路径各调用一次(无复制实现)
+  // 共享 helper 只定义一次,且三条路径各调用一次(无复制实现)
   assert.equal(source.match(/function attachWindowOpenHandler/g).length, 1);
   assert.equal(
-    source.match(/attachWindowOpenHandler\(content, ctx\);/g).length,
-    2,
-    '两条路径应各调用一次 attachWindowOpenHandler',
+    source.match(/attachWindowOpenHandler\((?:win|content), ctx\);/g).length,
+    3,
+    '三条路径应各调用一次 attachWindowOpenHandler',
+  );
+});
+
+test('契约:native 路径用原生标题栏 + autoHideMenuBar,桥按模式标记 windowControls', () => {
+  const source = readFileSync(new URL('../lib/frameless-window.js', import.meta.url), 'utf8');
+  const nativeBody = source.slice(
+    source.indexOf('function createNativeWindow'),
+    source.indexOf('function createBorderlessWindow'),
+  );
+  assert.ok(nativeBody.includes('new BrowserWindow('), 'native 路径未用 BrowserWindow');
+  assert.ok(nativeBody.includes('autoHideMenuBar: true'), 'native 路径未藏菜单栏');
+  assert.ok(
+    nativeBody.includes('attachBuddyInfo(win, win, version, false)'),
+    'native 桥应注入 windowControls:false',
+  );
+  assert.ok(
+    source.includes('attachBuddyInfo(win, content, version, true)'),
+    'borderless 桥应注入 windowControls:true',
+  );
+  // legacy 有自绘标题栏,同样不得让插件挂窗口控制
+  assert.ok(
+    source.includes('attachBuddyInfo(win, content, version, false)'),
+    'legacy 桥应注入 windowControls:false',
   );
 });
 
@@ -122,11 +147,39 @@ test('契约:菜单动作 id 都有 ACTIONS 实现(buddy 动作复用窗口动�
   }
 });
 
-test('契约:main.js 按 resolveWindowMode 分流两条路径', () => {
+test('契约:main.js 按 resolveWindowMode 分流三条路径', () => {
   const source = readFileSync(new URL('../main.js', import.meta.url), 'utf8');
   assert.ok(source.includes('resolveWindowMode(process.env)'), 'main.js 未接窗口模式开关');
+  assert.ok(source.includes('createNativeWindow'), 'main.js 未引用 createNativeWindow');
   assert.ok(source.includes('createBorderlessWindow'), 'main.js 未引用 createBorderlessWindow');
   assert.ok(source.includes('createFramelessWindow'), 'main.js 未保留 legacy 路径');
+});
+
+// ---- 方案 C:自绘标题栏跟随 dsh 皮肤(源码级契约) ----
+
+test('契约:legacy 路径接皮肤同步(探针/轮询/推送到标题栏)', () => {
+  const source = readFileSync(new URL('../lib/frameless-window.js', import.meta.url), 'utf8');
+  assert.ok(source.includes('attachThemeSync(win, content, titlebar);'), 'legacy 未接 attachThemeSync');
+  assert.ok(source.includes("'titlebar:theme'"), '缺 titlebar:theme 推送通道');
+  assert.ok(source.includes('THEME_POLL_MS'), '缺轮询兜底间隔常量');
+  // 探针回退链:body → html → 侧栏列
+  const probe = source.slice(source.indexOf('THEME_PROBE_SCRIPT'));
+  for (const anchor of ['document.body', 'document.documentElement', '[data-pane="sidebar"]']) {
+    assert.ok(probe.includes(anchor), `探针缺回退锚点: ${anchor}`);
+  }
+  // 窗口关闭必须清定时器,否则轮询持有已销毁窗口
+  assert.ok(/win\.on\('closed', \(\) => clearInterval\(timer\)\)/.test(source), 'closed 未清轮询定时器');
+});
+
+test('契约:标题栏 preload 暴露 onTheme,页面按 CSS 变量应用皮肤', () => {
+  const preload = readFileSync(new URL('../lib/frameless-titlebar-preload.js', import.meta.url), 'utf8');
+  assert.ok(preload.includes("ipcRenderer.on('titlebar:theme'"), 'preload 未转发 titlebar:theme');
+  const html = readFileSync(new URL('../lib/frameless-titlebar.html', import.meta.url), 'utf8');
+  for (const needle of ['--tb-bg', '--tb-fg', '--tb-hover', '--tb-border', 'onTheme(applyTheme)']) {
+    assert.ok(html.includes(needle), `标题栏页面缺: ${needle}`);
+  }
+  // 关闭按钮红色 hover 不随皮肤改变(Windows 语义)
+  assert.ok(html.includes('#e81123'), '关闭按钮 hover 缺 #e81123');
 });
 
 // menusForLocale(legacy 路径)行为不变:结构/动作 id 与 MENU_MODEL 一致

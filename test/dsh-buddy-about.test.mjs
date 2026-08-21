@@ -26,6 +26,7 @@ import {
 import {
   hasBuddyBridge,
   readBuddyMaximized,
+  readBuddyWindowControls,
   resolveUpdateTarget,
   UPDATE_KIND_APP,
   UPDATE_KIND_PLUGIN,
@@ -131,6 +132,27 @@ test('readBuddyMaximized:桥存在时读 isMaximized,缺桥一律 false', () => 
   for (const absent of [undefined, null, 42, 'x']) {
     assert.equal(readBuddyMaximized(absent), false);
   }
+});
+
+test('readBuddyWindowControls:仅 windowControls===true 才挂载,缺字段旧壳一律不挂', () => {
+  assert.equal(readBuddyWindowControls({ version: '0.3.0', windowControls: true }), true);
+  assert.equal(readBuddyWindowControls({ version: '0.3.0', windowControls: false }), false);
+  // 旧壳注入的桥没有 windowControls 字段(native/legacy 语义:不挂)
+  assert.equal(readBuddyWindowControls({ version: '0.3.0' }), false);
+  for (const absent of [undefined, null, 42, 'x']) {
+    assert.equal(readBuddyWindowControls(absent), false);
+  }
+});
+
+test('契约:window-controls 挂载门控走 readBuddyWindowControls(而非仅桥存在)', () => {
+  const source = readFileSync(
+    new URL('../plugins/dsh-buddy-about/src/client/window-controls.js', import.meta.url),
+    'utf8',
+  );
+  assert.ok(
+    source.includes('readBuddyWindowControls(window.__DSH_BUDDY__)'),
+    'tryPlace 未用 readBuddyWindowControls 门控',
+  );
 });
 
 test('幂等约定:窗口控制与拖拽样式的属性名与选择器互相匹配', () => {

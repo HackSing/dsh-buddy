@@ -32,6 +32,19 @@ export function readBuddyMaximized(buddyHost) {
 }
 
 /**
+ * Whether the page plugin should mount the window controls + drag region.
+ * True only when the shell explicitly opts in (borderless mode injects
+ * windowControls: true). Native/legacy shells inject false, and shells
+ * older than the flag inject nothing — both must NOT mount, otherwise the
+ * in-page buttons duplicate the native/self-drawn titlebar controls.
+ * @param {unknown} buddyHost - live value of window.__DSH_BUDDY__.
+ * @returns {boolean}
+ */
+export function readBuddyWindowControls(buddyHost) {
+  return hasBuddyBridge(buddyHost) && buddyHost.windowControls === true;
+}
+
+/**
  * Resolve where an update-check click should go.
  * Inside the shell (bridge injected): the dsh-buddy:// scheme URL, which the
  * shell's setWindowOpenHandler intercepts and dispatches to the real check.

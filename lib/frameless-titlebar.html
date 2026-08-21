@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <!--
   非 macOS 平台的自绘标题栏(独立 WebContentsView,不注入 dsh 页面)。
-  文案与状态全部由主进程经 IPC 下发(window.dshTitlebar,见同目录 preload),
+  文案/状态/皮肤配色全部由主进程经 IPC 下发(window.dshTitlebar,见同目录
+  preload;配色来自主进程在 dsh 内容视图里跑的皮肤探针),
   本页只做渲染与点击上报,不持有任何业务逻辑。
   下拉菜单不在本页内渲染(视图只有 38px 高,会裁剪):点击菜单按钮后由主进程
   在对应位置 popup 原生菜单,关闭/定位/键盘交互全部交给系统。
@@ -10,14 +11,22 @@
 <head>
 <meta charset="utf-8">
 <style>
-  :root { color-scheme: light; }
+  /* 配色全部走 CSS 变量:默认值 = 原来的浅色主题;dsh 皮肤色由主进程
+     经 titlebar:theme 推入,applyTheme 只改这四个变量。 */
+  :root {
+    color-scheme: light;
+    --tb-bg: #f3f3f3;
+    --tb-fg: #1b1b1b;
+    --tb-hover: #e4e4e4;
+    --tb-border: #e0e0e0;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; overflow: hidden; }
   body {
     font: 12px/1 system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
-    color: #1b1b1b;
-    background: #f3f3f3;
-    border-bottom: 1px solid #e0e0e0;
+    color: var(--tb-fg);
+    background: var(--tb-bg);
+    border-bottom: 1px solid var(--tb-border);
     user-select: none;
   }
   #bar {
@@ -32,7 +41,7 @@
   }
   .navbtn { width: 30px; height: 26px; border-radius: 4px; }
   .navbtn svg { width: 14px; height: 14px; fill: currentColor; }
-  .navbtn:hover:not(:disabled), .menubtn:hover { background: #e4e4e4; }
+  .navbtn:hover:not(:disabled), .menubtn:hover { background: var(--tb-hover); }
   .navbtn:disabled { opacity: 0.35; }
   #menus { display: flex; align-items: center; margin-left: 4px; }
   .menubtn { height: 26px; padding: 0 10px; border-radius: 4px; font: inherit; }
@@ -40,7 +49,7 @@
   #version { opacity: 0.35; font-size: 10px; margin-right: 8px; }
   .ctlbtn { width: 40px; height: 30px; }
   .ctlbtn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.2; }
-  .ctlbtn:hover { background: #e4e4e4; }
+  .ctlbtn:hover { background: var(--tb-hover); }
   #close:hover { background: #e81123; color: #fff; }
 </style>
 </head>
@@ -93,7 +102,31 @@
     act('win:toggle-maximize');
   });
 
+  // ---- 皮肤跟随:主进程从 dsh 页面读出 { background, foreground } 推到这里 ----
+  function parseRgb(color) {
+    const m = typeof color === 'string' && color.match(/rgba?\(([^)]+)\)/);
+    if (!m) return null;
+    const parts = m[1].split(',').map((s) => parseFloat(s));
+    if (parts.length < 3 || parts.slice(0, 3).some((v) => !Number.isFinite(v))) return null;
+    return { r: parts[0], g: parts[1], b: parts[2] };
+  }
+
+  function applyTheme(theme) {
+    if (!theme || typeof theme.background !== 'string') return;
+    const rgb = parseRgb(theme.background);
+    if (rgb === null) return; // 非 rgb 形式不动(getComputedStyle 正常已归一为 rgb)
+    const root = document.documentElement;
+    const dark = (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255 < 0.5;
+    root.style.setProperty('--tb-bg', theme.background);
+    const fg = parseRgb(theme.foreground) !== null ? theme.foreground : dark ? '#f0f0f0' : '#1b1b1b';
+    root.style.setProperty('--tb-fg', fg);
+    root.style.setProperty('--tb-hover', dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)');
+    root.style.setProperty('--tb-border', dark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.10)');
+    root.style.colorScheme = dark ? 'dark' : 'light';
+  }
+
   window.dshTitlebar.onState(applyState);
+  window.dshTitlebar.onTheme(applyTheme);
   window.dshTitlebar.init().then((init) => {
     renderMenus(init.menus);
     $('version').textContent = 'v' + init.version;

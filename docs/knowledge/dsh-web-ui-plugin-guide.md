@@ -3,9 +3,9 @@
 
 # dsh Web UI 插件开发规范:包结构/cordis patch 加载/settings.section 注册/DOM 注入自愈/出壳通道,详细指南落 docs/dsh-web-ui-plugin-guide.md
 
-- 修订：3
+- 修订：4
 - 关键符号：`dsh.client`、`cordis.patch.yml`、`settings.section`、`ctx.slots.register`
-- 资产指纹：`sha256:e5b0063c7f8fc8fb234023679b088394ca8194f37e148f1e7f1052f7d5670a0f`
+- 资产指纹：`sha256:37c8922d8401066e8eb0acd4fc8f8fc4c5e9b4012e27ba9ad12efffcb241f508`
 
 ## 摘要
 
@@ -39,7 +39,7 @@ cordis host loader 会 import 包主入口 exports["."],纯 client 插件也必�
 
 ### `plugin.shell-bridge`
 
-插件运行在无 preload 的普通浏览器上下文,生态内无访问 Electron 的先例;出壳通道是 window.open('dsh-buddy://<action>') 经壳 setWindowOpenHandler 拦截 dispatch(已实机落地 lib/buddy-scheme.js)。实测三点:handler 返回 deny 时页面侧 window.open 得 null 是正常语义非拦截;无用户激活的合成调用会被 Chromium popup blocker 拦在壳之前;动作 id 用扁平连字符(冒号会被 URL 解析器当端口分隔符)。壳→页方向用 webContents.executeJavaScript 注入 window.__DSH_BUDDY__ 并 dispatch dsh-buddy:info 事件
+插件运行在无 preload 的普通浏览器上下文,生态内无访问 Electron 的先例;出壳通道是 window.open('dsh-buddy://<action>') 经壳 setWindowOpenHandler 拦截 dispatch(已实机落地 lib/buddy-scheme.js)。实测三点:handler 返回 deny 时页面侧 window.open 得 null 是正常语义非拦截;无用户激活的合成调用会被 Chromium popup blocker 拦在壳之前;动作 id 用扁平连字符(冒号会被 URL 解析器当端口分隔符)。壳→页方向用 webContents.executeJavaScript 注入 window.__DSH_BUDDY__={version,isMaximized,windowControls} 并 dispatch dsh-buddy:info 事件;windowControls 是壳对页面插件接管窗口控制/拖拽的显式授权,仅 borderless 模式为 true,native/legacy 与缺字段旧壳一律 false(插件侧 === true 才挂载,2026-08-21 方案A落地)
 
 证据：`docs/dsh-web-ui-plugin-guide.md`、`lib/buddy-scheme.js`、`lib/frameless-window.js`
 

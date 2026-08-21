@@ -203,6 +203,11 @@ padding。要让整片区域可拖，需把中间层容器一并设 `drag`，交
 - 自定义 scheme（`dsh-buddy://<action>`）与 https 标记 URL 都能到达 handler；
   动作 id 别用冒号分层（`win:minimize` 会被 URL 解析器当端口分隔符直接抛
   Invalid URL），用扁平连字符（`win-minimize`）。
+- 壳注入的桥对象形状为 `window.__DSH_BUDDY__ = { version, isMaximized, windowControls }`
+  （`lib/frameless-window.js` 的 `buildBuddyInfoScript`）。`windowControls` 是壳对
+  "页面插件是否接管窗口控制按钮/拖拽区"的显式授权：仅 borderless 模式注入 `true`，
+  native/legacy 与缺该字段的旧壳一律视为 `false`（插件侧 `=== true` 才挂载，见
+  `dsh-buddy-about/src/shared/shell-bridge.js` 的 `readBuddyWindowControls`）。
 
 注意：**插件生态没有任何访问 Electron/壳能力的先例**（全量 grep 无 `electron`/`ipcRenderer`
 命中）。插件要触发壳动作（如检查更新），最小方案是约定自定义 URL scheme
