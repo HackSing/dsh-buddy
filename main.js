@@ -6,7 +6,8 @@ const { installBundledPresets, defaultDshHome } = require('./lib/bundled-presets
 const { installBundledProfile } = require('./lib/bundled-profile');
 const { installTitleRepair } = require('./lib/title-repair-install');
 const { waitForTitlesSettled } = require('./lib/session-titles');
-const { createFramelessWindow } = require('./lib/frameless-window');
+const { createFramelessWindow, createBorderlessWindow } = require('./lib/frameless-window');
+const { resolveWindowMode } = require('./lib/window-mode');
 const { attachDragStrip } = require('./lib/immersive-titlebar');
 const { binEntryFrom } = require('./lib/dsh-entry');
 const { probeHttp, waitForHttp } = require('./lib/http-probe');
@@ -587,9 +588,12 @@ function createWindow() {
   // 拖拽能力由注入的顶部拖拽带补回(见 lib/immersive-titlebar.js)。
   const immersive = process.platform === 'darwin';
   if (!immersive) {
-    // Windows/Linux:无边框 + 壳自绘标题栏视图(图标/前进后退/菜单/窗口控制),
-    // 见 lib/frameless-window.js
-    win = createFramelessWindow({
+    // Windows/Linux:默认完全无框(borderless,窗口控制/拖拽由 dsh 页面插件提供),
+    // DSH_BUDDY_TITLEBAR=legacy 回退到带自绘标题栏的旧窗口;见 lib/frameless-window.js
+    const create = resolveWindowMode(process.env) === 'legacy'
+      ? createFramelessWindow
+      : createBorderlessWindow;
+    win = create({
       dshUrl: DSH_URL,
       version: app.getVersion(),
       onCheckUpdate: checkUpdateManually,

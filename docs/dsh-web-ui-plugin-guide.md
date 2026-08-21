@@ -15,6 +15,7 @@
 | `@linxin666/dsh-client-ui-web-ui-settings`（Web UI 插件管理） | 双半插件 | 设置页 + 子 slot 组合 |
 | `@linxin666/dsh-live-stats` | client 插件 | 注册进家族子 slot 的最小样本 |
 | `@linxin666/dsh-skins`（皮肤中心） | 纯 host 插件 | 对照组：无 `dsh.client` 即无浏览器 UI |
+| `plugins/dsh-buddy-about`（本仓自研） | 纯 client 插件 | 最小完整样本：no-op host stub、静态设置页、侧栏注入 |
 
 ## 1. 插件包结构
 
@@ -22,8 +23,9 @@
 
 ```jsonc
 {
-  "main": "lib/index.js",            // host 半入口（可选，纯 client 插件不需要）
+  "main": "src/host/index.js",       // host 半入口(强制,纯 client 插件也要给 no-op stub)
   "exports": {
+    ".": "./src/host/index.js",      // host loader 会 import 主入口,缺失会崩掉整个 dsh boot
     "./client": "./lib/client.js"    // 浏览器入口，client 发现机制的锚点
   },
   "dsh": {
@@ -46,6 +48,19 @@
     - id: my-plugin
       name: '@scope/my-plugin'
 ```
+
+**主入口是强制契约（包括纯 client 插件）**：cordis host loader 会 `import` 包的
+`exports["."]`/`main`，缺失会让**整个 dsh boot 崩溃**
+（`ERR_PACKAGE_PATH_NOT_EXPORTED`，2026-08-20 实机踩过，dsh 完全起不来）。
+纯 client 插件也要提供一个 no-op host 半，范本 `plugins/dsh-buddy-about/src/host/index.js`：
+
+```js
+export const name = 'my-plugin';
+export function apply() {}
+```
+
+package.json 对应 `"main": "src/host/index.js"` + `exports["."] = "./src/host/index.js"`
+（host 半无需构建，直接指源码，先例 @aiwaretop/dsh-docs-harness）。
 
 关键文件：
 
@@ -159,6 +174,12 @@ pet 作者因此选择更稳的直挂），两套成熟先例：
 
 **注入必配自愈**：React 重渲染/皮肤切换会拔掉注入节点，没有例外。
 
+**拖拽区（`-webkit-app-region`）实测**：该属性不继承——给容器设 `drag` 后，
+中间层布局子元素（DIV/NAV 等）的默认值 `none` 会把可拖区吃得只剩容器自身
+padding。要让整片区域可拖，需把中间层容器一并设 `drag`，交互元素
+（button/a/input 等）用 `no-drag` 兜底（2026-08-20 实机：只设 header 时可拖区
+仅剩顶部约 6px，补中间层后网格命中 45/136）。
+
 ## 6. 与外部通信
 
 插件运行上下文 = 普通浏览器页面（dsh 内容视图 `contextIsolation: true`，无 preload，
@@ -172,6 +193,16 @@ pet 作者因此选择更稳的直挂），两套成熟先例：
 | cordis 服务面 | `ctx.connection.api.*`、`ctx.remote.$on(...)`、`ctx.sessions`、`ctx.locale` | `dsh-client-ui-web-ui-settings/lib/client.js:437` |
 | window.open | **唯一出壳通道**：壳的 `setWindowOpenHandler` 拦截转系统浏览器 | `main.js:595-598`、`lib/frameless-window.js:161-164` |
 | 壳 → 页面 | `webContents.executeJavaScript`（壳侧主动注入数据） | `lib/immersive-titlebar.js:70` |
+
+**window.open 出壳桥的实测行为**（2026-08-20，dsh-buddy-about 批 1 实机验证）：
+
+- 壳的 `setWindowOpenHandler` 返回 `deny` 时，页面侧 `window.open` 返回 `null`——
+  **这是正常语义，不代表被拦截**；判定是否到达壳要看壳侧效果或主进程日志。
+- 无用户激活的 `window.open`（如 CDP `evaluate` 合成调用）会被 Chromium popup
+  blocker 拦在壳之前；真实点击（含 playwright 可信点击）正常到达壳。
+- 自定义 scheme（`dsh-buddy://<action>`）与 https 标记 URL 都能到达 handler；
+  动作 id 别用冒号分层（`win:minimize` 会被 URL 解析器当端口分隔符直接抛
+  Invalid URL），用扁平连字符（`win-minimize`）。
 
 注意：**插件生态没有任何访问 Electron/壳能力的先例**（全量 grep 无 `electron`/`ipcRenderer`
 命中）。插件要触发壳动作（如检查更新），最小方案是约定自定义 URL scheme
@@ -197,9 +228,10 @@ pet 作者因此选择更稳的直挂），两套成熟先例：
 
 ```
 my-plugin/
-├── package.json          # dsh.bundle.patch + dsh.client + exports["./client"]
+├── package.json          # main + exports["."] + dsh.bundle.patch + dsh.client + exports["./client"]
 ├── cordis.patch.yml      # 一行 insert
-└── lib/client.js         # 浏览器入口（或 src/client/index.ts 打包产出）
+├── src/host/index.js     # no-op host 半(强制,见第 1 节)
+└── lib/client.js         # 浏览器入口(或 src/client/index.js 打包产出)
 ```
 
 `lib/client.js` 骨架（注册一个静态设置页）：
