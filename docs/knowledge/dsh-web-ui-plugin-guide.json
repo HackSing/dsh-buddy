@@ -19,11 +19,9 @@
     },
     {
       "id": "plugin.main-entry-required",
-      "statement": "cordis host loader 会 import 包主入口 exports[\".\"],纯 client 插件也必须提供 no-op host stub(export const name + export function apply),缺失会让整个 dsh boot 崩溃 ERR_PACKAGE_PATH_NOT_EXPORTED(2026-08-20 本机实装 dsh-buddy-about 时真实踩过);host stub 无需构建直接指源码,先例 plugins/dsh-buddy-about/src/host/index.js",
+      "statement": "cordis host loader 会 import 包主入口 exports[\".\"],纯 client 插件也必须提供 no-op host stub(export const name + export function apply),缺失会让整个 dsh boot 崩溃 ERR_PACKAGE_PATH_NOT_EXPORTED(2026-08-20 本机实装 dsh-buddy-about 时真实踩过);host stub 无需构建直接指源码,最小形状见 docs/dsh-web-ui-plugin-guide.md 第 1 节代码块(原范本 dsh-buddy-about 已于 2026-08-21 移除,样本见 git 历史 c033406)",
       "source_refs": [
-        "docs/dsh-web-ui-plugin-guide.md",
-        "plugins/dsh-buddy-about/src/host/index.js",
-        "plugins/dsh-buddy-about/package.json"
+        "docs/dsh-web-ui-plugin-guide.md"
       ]
     },
     {
@@ -44,7 +42,7 @@
     },
     {
       "id": "plugin.shell-bridge",
-      "statement": "插件运行在无 preload 的普通浏览器上下文,生态内无访问 Electron 的先例;出壳通道是 window.open('dsh-buddy://<action>') 经壳 setWindowOpenHandler 拦截 dispatch(已实机落地 lib/buddy-scheme.js)。实测三点:handler 返回 deny 时页面侧 window.open 得 null 是正常语义非拦截;无用户激活的合成调用会被 Chromium popup blocker 拦在壳之前;动作 id 用扁平连字符(冒号会被 URL 解析器当端口分隔符)。壳→页方向用 webContents.executeJavaScript 注入 window.__DSH_BUDDY__={version,isMaximized,windowControls} 并 dispatch dsh-buddy:info 事件;windowControls 是壳对页面插件接管窗口控制/拖拽的显式授权,仅 borderless 模式为 true,native/legacy 与缺字段旧壳一律 false(插件侧 === true 才挂载,2026-08-21 方案A落地)",
+      "statement": "插件运行在无 preload 的普通浏览器上下文,生态内无访问 Electron 的先例;出壳通道是 window.open('dsh-buddy://<action>') 经壳 setWindowOpenHandler 拦截 dispatch(已实机落地 lib/buddy-scheme.js)。实测三点:handler 返回 deny 时页面侧 window.open 得 null 是正常语义非拦截;无用户激活的合成调用会被 Chromium popup blocker 拦在壳之前;动作 id 用扁平连字符(冒号会被 URL 解析器当端口分隔符)。壳→页方向用 webContents.executeJavaScript 注入 window.__DSH_BUDDY__={version,isMaximized,windowControls} 并 dispatch dsh-buddy:info 事件;windowControls 是壳对页面插件接管窗口控制/拖拽的显式授权,仅 borderless 模式为 true,native/legacy 与缺字段旧壳一律 false(插件侧应以 === true 判定;曾经的随包消费方 dsh-buddy-about 已于 2026-08-21 移除,当前无随包插件挂载)",
       "source_refs": [
         "docs/dsh-web-ui-plugin-guide.md",
         "lib/buddy-scheme.js",
@@ -62,7 +60,7 @@
     }
   ],
   "status": "active",
-  "revision": 5,
+  "revision": 6,
   "revision_history": [
     {
       "revision": 1,
@@ -83,9 +81,14 @@
       "revision": 4,
       "asset_fingerprint": "sha256:37c8922d8401066e8eb0acd4fc8f8fc4c5e9b4012e27ba9ad12efffcb241f508",
       "updated_at": "2026-08-21T05:47:31+00:00"
+    },
+    {
+      "revision": 5,
+      "asset_fingerprint": "sha256:6a276ffd38898cb27d5baf2c1f2291926c65cf4c6799bf931ec9683739fea479",
+      "updated_at": "2026-08-21T09:37:41+00:00"
     }
   ],
   "created_at": "2026-08-20T13:37:06+00:00",
-  "updated_at": "2026-08-21T09:37:41+00:00",
-  "asset_fingerprint": "sha256:6a276ffd38898cb27d5baf2c1f2291926c65cf4c6799bf931ec9683739fea479"
+  "updated_at": "2026-08-21T09:51:26+00:00",
+  "asset_fingerprint": "sha256:fd8d02aacfb090566a18f778de0eedfa57f6fe2e249b843c8c5381cca87ed9b5"
 }

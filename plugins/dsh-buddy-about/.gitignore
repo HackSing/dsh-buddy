@@ -1,4 +1,0 @@
-node_modules/
-
-# Build output (npm run build; produced from src/)
-lib/

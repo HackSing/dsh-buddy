@@ -15,7 +15,7 @@
 | `@linxin666/dsh-client-ui-web-ui-settings`（Web UI 插件管理） | 双半插件 | 设置页 + 子 slot 组合 |
 | `@linxin666/dsh-live-stats` | client 插件 | 注册进家族子 slot 的最小样本 |
 | `@linxin666/dsh-skins`（皮肤中心） | 纯 host 插件 | 对照组：无 `dsh.client` 即无浏览器 UI |
-| `plugins/dsh-buddy-about`（本仓自研） | 纯 client 插件 | 最小完整样本：no-op host stub、静态设置页、侧栏注入 |
+| `dsh-buddy-about`（本仓自研，2026-08-21 已移除，样本见 git 历史 c033406） | 纯 client 插件 | 最小完整样本：no-op host stub、静态设置页、侧栏注入 |
 
 ## 1. 插件包结构
 
@@ -52,7 +52,8 @@
 **主入口是强制契约（包括纯 client 插件）**：cordis host loader 会 `import` 包的
 `exports["."]`/`main`，缺失会让**整个 dsh boot 崩溃**
 （`ERR_PACKAGE_PATH_NOT_EXPORTED`，2026-08-20 实机踩过，dsh 完全起不来）。
-纯 client 插件也要提供一个 no-op host 半，范本 `plugins/dsh-buddy-about/src/host/index.js`：
+纯 client 插件也要提供一个 no-op host 半，最小形状如下（范本曾在
+`plugins/dsh-buddy-about/src/host/index.js`，该插件已移除，见 git 历史 c033406）：
 
 ```js
 export const name = 'my-plugin';
@@ -206,8 +207,9 @@ padding。要让整片区域可拖，需把中间层容器一并设 `drag`，交
 - 壳注入的桥对象形状为 `window.__DSH_BUDDY__ = { version, isMaximized, windowControls }`
   （`lib/frameless-window.js` 的 `buildBuddyInfoScript`）。`windowControls` 是壳对
   "页面插件是否接管窗口控制按钮/拖拽区"的显式授权：仅 borderless 模式注入 `true`，
-  native/legacy 与缺该字段的旧壳一律视为 `false`（插件侧 `=== true` 才挂载，见
-  `dsh-buddy-about/src/shared/shell-bridge.js` 的 `readBuddyWindowControls`）。
+  native/legacy 与缺该字段的旧壳一律视为 `false`（插件侧应以 `=== true` 才挂载；
+  先例实现 `dsh-buddy-about` 的 `readBuddyWindowControls` 已随插件移除，见
+  git 历史 c033406）。
 
 注意：**插件生态没有任何访问 Electron/壳能力的先例**（全量 grep 无 `electron`/`ipcRenderer`
 命中）。插件要触发壳动作（如检查更新），最小方案是约定自定义 URL scheme

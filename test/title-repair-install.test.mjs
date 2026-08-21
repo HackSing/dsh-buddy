@@ -67,13 +67,13 @@ test('changed bundled content overwrites the installed copy', (t) => {
 test('patch row is appended to an existing non-empty patch layer', (t) => {
   const { pluginsRoot, profileDir } = scaffold(t);
   fs.mkdirSync(profileDir, { recursive: true });
-  const existing = '# header\n- insert:\n    - id: dsh-buddy-about\n      name: dsh-buddy-about\n';
+  const existing = '# header\n- insert:\n    - id: some-other-plugin\n      name: some-other-plugin\n';
   fs.writeFileSync(path.join(profileDir, 'cordis.patch.yml'), existing);
   const summary = installTitleRepair({ pluginsRoot, profileDir });
   assert.equal(summary.patch, 'applied');
   const patch = fs.readFileSync(path.join(profileDir, 'cordis.patch.yml'), 'utf8');
   assert.ok(patch.startsWith(existing.trimEnd()), '既有内容原样保留');
-  assert.match(patch, /dsh-buddy-about/);
+  assert.match(patch, /some-other-plugin/);
   assert.match(patch, /- insert:\n {4}- id: dsh-buddy-title-repair/);
 });
 

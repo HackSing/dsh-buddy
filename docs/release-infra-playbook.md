@@ -135,7 +135,7 @@ dsh 本体更新必须走整包发版（件一→件二→件三），但预装�
 
 ## 成本
 
-公开仓库的 GitHub Actions 免费（含 macOS/Windows runner）。CI 全用 runner 自带工具（`gh`、`npm`），零第三方 action；本机 Windows 打包入口是 `scripts/dist-win.bat`（清 IDE 注入的环境变量 + 输出目录锁预检），tar 操作用项目已依赖的 node-tar，不依赖系统 tar。
+公开仓库的 GitHub Actions 免费（含 macOS/Windows runner）。CI 全用 runner 自带工具（`gh`、`npm`），零第三方 action；本机 Windows 打包入口是 `scripts/dist-win.bat`（薄壳，逻辑在 `scripts/dist-win.ps1`：清 IDE 注入的环境变量 + 输出目录锁预检 + 单行进度条，完成后按任意键打开安装包所在文件夹；CI 不走它），tar 操作用项目已依赖的 node-tar，不依赖系统 tar。
 
 ## 落地检查清单
 

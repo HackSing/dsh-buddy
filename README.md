@@ -94,7 +94,7 @@ npm install
 npm start        # 开发态
 npm run dist     # 打包 macOS .app → dist/mac-arm64/DSH Buddy.app
 npm run dist:win # 打包 Windows 安装包 → dist/DSH Buddy Setup <ver>.exe(CI/干净终端用)
-scripts\dist-win.bat # 本机 Windows 打包入口:清 IDE 注入的 ELECTRON_* 变量 + dist 锁预检(IDE 终端里务必走它)
+scripts\dist-win.bat # 本机 Windows 打包入口(IDE 终端里务必走它):委托 scripts\dist-win.ps1 清 IDE 注入的 ELECTRON_* 变量 + dist 锁预检 + 单行进度条,完成后按任意键打开安装包所在文件夹
 ```
 
 > 打包产物未做代码签名与公证:macOS 首次打开需在「系统设置 → 隐私与安全性」中放行,Windows 安装器会触发 SmartScreen 提示。
