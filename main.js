@@ -255,7 +255,7 @@ async function ensureDsh() {
     // 打包后的 GUI 应用无控制台,inherit 会丢弃 dsh 输出,启动失败时无从诊断。
     stdio: ['ignore', 'pipe', 'pipe'],
     // 快捷键注册状态随 env 透出,插件 host 的 app:hotkey-status 据此回报
-    env: { ...launcher.env, ...hotkeyChildEnv(globalHotkey ?? { registered: false, accelerator: null }) },
+    env: { ...launcher.env, ...hotkeyChildEnv(globalHotkey ?? { registered: false, attempted: false, accelerator: null }) },
     // Windows 下 npx 是 .cmd,需经 shell;内嵌路径是可执行文件,无需 shell
     shell: process.platform === 'win32' && launcher.kind !== 'embedded',
     // 独立进程组:dsh 自身还会派生子进程,退出时须整组回收

@@ -18,10 +18,16 @@ test('buildDispatchScript:派发具名事件且 accelerator 随行', () => {
   assert.ok(!weird.includes('alert(1); "'));
 });
 
-test('hotkeyChildEnv:注册成功注入两个变量,失败注入空', () => {
-  assert.deepEqual(hotkeyChildEnv({ registered: true, accelerator: 'Cmd+Space' }), {
+test('hotkeyChildEnv:三态 — 成功注 1,尝试失败注 0,未尝试注空', () => {
+  assert.deepEqual(hotkeyChildEnv({ registered: true, attempted: true, accelerator: 'Cmd+Space' }), {
     DSH_BUDDY_HOTKEY_REGISTERED: '1',
     DSH_BUDDY_HOTKEY_ACCELERATOR: 'Cmd+Space',
   });
-  assert.deepEqual(hotkeyChildEnv({ registered: false, accelerator: null }), {});
+  // 尝试注册但失败:显式注入 '0' 并透出尝试的键,插件据此显示补救横幅
+  assert.deepEqual(hotkeyChildEnv({ registered: false, attempted: true, accelerator: 'Cmd+Space' }), {
+    DSH_BUDDY_HOTKEY_REGISTERED: '0',
+    DSH_BUDDY_HOTKEY_ACCELERATOR: 'Cmd+Space',
+  });
+  // 未尝试注册(DSH_BUDDY_HOTKEY=off/壳未挂载):不注入,插件视为「状态未知」
+  assert.deepEqual(hotkeyChildEnv({ registered: false, attempted: false, accelerator: null }), {});
 });
