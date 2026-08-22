@@ -19,6 +19,7 @@ const { probeHttp, waitForHttp } = require('./lib/http-probe');
 const { killProcessTree, killProcessTreeAfterGrace } = require('./lib/process-tree');
 const { createDshLogger } = require('./lib/dsh-log');
 const { checkForUpdate, UPDATE_OUTCOME, RELEASES_PAGE_URL } = require('./lib/update-check');
+const { attachGlobalHotkey, hotkeyChildEnv } = require('./lib/global-hotkey');
 const { checkPluginChannel, CHANNEL_OUTCOME } = require('./lib/plugin-channel');
 const { applyPluginUpdate, PLUGIN_UPDATE_OUTCOME } = require('./lib/plugin-update');
 const {
@@ -40,6 +41,7 @@ const DSH_URL = process.env.DSH_URL || 'http://127.0.0.1:3080';
 
 let dshProc = null;
 let dshLog = null; // dsh 子进程输出捕获器,仅在本壳拉起 dsh 时创建(复用外部服务时保持 null)
+let globalHotkey = null; // 全局快捷键句柄(attachGlobalHotkey 返回,before-quit 清理)
 let win = null;
 let quitting = false;
 let installPending = false; // quitAndInstall 已触发:下一次退出是安装态,不走宽限强杀
@@ -252,7 +254,8 @@ async function ensureDsh() {
     // 捕获 stdout/stderr(由 dshLog 落盘 + 透传控制台),取代 'inherit':
     // 打包后的 GUI 应用无控制台,inherit 会丢弃 dsh 输出,启动失败时无从诊断。
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: launcher.env,
+    // 快捷键注册状态随 env 透出,插件 host 的 app:hotkey-status 据此回报
+    env: { ...launcher.env, ...hotkeyChildEnv(globalHotkey ?? { registered: false, accelerator: null }) },
     // Windows 下 npx 是 .cmd,需经 shell;内嵌路径是可执行文件,无需 shell
     shell: process.platform === 'win32' && launcher.kind !== 'embedded',
     // 独立进程组:dsh 自身还会派生子进程,退出时须整组回收
@@ -654,6 +657,8 @@ if (!app.requestSingleInstanceLock()) {
     // second-instance 的 restore+focus 即成为启动期重复点击的可见反馈。
     createWindow();
     if (win) win.setStartupStage('正在准备内置资产…');
+    // 全局快捷键(通用页面转发机制):注册失败只降级为无快捷键,不阻塞启动
+    globalHotkey = attachGlobalHotkey({ win, env: process.env });
     await ensureBundledAssets();
     // 标题修复插件:装进 profile 并补挂载行,由 dsh 启动时执行投影缓存回写。
     // 增强项而非启动前置:装不上只退化回旧行为(点击会话才刷新标题),只记日志。
@@ -710,6 +715,7 @@ function killDsh({ graceMs } = {}) {
 
 app.on('before-quit', () => {
   quitting = true;
+  globalHotkey?.dispose();
   // 宽限只给日常退出(关窗/Cmd+Q):安装态退出(quitAndInstall)立即杀,见 notifyUpdateReady。
   killDsh({ graceMs: installPending ? 0 : QUIT_GRACE_MS });
   if (dshLog) {
