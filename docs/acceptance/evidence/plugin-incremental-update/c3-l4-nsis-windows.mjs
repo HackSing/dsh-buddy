@@ -7,9 +7,13 @@
 // 目前没有任何有证据支撑的验收覆盖。而这些恰恰是 release.yml 开头整段注释
 // 警告过的高风险区(bsdtar 打包 junction 后链接失真、解包需符号链接特权)。
 //
-// !! 本脚本在 macOS 上编写,未经 Windows 实机验证 !!
-// 首次运行若因命令行细节报错,按错误信息调整后请把修正一并提交——
-// 修正后的脚本本身就是证据的一部分。
+// 本脚本原在 macOS 上编写,2026-08-22 首次 Windows 实机运行,暴露并修正两处
+// (修正后的脚本本身就是证据的一部分):
+//   1. 缺安装前安全阀,首跑把开发机上原有的 DSH Buddy 安装连同 userData 一并
+//      卸掉了——见 assertNoExistingInstall 的注释;
+//   2. 把 NSIS 静默卸载当同步调用,导致「卸载后主程序已移除」误判 FAIL 且
+//      随后 rmSync 抛 EPERM——见 uninstall 的注释。
+// 两处根因同类:把异步操作当同步用,与 c2 Windows 版踩到的 taskkill 竞态同族。
 //
 // 前置:Windows x64、Node 24、已 clone 本仓库(脚本靠自身位置推导仓库根,
 // 不要求特定盘符或目录名)。安装包用 GitHub Release 的 exe:
@@ -43,6 +47,7 @@ const DSH_URL = `http://127.0.0.1:${PORT}`;
 const BOOT_TIMEOUT_MS = 180_000; // Windows 上解包随包资产明显慢于 macOS,给足余量
 const EXE_NAME = 'DSH Buddy.exe';
 const UNINSTALLER = 'Uninstall DSH Buddy.exe';
+const SANDBOX_PREFIX = 'dsh-buddy-l4-'; // 沙盒目录名前缀,安全阀据此放行自家残留
 
 let failures = 0;
 function assert(cond, label, detail) {
@@ -75,10 +80,54 @@ function installNsis(setupExe, targetDir) {
   return exe;
 }
 
+// NSIS 静默卸载默认把卸载器复制到 %TEMP% 再从那里运行(这样它才能删掉自己所在
+// 的目录),原进程随即退出——于是 spawnSync 返回时卸载仍在后台进行,调用方看到的
+// 是「还没删完」的中间态。首跑实测:断言「卸载后主程序已移除」FAIL、紧接的
+// rmSync(sandbox) 抛 EPERM,而 app 目录最终确实变空,证明卸载只是晚于检查完成。
+// _?=<dir> 是 NSIS 的约定:指定卸载器工作目录并阻止其自我复制,卸载因此同步执行,
+// spawnSync 才真的等到结束。代价:该模式下卸载器不自删,需调用方收走。
 function uninstall(targetDir) {
   const un = path.join(targetDir, UNINSTALLER);
   if (!fs.existsSync(un)) return; // 安装失败时无卸载器,交由目录清理兜底
-  spawnSync(un, ['/S'], { encoding: 'utf8' });
+  spawnSync(un, ['/S', `_?=${targetDir}`], { encoding: 'utf8' });
+  fs.rmSync(un, { force: true }); // _?= 模式下卸载器留在原地,手动收走
+}
+
+// ---- 安全阀:本机已有 DSH Buddy 安装时拒绝运行 ----
+
+// 为什么必须有:electron-builder 的 NSIS 是 perMachine:false,按 appId 在 HKCU
+// 注册全局安装记录,同一用户只能有一份。装到临时沙盒只隔离了文件系统,没隔离
+// 「安装身份」——沙盒安装会接管那条记录,卸载时便按记录把机器上原有的那份
+// DSH Buddy(程序目录 + %APPDATA% 下的 userData)一并清掉。首跑实测确实如此:
+// 开发机上原有的安装被卸载、userData 被删(~/.dsh 里的用户数据不受影响)。
+// macOS 版没有这个问题:dmg 挂载点天然隔离,不存在全局安装记录。
+// 例外:上一轮本脚本自己留下的沙盒安装(路径含 SANDBOX_PREFIX)不算,否则脚本
+// 中途崩溃后就再也跑不起来了。判据取 UninstallString 而不是看起来更贴切的
+// InstallLocation:实测 electron-builder 的 NSIS 压根不写后者(值为空字符串),
+// 拿它当判据,例外逻辑会静默失效——首次修复时就踩了这一下,靠 reportRegistryEntry
+// 把注册记录打进日志才发现。
+function findExistingInstalls() {
+  const r = powershell(
+    "Get-ChildItem 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall' -ErrorAction SilentlyContinue |" +
+      ' ForEach-Object { $p = Get-ItemProperty $_.PSPath;' +
+      " if ($p.DisplayName -like 'DSH Buddy*') { $p.DisplayName + '|' + $p.UninstallString } }"
+  );
+  return r.text.split(String.fromCharCode(10)).map((x) => x.trim()).filter(Boolean);
+}
+
+function assertNoExistingInstall() {
+  const found = findExistingInstalls().filter((line) => !line.includes(SANDBOX_PREFIX));
+  if (found.length === 0) return;
+  console.error('拒绝运行:本机已存在 DSH Buddy 安装,继续会把它卸掉(NSIS 按 appId 全局注册,沙盒隔离不了安装身份)。');
+  for (const line of found) console.error(`  已装: ${line}`);
+  console.error('请先手动卸载该安装(或换一台没装过的机器)再跑本脚本;跑完可用同一安装包装回去。');
+  process.exit(2);
+}
+
+// 安装后把注册记录打进日志:既是 L4 的安装态证据,也让上面的匹配规则有据可查。
+function reportRegistryEntry() {
+  const lines = findExistingInstalls();
+  console.log(`  注册记录: ${lines.length ? lines.join(' ; ') : '(未查到,匹配规则可能需要调整)'}`);
 }
 
 // ---- 校验:签名现状(记录事实,不作为通过条件)----
@@ -174,13 +223,14 @@ async function main() {
     console.error('用法: node c3-l4-nsis-windows.mjs <path-to-Setup.exe>');
     process.exit(2);
   }
+  assertNoExistingInstall(); // 必须在动任何东西之前:装上去就来不及了
   console.log('# c3 L4 打包安装态验收(Windows,GitHub Release 发布产物)');
   console.log(`installer: ${path.basename(setupExe)}`);
   console.log(`sha256: ${powershell(`(Get-FileHash -Algorithm SHA256 -LiteralPath '${setupExe.replace(/'/g, "''")}').Hash`).text}`);
   console.log(`时间: ${new Date().toISOString()}`);
   console.log(`系统: ${powershell('(Get-CimInstance Win32_OperatingSystem).Caption').text} (${os.arch()})`);
 
-  const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-buddy-l4-'));
+  const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), SANDBOX_PREFIX));
   const installDir = path.join(sandbox, 'app');
   console.log(`隔离沙盒: ${sandbox}`);
   let child = null;
@@ -188,6 +238,7 @@ async function main() {
     console.log('\n## 1. NSIS 静默安装到隔离位置');
     const exe = installNsis(setupExe, installDir);
     assert(fs.existsSync(exe), '安装器把应用装进了指定目录', installDir);
+    reportRegistryEntry();
 
     console.log('\n## 2. 签名现状(仅记录)');
     reportSignature(exe);

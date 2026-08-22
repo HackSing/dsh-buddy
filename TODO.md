@@ -4,33 +4,30 @@
 
 ## 待办
 
-- [ ] Windows 侧补 L4 验收证据（aiware，2026-08-22）
-
-  **为什么**：`docs/acceptance/plugin-incremental-update.json` 的 c2(L3) 与 c3(L4)，原 Windows 记录的证据都写在
-  `.gitignore` 覆盖的 `build/` 下，从未进 git、本地清理后永久失效；两层的补记录都是在 macOS 上做的。
-  于是 Windows 独有的路径——NSIS 安装器、pnpm junction 布局下的 profile 解包、taskkill 进程树回收——
-  当前**没有任何有证据支撑的覆盖**，而这些正是 `.github/workflows/release.yml` 开头整段注释警告过的高风险区
-  （bsdtar 打包 junction 后链接失真、解包需符号链接特权）。两个 criterion 的 status 仍是 passed，
-  容易让人误以为双平台都验过。**c2(L3) 已于 2026-08-22 在 Windows 实机补齐**（见「已完成」），
-  此条只剩 c3(L4)。
-
-  **前置**：Windows x64 + Node 24 + 本仓库 clone（脚本靠自身位置推导仓库根，不要求特定盘符或目录名）。
-
-  1. **L4**：`gh release download v0.4.1 --pattern "*.exe"`，然后
-     `node docs\acceptance\evidence\plugin-incremental-update\c3-l4-nsis-windows.mjs <Setup.exe>`，
-     日志用 `Tee-Object` 存到脚本同级目录。该脚本在 macOS 上编写、**未经 Windows 实机验证**——
-     顶层代码与平台守卫已验，NSIS 静默安装、PowerShell 查询、taskkill 回收三处均未实跑；
-     首次运行若因命令行细节报错，改好后把脚本修正一并提交，修正后的脚本本身就是证据的一部分。
-     L3 实机踩到的坑同样适用于此：`killProcessTree` 只是**派发** `taskkill /T /F`，返回时句柄尚未释放，
-     紧跟着删/改文件会撞 `ENOTEMPTY`/`EPERM`（macOS 的 unlink 语义踩不到，故 macOS 版脚本无此防护）。
-     本脚本的 `reclaim` 已等 exit 事件并轮询 `waitForNoLeftover`，但安装/卸载目录操作仍需留意同一竞态。
-  2. 日志就位后跑一次 `acceptance record --acceptance docs/acceptance/plugin-incremental-update.json
-     --input <input.json>`（`criterion_id` 是 input JSON 里的字段而非命令行参数，填 c3；
-     `--input` 路径必须在项目内，放 `build/` 下用完即删即可），最后
-     `python scripts/harness.py assets-check --strict`。注意 harness 现在会拒绝落在 git 忽略路径的证据
-     （`acceptance_evidence_ignored`），**证据必须放 `docs/acceptance/evidence/`，不要再写进 `build/`**。
+（暂无）
 
 ## 已完成
+
+- [x] Windows 侧补 L4 验收证据（aiware，2026-08-22）
+
+  c3 的 Windows 实机证据已补齐，被验产物是 Release v0.4.1 的 `DSH-Buddy-Setup-0.4.1.exe`，
+  本地副本 sha256 与 release digest 逐字节一致（非重新构建物）。终跑 8 项断言全 PASS、退出码 0，
+  记录 `acc-20260822T034245-01ca14a533`，`assets-check --strict` 0 违规 0 警告。
+
+  脚本首跑暴露两处缺陷（均已修正并随证据提交）：
+  1. **缺安装前安全阀**——electron-builder 的 NSIS 是 `perMachine:false`，按 appId 在 HKCU 注册
+     全局安装记录，同一用户只能有一份。装到临时沙盒只隔离文件系统、隔离不了「安装身份」，
+     沙盒安装接管该记录后，卸载会把机器上原有的 DSH Buddy（程序目录 + `%APPDATA%` userData）
+     一并清除。**首跑实测确实卸掉了开发机上原有的安装**（`~/.dsh` 用户数据不受影响，已核验完好，
+     事后用同一安装包恢复原路径）。现由 `assertNoExistingInstall` 在动手前拒绝在已装机器上运行。
+     **在装有 DSH Buddy 的机器上跑此脚本前，请先卸载那份安装。**
+  2. **把 NSIS 静默卸载当同步调用**——卸载器默认自我复制到 `%TEMP%` 再运行并立即返回，导致
+     「卸载后主程序已移除」误判 FAIL、随后 `rmSync` 抛 `EPERM`；改用 NSIS 约定的 `_?=<dir>`
+     强制原地同步执行，并手动收走该模式下不自删的卸载器。
+
+  另：安全阀的沙盒例外判据一度是哑的（electron-builder 不写 `InstallLocation`，值为空），
+  靠新增的 `reportRegistryEntry` 把注册记录打进日志才发现，改取 `UninstallString` 后复验通过。
+  三处修正根因同类——**把异步操作当同步用**，与 c2 Windows 版的 taskkill 竞态同族。
 
 - [x] Windows 侧补 L3 验收证据（aiware，2026-08-22）
 

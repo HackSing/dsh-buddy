@@ -1,0 +1,38 @@
+# c3 L4 打包安装态验收(Windows,GitHub Release 发布产物)
+installer: DSH-Buddy-Setup-0.4.1.exe
+sha256: ED38B67E17F55E3BBE2777B2B4D601F1262332EE546E5F64D1D7A92A3D1A1445
+时间: 2026-08-22T03:35:34.553Z
+系统: Microsoft Windows 11 Home (x64)
+隔离沙盒: C:\Users\freed\AppData\Local\Temp\dsh-buddy-l4-2Un6ta
+
+## 1. NSIS 静默安装到隔离位置
+PASS: 安装器把应用装进了指定目录 — C:\Users\freed\AppData\Local\Temp\dsh-buddy-l4-2Un6ta\app
+  注册记录: DSH Buddy 0.4.1|"C:\Users\freed\AppData\Local\Temp\dsh-buddy-l4-2Un6ta\app\Uninstall DSH Buddy.exe" /currentuser
+
+## 2. 签名现状(仅记录)
+  Authenticode 状态: NotSigned(未签名属已知现状,不计入断言)
+
+## 3. 隔离沙盒首次启动
+  [app] 
+  [app] [dsh-buddy] installed bundled presets: preset, zero-anchored-standard, whoami-standard
+  [app] [dsh-buddy] bundled profile: installed
+  [app] [dsh-buddy] title repair: plugin installed, patch applied
+  [app] [dsh-buddy] launcher=embedded entry=C:\Users\freed\AppData\Local\Temp\dsh-buddy-l4-2Un6ta\app\resources\app.asar.unpacked\node_modules\@deepseek-ai\dsh\lib\bin.js cmd=C:\Users\freed\AppData\Local\Temp\dsh-buddy-l4-2Un6ta\app\DSH Buddy.exe args=["C:\\Users\\freed\\AppData\\Local\\Temp\\dsh-buddy-l4-2Un6ta\\app\\resources\\app.asar.unpacked\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js","web","--host","127.0.0.1","--port","3097","--no-open"]
+  [app] [ui-skin-center] legacy bridge: no legacy managed skin state; nothing to migrate
+PASS: 内嵌 dsh 在 180s 内就绪(http://127.0.0.1:3097 HTTP 200) — http:200
+
+## 4. 随包 profile 安装结果
+PASS: 随包 profile 已安装到隔离 DSH_HOME(web) — C:\Users\freed\AppData\Local\Temp\dsh-buddy-l4-2Un6ta\dsh-home\profiles\web
+PASS: manifest 全部 8 个插件依赖齐 — 实得 8 项
+PASS: 插件目录均已实体化(无断链/空壳) — 全部非空
+
+## 5. 进程树回收
+PASS: 主进程已回收(收到 exit 事件)
+PASS: 进程树回收干净(无残留子进程) — 残留计数 0
+
+## 6. 卸载
+PASS: 卸载后主程序已移除
+
+沙盒已清理: C:\Users\freed\AppData\Local\Temp\dsh-buddy-l4-2Un6ta
+
+结论: 全部通过

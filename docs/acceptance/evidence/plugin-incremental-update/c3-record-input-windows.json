@@ -1,0 +1,14 @@
+{
+  "schema_version": "docs-harness/acceptance-input/v3",
+  "objective": "验证按插件拆包的增量热更:客户端只下载变化的插件闭包并完成外科替换,dsh 重启后插件版本正确、其余插件不受影响,失败整体回滚不污染现有 profile,新旧通道 schema 分流不互误导。",
+  "criterion_id": "c3",
+  "acceptance_type": "behavior_acceptance",
+  "status": "passed",
+  "layer": "L4",
+  "evidence_layer": "package_or_install",
+  "method": "Windows 实机补记录(此前 c3 的 Windows 证据写在 .gitignore 覆盖的 build/ 下已永久失效,现存 passed 记录来自 macOS dmg,Windows 独有的 NSIS 安装器路径零覆盖)。被验产物为 GitHub Release v0.4.1 的 DSH-Buddy-Setup-0.4.1.exe,本地副本 sha256 ed38b67e17f55e3bbe2777b2b4d601f1262332ee546e5f64d1d7a92a3d1a1445 与 release 资产 digest 逐字节一致(258180511 字节),非重新构建物。环境 Windows 11 Home x64 / Node v24.14.1。脚本 c3-l4-nsis-windows.mjs 原在 macOS 编写、从未实机运行,本次首跑暴露两处缺陷并修正(修正后的脚本随此记录提交,本身即证据的一部分):(1) 缺安装前安全阀。electron-builder 的 NSIS 是 perMachine:false,按 appId 在 HKCU 注册全局安装记录,同一用户只能有一份;装到临时沙盒只隔离文件系统、隔离不了安装身份,沙盒安装接管该记录后,卸载即把机器上原有的 DSH Buddy(程序目录 + %APPDATA% userData)一并清除——首跑实测确实卸掉了开发机上原有安装(~/.dsh 用户数据不受影响,已核验完好)。现新增 assertNoExistingInstall 在动手前拒绝在已装机器上运行,并放行自家沙盒残留;(2) 把 NSIS 静默卸载当同步调用。卸载器默认自我复制到 %TEMP% 再运行并立即返回,导致断言「卸载后主程序已移除」误判 FAIL、随后 rmSync(sandbox) 抛 EPERM(而 app 目录最终确实变空,证明卸载只是晚于检查完成);改用 NSIS 约定的 _?=<dir> 强制原地同步执行,并手动收走该模式下不自删的卸载器。第二跑全绿后,由新增的 reportRegistryEntry 打进日志的注册记录发现安全阀例外判据是哑的(electron-builder 不写 InstallLocation,该值为空),改取 UninstallString 后第三跑复验。两处缺陷根因同类:把异步操作当同步用,与 c2 Windows 版踩到的 taskkill 竞态同族。终跑(2026-08-22T03:35:34Z)8 项断言全部 PASS、退出码 0:NSIS 静默安装 /S /D= 装入隔离沙盒;注册记录 DSH Buddy 0.4.1 指向沙盒卸载器(证明例外判据有效);Authenticode NotSigned(已知现状,仅记录不计入断言);隔离 DSH_HOME 首启内嵌 dsh 在 180s 内 http://127.0.0.1:3097 返回 HTTP 200,应用日志含 bundled profile: installed;随包 profile 装入隔离 DSH_HOME、manifest 全部 8 个插件依赖齐、插件目录均已实体化无断链空壳(即 release.yml 警告的 bsdtar 打包 junction 失真未发生);进程树回收收到 exit 且无残留子进程;卸载后主程序已移除;沙盒自动清理。补充(脚本外人工确认,无独立证据文件):以空 DSH_HOME 拉起同一安装并用浏览器实访,task-board 完整看板与 revision、dsh-pet、better-sidebar 均已注册,skins 的 legacy bridge 日志在场,console 零错误,排除 HTTP 200 假阳性。验证完成后已用同一安装包将开发机安装恢复至原路径(19938 文件、卸载器与注册记录就位)。",
+  "evidence_refs": [
+    "docs/acceptance/evidence/plugin-incremental-update/c3-l4-nsis-windows.log",
+    "docs/acceptance/evidence/plugin-incremental-update/c3-l4-nsis-windows.mjs"
+  ]
+}
