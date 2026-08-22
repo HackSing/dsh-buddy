@@ -36,10 +36,11 @@
 - [dsh 网关 settings 白名单：第三方插件设置面必须自建路由](knowledge/dsh-settings-gateway-allowlist.md) — 状态：有效（现行事实）；关键符号：`WEB_SETTINGS_NAMESPACES`、`settings.describe`、`docs-harness-settings`、`HarnessSettingsStore`
 - [Electron 当 Node 跑内嵌 dsh 的原生能力边界：external buffer 被禁](knowledge/electron-external-buffer-limit.md) — 状态：有效（现行事实）；关键符号：`readUtf16`、`patch-dsh-picker`、`DSH_PICKER_BROWSE`、`browse-picker-patch`
 - [complete persona 压制插件 prompt section 的根因与相位化密封方案](knowledge/anchored-complete-persona.md) — 状态：有效（现行事实）；关键符号：`sealSectionsUntilPromotion`、`extraIndex`、`installBundledPresets`、`complete`
-- [预装插件存量缺口与 CI 安装位污染](knowledge/preinstall-existing-user-gap.md) — 状态：有效（现行事实）；关键符号：`installBundledProfile`、`preinstall-manifest`、`virtualStoreDir`、`healProfilesModuleFallback`
 - [插件热更通道:滚动 release channel + 成品 tar 分发,运行时复用 bundled-profile 安装链路](knowledge/plugin-channel-hot-update.md) — 状态：有效（现行事实）；关键符号：`checkPluginChannel`、`applyPluginUpdate`、`plugin-channel.json`、`profileUpgradeDecision`
 - [会话列表标题链路:投影缓存是唯一冷源,强杀丢尾帧,coldSnapshot 可修复](knowledge/session-title-projection-cache.md) — 状态：有效（现行事实）；关键符号：`coldSnapshot`、`session_projcache`、`writeBatchMaxDelayMs`、`dsh-buddy-title-repair`
 - [dsh Web UI 插件开发规范:包结构/cordis patch 加载/settings.section 注册/DOM 注入自愈/出壳通道,详细指南落 docs/dsh-web-ui-plugin-guide.md](knowledge/dsh-web-ui-plugin-guide.md) — 状态：有效（现行事实）；关键符号：`dsh.client`、`cordis.patch.yml`、`settings.section`、`ctx.slots.register`
+- [预装插件存量缺口与 CI 安装位污染](knowledge/preinstall-existing-user-gap.md) — 状态：有效（现行事实）；关键符号：`installBundledProfile`、`preinstall-manifest`、`virtualStoreDir`、`healProfilesModuleFallback`
+- [Windows 进程回收与 NSIS 安装器的异步陷阱](knowledge/windows-async-pitfalls.md) — 状态：有效（现行事实）；关键符号：`killProcessTree`、`killAndWaitExit`、`assertNoExistingInstall`、`reportRegistryEntry`
 <!-- docs-harness:knowledge-index:end -->
 
 <!-- docs-harness:acceptance-index:start -->
