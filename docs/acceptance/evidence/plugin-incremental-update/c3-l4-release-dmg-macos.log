@@ -1,0 +1,47 @@
+# c3 L4 打包安装态验收(macOS,GitHub Release 发布产物)
+dmg: DSH-Buddy-0.4.1-arm64.dmg
+dmg sha256: 8e1d74e2da3ff905cb982dcdd8b32f23e25d6686b44ef43d071cb69d429d9aa5
+时间: 2026-08-22T00:09:10.741Z
+系统: macOS 26.5.2 (arm64)
+隔离沙盒: /var/folders/hl/rh7jx3k53wq1pvqqx6mgfdnw0000gn/T/dsh-buddy-l4-1jtsxA
+
+## 1. 挂载 dmg 并安装到隔离位置
+PASS: dmg 挂载成功 — /Volumes/DSH Buddy 0.4.1-arm64
+PASS: 应用已安装到隔离位置(模拟拖入「应用程序」)
+
+## 2. 代码签名有效性
+  Identifier=com.dshbuddy.app
+  flags=0x10002(adhoc,runtime)
+  Sealed Resources version=2 rules=13 files=19867
+PASS: bundle 标识为 com.dshbuddy.app(非 Electron 出厂值) — com.dshbuddy.app
+PASS: hardenedRuntime 生效(签名 flags 含 runtime 位) — 0x10002(adhoc,runtime)
+PASS: 资源封印已生成 — Sealed Resources version=2 rules=13 files=19867
+PASS: codesign --verify --deep --strict 通过 — exit 0
+PASS: syspolicy_check 无 Codesign Error(不再被判「已损坏」)
+  syspolicy_check 剩余项: Adhoc Signed App | Notary Ticket Missing
+
+## 3. 隔离沙盒首次启动
+  [app] [dsh-buddy] installed bundled presets: preset, zero-anchored-standard, whoami-standard
+  [app] [dsh-buddy] bundled profile: installed
+  [app] [dsh-buddy] title repair: plugin installed, patch applied
+  [app] [dsh-buddy] launcher=embedded entry=/private/var/folders/hl/rh7jx3k53wq1pvqqx6mgfdnw0000gn/T/dsh-buddy-l4-1jtsxA/DSH Buddy.app/Contents/Resources/app.asar.unpacked/node_modules/@deepseek-ai/dsh/lib/bin.js cmd=/private/var/folders/hl/rh7jx3k53wq1pvqqx6mgfdnw0000gn/T/dsh-buddy-l4-1jtsxA/DSH Buddy.app/Contents/MacOS/DSH Buddy args=["/private/var/folders/hl/rh7jx3k53wq1pvqqx6mgfdnw0000gn/T/dsh-buddy-l4-1jtsxA/DSH Buddy.app/Contents/Resources/app.asar.unpacked/node_modules/@deepseek-ai/dsh/lib/bin.js","web","--host","127.0.0.1","--port","3097","--no-open"]
+  [app] [ui-skin-center] legacy bridge: no legacy managed skin state; nothing to migrate
+PASS: 内嵌 dsh 在 120s 内就绪(http://127.0.0.1:3097 HTTP 200) — http:200
+
+## 4. 随包 profile 安装结果
+PASS: 随包 profile 已安装到隔离 DSH_HOME(web) — /var/folders/hl/rh7jx3k53wq1pvqqx6mgfdnw0000gn/T/dsh-buddy-l4-1jtsxA/dsh-home/profiles/web
+PASS: manifest 全部 8 个插件依赖齐 — 实得 8 项
+
+## 5. 进程树回收
+  [app!] [3454:0822/080931.446089:ERROR:content/browser/gpu/gpu_process_host.cc:964] GPU process exited unexpectedly: exit_code=15
+  [app!] [3454:0822/080931.446720:ERROR:content/browser/network_service_instance_impl.cc:595] Network service crashed, restarting service.
+PASS: 主进程已回收(收到 exit 事件)
+  [app!] [3517:0822/080931.481759:ERROR:base/apple/mach_port_rendezvous_mac.cc:255] bootstrap_look_up com.dshbuddy.app.MachPortRendezvousServer.1: Permission denied (1100)
+[3517:0822/080931.481921:ERROR:base/memory/shared_memory_switch.cc:266] No rendezvous client, terminating process (parent died?)
+[3518:0822/080931.481935:ERROR:base/apple/mach_port_rendezvous_mac.cc:255] bootstrap_look_up com.dshbuddy.app.MachPortRendezvousServer.1: Permission denied (1100)
+[3518:0822/080931.482064:ERROR:base/memory/shared_memory_switch.cc:266] No rendezvous client, terminating process (parent died?)
+PASS: 进程树回收干净(无残留子进程) — pgrep 计数 0
+
+沙盒已清理: /var/folders/hl/rh7jx3k53wq1pvqqx6mgfdnw0000gn/T/dsh-buddy-l4-1jtsxA
+
+结论: 全部通过

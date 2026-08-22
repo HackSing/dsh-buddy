@@ -68,6 +68,24 @@
           "next_action": null,
           "failure_attributions": [],
           "recorded_at": "2026-08-20T12:33:42+00:00"
+        },
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260821T154321-522bd6d6d7",
+          "objective_fingerprint": "sha256:26c915a55c14bdf69279df21c62820f4cc1822b268cb50728dd68179ac1f2450",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "原 Windows 版 build/acceptance-runtime-v2.mjs 与其证据日志均未提交进 git(build/ 在 .gitignore),assets-check 发现证据缺口后在 macOS 上用同一批生产代码路径重新复现(脚本本身随此次记录一并提交,不再重蹈覆辙):真实 preinstall-manifest.json 8 插件 + 真实 npm registry(git-graph/task-board 各自升到已发布的 0.2.5)+ checkPluginChannel/applyPluginUpdate 生产函数(fetchImpl 注入本地文件,dsh dist-tags 查询走真实 registry)。场景1 单插件 git-graph 外科更新→upgraded、备份 web.backup-0.2.2 存在、git-graph 磁盘 0.2.5 且其余 7 插件版本/文件哈希不变、安装后 git-graph package.json sha256 与切片源一致、下载目录清空、真实拉起 dsh HTTP 200。场景2 git-graph+task-board 双插件→两者磁盘均 0.2.5、两者文件哈希均与切片源一致、HTTP 200。场景3 task-board sha256 故意改错(64 个 0)→ applyPluginUpdate outcome=failed 且 detail 含 sha256 不符、8 插件磁盘版本全部保持旧版、profiles 下无 staging/备份残留、下载目录无半成品、原 profile 直接拉起 dsh HTTP 200 证明未受污染。13 项断言全部 PASS,0 失败(完整日志见 evidence_refs)。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/plugin-incremental-update/c2-runtime-v2-macos.log",
+            "docs/acceptance/evidence/plugin-incremental-update/c2-runtime-v2-macos.mjs"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-21T15:43:21+00:00"
         }
       ]
     },
@@ -96,6 +114,24 @@
           "next_action": null,
           "failure_attributions": [],
           "recorded_at": "2026-08-20T13:35:29+00:00"
+        },
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260822T001204-7bb7e6ad73",
+          "objective_fingerprint": "sha256:26c915a55c14bdf69279df21c62820f4cc1822b268cb50728dd68179ac1f2450",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "原 Windows 版记录 acc-20260820T133529-8ec011219f 的证据 build/pack-v030.log 与 build/l4-boot.log 都写在 .gitignore 覆盖的 build/ 下,从未进 git,本地清理后永久失效(assets-check 长期 FAIL)。本次改用 GitHub Release v0.4.1 的真实发布产物 DSH-Buddy-0.4.1-arm64.dmg(sha256:8e1d74e2da3ff905cb982dcdd8b32f23e25d6686b44ef43d071cb69d429d9aa5)重做 L4——L4 要证的就是打包安装态,拿用户真正下载的产物验最有说服力;脚本与日志一并提交进 docs/acceptance/evidence/,不再重蹈覆辙。流程:hdiutil 挂载 dmg → cp -R 安装到隔离位置(等价用户拖入「应用程序」)→ 代码签名校验(Identifier=com.dshbuddy.app 而非 Electron 出厂值、flags=0x10002 含 runtime 位即 hardenedRuntime 真生效、Sealed Resources version=2 rules=13 files=19867、codesign --verify --deep --strict exit 0、syspolicy_check distribution 无 Codesign Error——v0.4.0 及更早正是在此报 code has no resources 而被 Gatekeeper 判「已损坏」)→ 隔离沙盒首次启动(独立 DSH_HOME、独立 --user-data-dir、端口 3097,与用户真实环境无交集)→ 随包 profile 安装成功且 preinstall-manifest 全部 8 个插件依赖齐 → 内嵌 dsh 120s 内 HTTP 200 → 进程树回收干净(主进程 exit 事件 + pgrep 残留归零)。12 项断言全部 PASS,0 失败(完整日志见 evidence_refs)。增量热更链路本身由 c2 的 L3 真实运行时三场景覆盖,此处不重复。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/plugin-incremental-update/c3-l4-release-dmg-macos.log",
+            "docs/acceptance/evidence/plugin-incremental-update/c3-l4-release-dmg-macos.mjs"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-22T00:12:04+00:00"
         }
       ]
     },
@@ -110,7 +146,7 @@
     }
   ],
   "status": "pending",
-  "revision": 4,
+  "revision": 6,
   "revision_history": [
     {
       "revision": 1,
@@ -126,10 +162,20 @@
       "revision": 3,
       "asset_fingerprint": "sha256:4c3479614f5f0058e11c58322c2575b77edeb532ae850569191d1032ccd137fe",
       "updated_at": "2026-08-20T12:33:42+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:f10bdee9622f31f662d698806ca7a13c6f21bc5ee5bd752fa7ccca8a735652f6",
+      "updated_at": "2026-08-20T13:35:29+00:00"
+    },
+    {
+      "revision": 5,
+      "asset_fingerprint": "sha256:87b25de851292e6cf727a2229a2cbb26f162501a08f60c29f7e08db5602d22b1",
+      "updated_at": "2026-08-21T15:43:21+00:00"
     }
   ],
   "created_at": "2026-08-20T11:48:03+00:00",
-  "updated_at": "2026-08-20T13:35:29+00:00",
+  "updated_at": "2026-08-22T00:12:04+00:00",
   "settled_at": null,
-  "asset_fingerprint": "sha256:f10bdee9622f31f662d698806ca7a13c6f21bc5ee5bd752fa7ccca8a735652f6"
+  "asset_fingerprint": "sha256:0db8ad75469855ac14a25e6bb0d28d379a8eb4120e880a1b5c77dcb85e3f8667"
 }

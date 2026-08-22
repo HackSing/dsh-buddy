@@ -57,8 +57,8 @@
 - [better-sidebar 预装与 rc.7 升级验收](acceptance/better-sidebar-preinstall.md) — 状态：有效（待验收）；关键符号：`verify-profile-tar`、`dsh-better-sidebar`、`DSH_VERSION`、`prebuilds`
 - [存量 profile 随包升级验收：四态判定 + 端到端旧 profile 升级](acceptance/existing-profile-upgrade.md) — 状态：已验收-仅追溯；关键符号：`installBundledProfile`、`profileUpgradeDecision`
 - [dsh 上游与预装插件的运行时更新通道验收](acceptance/dsh-upstream-update-channel.md) — 状态：已验收-仅追溯；关键符号：`profileUpgradeDecision`、`installBundledProfile`、`checkPluginChannel`、`plugin-channel.json`
-- [插件按包增量更新验收](acceptance/plugin-incremental-update.md) — 状态：有效（待验收）；关键符号：`applyPluginUpdate`、`installBundledProfile`、`buildWebProfileTar`、`checkPluginChannel`
 - [内嵌 dsh 升级 0.1.0-rc.8 → 0.1.1-rc.1 的五层验收](acceptance/dsh-upgrade-0.1.1-rc.1.md) — 状态：已验收-仅追溯；关键符号：`DSH_VERSION`、`patchClient`、`buildWebProfileTar`、`checkDshCore`
+- [插件按包增量更新验收](acceptance/plugin-incremental-update.md) — 状态：有效（待验收）；关键符号：`applyPluginUpdate`、`installBundledProfile`、`buildWebProfileTar`、`checkPluginChannel`
 <!-- docs-harness:acceptance-index:end -->
 
 <!-- docs-harness:adr-index:start -->

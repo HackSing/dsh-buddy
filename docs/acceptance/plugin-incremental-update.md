@@ -3,9 +3,9 @@
 
 # 插件按包增量更新验收
 
-- 修订：4
+- 修订：6
 - 关键符号：`applyPluginUpdate`、`installBundledProfile`、`buildWebProfileTar`、`checkPluginChannel`
-- 资产指纹：`sha256:f10bdee9622f31f662d698806ca7a13c6f21bc5ee5bd752fa7ccca8a735652f6`
+- 资产指纹：`sha256:0db8ad75469855ac14a25e6bb0d28d379a8eb4120e880a1b5c77dcb85e3f8667`
 - 关联方案：`docs/plans/plugin-incremental-update.json`
 - 关联知识：`docs/knowledge/plugin-channel-hot-update.json`
 
@@ -27,14 +27,14 @@
 - 状态：passed
 - 类型：behavior_acceptance
 - 层级：L3
-- 证据：`build/acceptance-runtime-v2.log`
+- 证据：`docs/acceptance/evidence/plugin-incremental-update/c2-runtime-v2-macos.log`、`docs/acceptance/evidence/plugin-incremental-update/c2-runtime-v2-macos.mjs`
 
 ### `c3` 打包安装态验证(随包 profile + 增量热更链路)
 
 - 状态：passed
 - 类型：behavior_acceptance
 - 层级：L4
-- 证据：`build/pack-v030.log`、`build/l4-boot.log`
+- 证据：`docs/acceptance/evidence/plugin-incremental-update/c3-l4-release-dmg-macos.log`、`docs/acceptance/evidence/plugin-incremental-update/c3-l4-release-dmg-macos.mjs`
 
 ### `c4` 用户验收:真实发布单插件新版本,客户端只下载该插件并完成热更
 

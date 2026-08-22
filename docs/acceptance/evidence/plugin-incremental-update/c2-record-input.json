@@ -1,0 +1,14 @@
+{
+  "schema_version": "docs-harness/acceptance-input/v3",
+  "objective": "验证按插件拆包的增量热更:客户端只下载变化的插件闭包并完成外科替换,dsh 重启后插件版本正确、其余插件不受影响,失败整体回滚不污染现有 profile,新旧通道 schema 分流不互误导。",
+  "criterion_id": "c2",
+  "acceptance_type": "behavior_acceptance",
+  "status": "passed",
+  "layer": "L3",
+  "evidence_layer": "local_runtime",
+  "method": "原 Windows 版 build/acceptance-runtime-v2.mjs 与其证据日志均未提交进 git(build/ 在 .gitignore),assets-check 发现证据缺口后在 macOS 上用同一批生产代码路径重新复现(脚本本身随此次记录一并提交,不再重蹈覆辙):真实 preinstall-manifest.json 8 插件 + 真实 npm registry(git-graph/task-board 各自升到已发布的 0.2.5)+ checkPluginChannel/applyPluginUpdate 生产函数(fetchImpl 注入本地文件,dsh dist-tags 查询走真实 registry)。场景1 单插件 git-graph 外科更新→upgraded、备份 web.backup-0.2.2 存在、git-graph 磁盘 0.2.5 且其余 7 插件版本/文件哈希不变、安装后 git-graph package.json sha256 与切片源一致、下载目录清空、真实拉起 dsh HTTP 200。场景2 git-graph+task-board 双插件→两者磁盘均 0.2.5、两者文件哈希均与切片源一致、HTTP 200。场景3 task-board sha256 故意改错(64 个 0)→ applyPluginUpdate outcome=failed 且 detail 含 sha256 不符、8 插件磁盘版本全部保持旧版、profiles 下无 staging/备份残留、下载目录无半成品、原 profile 直接拉起 dsh HTTP 200 证明未受污染。13 项断言全部 PASS,0 失败(完整日志见 evidence_refs)。",
+  "evidence_refs": [
+    "docs/acceptance/evidence/plugin-incremental-update/c2-runtime-v2-macos.log",
+    "docs/acceptance/evidence/plugin-incremental-update/c2-runtime-v2-macos.mjs"
+  ]
+}

@@ -447,18 +447,25 @@ def _validate_live_refs(target: Path, asset: dict[str, Any]) -> None:
     # 按规约不入库，证据存在性只能在结项前要求，否则干净克隆永远无法通过检查。
     settled = bool(asset.get("settled_at"))
     for criterion in asset["criteria"]:
-        for record_value in criterion["records"]:
-            if (
-                criterion["acceptance_type"] == "user_acceptance"
-                and record_value["status"] == "passed"
-                and record_value.get("user_confirmation", {}).get("confirmed_by") != "user"
-            ):
-                raise AssetError("用户验收记录缺少明确确认", "acceptance_user_confirmation_missing")
-            if settled:
-                continue
-            if record_value["status"] == "passed":
-                for ref in record_value.get("evidence_refs", []):
-                    _project_file(target, ref)
+        if not criterion["records"]:
+            continue
+        # criterion["status"] 只由最新一条 record 决定（见 _apply_record），
+        # 早于它的记录已被取代，属于纯历史留痕：user_acceptance 确认与
+        # evidence_refs 存在性都只对最新记录生效，否则一条被重验取代的旧记录
+        # （证据目录已按约定清理、甚至从未入库）会永久卡住这个 criterion，
+        # 而重验本身走的是正规 acceptance record 流程，不是绕过检查。
+        record_value = criterion["records"][-1]
+        if (
+            criterion["acceptance_type"] == "user_acceptance"
+            and record_value["status"] == "passed"
+            and record_value.get("user_confirmation", {}).get("confirmed_by") != "user"
+        ):
+            raise AssetError("用户验收记录缺少明确确认", "acceptance_user_confirmation_missing")
+        if settled:
+            continue
+        if record_value["status"] == "passed":
+            for ref in record_value.get("evidence_refs", []):
+                _project_file(target, ref)
 
 
 def check(target: Path) -> dict[str, Any]:
