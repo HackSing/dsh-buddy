@@ -3,9 +3,9 @@
 
 # 插件按包增量更新验收
 
-- 修订：6
+- 修订：7
 - 关键符号：`applyPluginUpdate`、`installBundledProfile`、`buildWebProfileTar`、`checkPluginChannel`
-- 资产指纹：`sha256:0db8ad75469855ac14a25e6bb0d28d379a8eb4120e880a1b5c77dcb85e3f8667`
+- 资产指纹：`sha256:90de564671fa3849ff55307b5422437415c034c1ad6324b25ec2b2a6dd716e56`
 - 关联方案：`docs/plans/plugin-incremental-update.json`
 - 关联知识：`docs/knowledge/plugin-channel-hot-update.json`
 
@@ -27,7 +27,7 @@
 - 状态：passed
 - 类型：behavior_acceptance
 - 层级：L3
-- 证据：`docs/acceptance/evidence/plugin-incremental-update/c2-runtime-v2-macos.log`、`docs/acceptance/evidence/plugin-incremental-update/c2-runtime-v2-macos.mjs`
+- 证据：`docs/acceptance/evidence/plugin-incremental-update/c2-runtime-v2-windows.log`、`docs/acceptance/evidence/plugin-incremental-update/c2-runtime-v2-windows.mjs`
 
 ### `c3` 打包安装态验证(随包 profile + 增量热更链路)
 

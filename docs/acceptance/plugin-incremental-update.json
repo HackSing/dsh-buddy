@@ -86,6 +86,24 @@
           "next_action": null,
           "failure_attributions": [],
           "recorded_at": "2026-08-21T15:43:21+00:00"
+        },
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260822T014947-f88e526f78",
+          "objective_fingerprint": "sha256:26c915a55c14bdf69279df21c62820f4cc1822b268cb50728dd68179ac1f2450",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "Windows 实机补记录(此前 c2 的 Windows 证据写在 .gitignore 覆盖的 build/ 下已永久失效,现存 passed 记录全部来自 macOS,Windows 特有的 npm junction 布局、MAX_PATH 约束、taskkill 进程回收在 L3 这层零覆盖)。脚本 c2-runtime-v2-windows.mjs 与 macOS 版正文逐字一致(已 diff 校验),仅三处按 Windows 平台事实调整:REPO_ROOT 由脚本自身位置推导;WORK 取盘符根下短目录 D:\\dsh-acc-v2 以避开 MAX_PATH(260) 对 node_modules 嵌套的硬约束;bootAndProbe 收尾改为等进程 exit 再返回。第三处系首跑实测暴露:killProcessTree 在 Windows 上spawn 的 taskkill /T /F 是异步派发,函数返回时句柄未释放,调用方紧接的 rmSync 抛 ENOTEMPTY,残留 dsh 尚未松手的 task-board 目录(首跑日志见 scratchpad,未纳入证据);已用对照实验定位并验证修法——A 杀完立即删=ENOTEMPTY 残留 task-board,B 杀完等 exit(实测 335ms)再删=成功无残留。该问题属验收脚本 fire-and-forget 写法在 Windows 下的缺陷,macOS 的 unlink 语义踩不到,故只修 Windows 版。修正后完整重跑:环境 Node v24.14.1 / Windows 11 x64 / 内嵌 dsh 0.1.1-rc.1 / 真实 preinstall-manifest.json 8 插件 + 真实 npm registry(pnpm 构建 profile,git-graph 与 task-board 各升到已发布的 0.2.5)+ checkPluginChannel/applyPluginUpdate 生产函数(fetchImpl 注入本地切片,dsh dist-tags 走真实 registry)。场景1 单插件 git-graph 外科更新→upgraded、备份 web.backup-0.2.2 存在、git-graph 磁盘 0.2.5 且其余 7 插件版本不变、安装后 package.json sha256 与切片源一致、下载目录清空、真实拉起 dsh HTTP 200。场景2 git-graph+task-board 双插件→两者磁盘均 0.2.5、两者 sha256 均等于切片源、HTTP 200。场景3 task-board sha256 故意改错(64 个 0)→ outcome=failed 且 detail 含 sha256 不符、8 插件磁盘版本全部保持旧版、profiles 下无 staging/备份残留、下载目录无半成品、原 profile 直接拉起 dsh HTTP 200 证明未受污染;WORK 目录收尾彻底清理,无句柄残留。28 项断言全部 PASS,0 失败,退出码 0(完整日志见 evidence_refs)。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/plugin-incremental-update/c2-runtime-v2-windows.log",
+            "docs/acceptance/evidence/plugin-incremental-update/c2-runtime-v2-windows.mjs"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-22T01:49:47+00:00"
         }
       ]
     },
@@ -146,7 +164,7 @@
     }
   ],
   "status": "pending",
-  "revision": 6,
+  "revision": 7,
   "revision_history": [
     {
       "revision": 1,
@@ -172,10 +190,15 @@
       "revision": 5,
       "asset_fingerprint": "sha256:87b25de851292e6cf727a2229a2cbb26f162501a08f60c29f7e08db5602d22b1",
       "updated_at": "2026-08-21T15:43:21+00:00"
+    },
+    {
+      "revision": 6,
+      "asset_fingerprint": "sha256:0db8ad75469855ac14a25e6bb0d28d379a8eb4120e880a1b5c77dcb85e3f8667",
+      "updated_at": "2026-08-22T00:12:04+00:00"
     }
   ],
   "created_at": "2026-08-20T11:48:03+00:00",
-  "updated_at": "2026-08-22T00:12:04+00:00",
+  "updated_at": "2026-08-22T01:49:47+00:00",
   "settled_at": null,
-  "asset_fingerprint": "sha256:0db8ad75469855ac14a25e6bb0d28d379a8eb4120e880a1b5c77dcb85e3f8667"
+  "asset_fingerprint": "sha256:90de564671fa3849ff55307b5422437415c034c1ad6324b25ec2b2a6dd716e56"
 }
