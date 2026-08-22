@@ -1,11 +1,11 @@
-> 状态：有效（待验收）
+> 状态：已验收-仅追溯
 <!-- docs-harness:acceptance-document/v1 -->
 
 # 插件按包增量更新验收
 
-- 修订：8
+- 修订：10
 - 关键符号：`applyPluginUpdate`、`installBundledProfile`、`buildWebProfileTar`、`checkPluginChannel`
-- 资产指纹：`sha256:caa1c481f68be7c239175917b4f1de41cd28b603029e397703830b6a0262ec95`
+- 资产指纹：`sha256:f8d7f99f4e76857bf4f95e091c6d0c8b38be680d0b108ba4e77cf2daa5669626`
 - 关联方案：`docs/plans/plugin-incremental-update.json`
 - 关联知识：`docs/knowledge/plugin-channel-hot-update.json`
 
@@ -38,7 +38,7 @@
 
 ### `c4` 用户验收:真实发布单插件新版本,客户端只下载该插件并完成热更
 
-- 状态：pending
+- 状态：passed
 - 类型：user_acceptance
 - 层级：L5
-- 证据：尚无
+- 证据：

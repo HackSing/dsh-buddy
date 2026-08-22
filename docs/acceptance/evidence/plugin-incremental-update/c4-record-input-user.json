@@ -1,0 +1,11 @@
+{
+  "schema_version": "docs-harness/acceptance-input/v3",
+  "objective": "验证按插件拆包的增量热更:客户端只下载变化的插件闭包并完成外科替换,dsh 重启后插件版本正确、其余插件不受影响,失败整体回滚不污染现有 profile,新旧通道 schema 分流不互误导。",
+  "criterion_id": "c4",
+  "acceptance_type": "user_acceptance",
+  "status": "passed",
+  "confirmation": "C4过了",
+  "layer": "L5",
+  "method": "用户在 2026-08-22 的会话中明确确认,原话:「C4过了」。本次会话对用户环境所做的只读核验提供如下客观旁证:~/.dsh/profiles 下存在三个热更备份目录 web.backup-0.1.16(8/18)、web.backup-0.2.5(8/21 14:51)、web.backup-0.2.2(8/21 15:18),备份目录名记录的是被替换掉的旧版本(见 applyPluginUpdate 的 backupDirName 语义),证明发生过至少三次真实的 profile 外科替换;当前 web profile 中 6 个插件版本高于随包基线(task-board/git-graph/skins/pet/web-ui-settings 为 0.2.5 对基线 0.2.2,dsh-better-sidebar 为 0.14.0 对基线 0.13.1),而 live-stats(0.1.20)与 docs-harness(0.2.0)仍等于基线、未被触碰——说明热更具选择性,未波及清单内全部插件;其中 dsh-better-sidebar 的版本序列(0.14.0)与其余插件(0.2.5)相互独立,与「单插件单独发布并热更」的形态吻合。取证限制(如实记录):本次 c3(L4)验收的首跑缺陷曾导致 %APPDATA% 下 userData 被 NSIS 卸载器清除,插件通道的 stateDir 状态文件随之丢失,因此「客户端只下载该插件」这一点无法由本次会话取得下载层面的直接证据,仅有上述磁盘状态旁证与用户确认;该链路的下载范围在 c2(L3)中已由 checkPluginChannel/applyPluginUpdate 的生产代码路径实证(updates 只含变化插件、其余插件版本与哈希不变)。",
+  "evidence_refs": []
+}

@@ -177,12 +177,32 @@
       "acceptance_type": "user_acceptance",
       "layer": "L5",
       "evidence_layer": null,
-      "status": "pending",
-      "records": []
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260822T035712-f8d238a345",
+          "objective_fingerprint": "sha256:26c915a55c14bdf69279df21c62820f4cc1822b268cb50728dd68179ac1f2450",
+          "acceptance_type": "user_acceptance",
+          "status": "passed",
+          "layer": "L5",
+          "evidence_layer": null,
+          "method": "用户在 2026-08-22 的会话中明确确认,原话:「C4过了」。本次会话对用户环境所做的只读核验提供如下客观旁证:~/.dsh/profiles 下存在三个热更备份目录 web.backup-0.1.16(8/18)、web.backup-0.2.5(8/21 14:51)、web.backup-0.2.2(8/21 15:18),备份目录名记录的是被替换掉的旧版本(见 applyPluginUpdate 的 backupDirName 语义),证明发生过至少三次真实的 profile 外科替换;当前 web profile 中 6 个插件版本高于随包基线(task-board/git-graph/skins/pet/web-ui-settings 为 0.2.5 对基线 0.2.2,dsh-better-sidebar 为 0.14.0 对基线 0.13.1),而 live-stats(0.1.20)与 docs-harness(0.2.0)仍等于基线、未被触碰——说明热更具选择性,未波及清单内全部插件;其中 dsh-better-sidebar 的版本序列(0.14.0)与其余插件(0.2.5)相互独立,与「单插件单独发布并热更」的形态吻合。取证限制(如实记录):本次 c3(L4)验收的首跑缺陷曾导致 %APPDATA% 下 userData 被 NSIS 卸载器清除,插件通道的 stateDir 状态文件随之丢失,因此「客户端只下载该插件」这一点无法由本次会话取得下载层面的直接证据,仅有上述磁盘状态旁证与用户确认;该链路的下载范围在 c2(L3)中已由 checkPluginChannel/applyPluginUpdate 的生产代码路径实证(updates 只含变化插件、其余插件版本与哈希不变)。",
+          "evidence_refs": [],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-22T03:57:12+00:00",
+          "user_confirmation": {
+            "confirmed_by": "user",
+            "confirmation": "C4过了"
+          }
+        }
+      ]
     }
   ],
-  "status": "pending",
-  "revision": 8,
+  "status": "passed",
+  "revision": 10,
   "revision_history": [
     {
       "revision": 1,
@@ -218,10 +238,21 @@
       "revision": 7,
       "asset_fingerprint": "sha256:90de564671fa3849ff55307b5422437415c034c1ad6324b25ec2b2a6dd716e56",
       "updated_at": "2026-08-22T01:49:47+00:00"
+    },
+    {
+      "revision": 8,
+      "asset_fingerprint": "sha256:caa1c481f68be7c239175917b4f1de41cd28b603029e397703830b6a0262ec95",
+      "updated_at": "2026-08-22T03:42:45+00:00"
+    },
+    {
+      "revision": 9,
+      "asset_fingerprint": "sha256:3935dcdbd59c079281b71239c8bbae37f793726916c4acc0eba9f6d1a23d75f4",
+      "updated_at": "2026-08-22T03:57:12+00:00"
     }
   ],
   "created_at": "2026-08-20T11:48:03+00:00",
-  "updated_at": "2026-08-22T03:42:45+00:00",
-  "settled_at": null,
-  "asset_fingerprint": "sha256:caa1c481f68be7c239175917b4f1de41cd28b603029e397703830b6a0262ec95"
+  "updated_at": "2026-08-22T03:57:21+00:00",
+  "settled_at": "2026-08-22T03:57:21+00:00",
+  "asset_fingerprint": "sha256:f8d7f99f4e76857bf4f95e091c6d0c8b38be680d0b108ba4e77cf2daa5669626",
+  "replacement": null
 }
