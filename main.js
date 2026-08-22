@@ -6,7 +6,12 @@ const { installBundledPresets, defaultDshHome } = require('./lib/bundled-presets
 const { installBundledProfile } = require('./lib/bundled-profile');
 const { installTitleRepair } = require('./lib/title-repair-install');
 const { waitForTitlesSettled } = require('./lib/session-titles');
-const { createNativeWindow, createFramelessWindow, createBorderlessWindow } = require('./lib/frameless-window');
+const {
+  createNativeWindow,
+  createFramelessWindow,
+  createBorderlessWindow,
+  beginStartupLoading,
+} = require('./lib/frameless-window');
 const { resolveWindowMode } = require('./lib/window-mode');
 const { attachDragStrip } = require('./lib/immersive-titlebar');
 const { binEntryFrom } = require('./lib/dsh-entry');
@@ -151,7 +156,9 @@ function resolveProfileTarball() {
 
 // 把随包 agent preset 和预装 profile 装进 DSH_HOME。两者都是增强项:
 // 安装失败要让用户看见,但不阻断 dsh 本体启动。
-function ensureBundledAssets() {
+// async:profile 解压走 tar promise 模式(见 lib/bundled-profile.js),
+// 加载窗口在解压期间保持响应。
+async function ensureBundledAssets() {
   const dshHome = defaultDshHome(process.env, os.homedir());
   try {
     const summary = installBundledPresets({
@@ -177,7 +184,7 @@ function ensureBundledAssets() {
         noLink: true,
       });
     }
-    const profileResult = installBundledProfile({
+    const profileResult = await installBundledProfile({
       tarballPath: resolveProfileTarball(),
       dshHome,
       profileName: preinstallManifest.profile,
@@ -226,6 +233,9 @@ function showDshFailure(reason) {
 
 // 若 dsh 未在运行,则作为子进程拉起并托管生命周期
 async function ensureDsh() {
+  // 窗口先于启动链存在后,用户可在解压/启动期间关窗触发退出(window-all-closed
+  // → app.quit → quitting);此时不再拉起 dsh,避免退出后遗留孤儿进程树。
+  if (quitting) return false;
   if (await isUp(DSH_URL)) {
     console.log(`[dsh-buddy] reusing live dsh at ${DSH_URL}`);
     return true; // 用户已手动启动,直接复用:不拉起、退出也不回收
@@ -424,8 +434,8 @@ async function runPluginInstall({ update, dshHome }) {
   if (dshStopped) {
     const ok = await ensureDsh();
     if (ok && win) {
-      if (typeof win.reloadContent === 'function') win.reloadContent(); // 无边框窗口
-      else win.loadURL(DSH_URL); // macOS BrowserWindow
+      if (typeof win.reloadContent === 'function') win.reloadContent(); // 非 mac 窗口:保留当前路由刷新
+      else win.loadContent(DSH_URL); // macOS BrowserWindow(beginStartupLoading 挂载)
     }
   }
   return result;
@@ -598,7 +608,6 @@ function createWindow() {
     };
     const create = WINDOW_CREATORS[resolveWindowMode(process.env)];
     win = create({
-      dshUrl: DSH_URL,
       version: app.getVersion(),
       onCheckUpdate: checkUpdateManually,
       onCheckPluginUpdate: checkPluginUpdateManually,
@@ -624,7 +633,8 @@ function createWindow() {
     return { action: 'deny' };
   });
 
-  win.loadURL(DSH_URL);
+  // BrowserWindow.webContents 与 WebContentsView 同形,content 直接传 win
+  beginStartupLoading(win, win);
   win.on('closed', () => (win = null));
 }
 
@@ -640,7 +650,11 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
-    ensureBundledAssets();
+    // 首屏即时反馈:窗口先于一切耗时步骤出现(呈现加载页);win 就位后,
+    // second-instance 的 restore+focus 即成为启动期重复点击的可见反馈。
+    createWindow();
+    if (win) win.setStartupStage('正在准备内置资产…');
+    await ensureBundledAssets();
     // 标题修复插件:装进 profile 并补挂载行,由 dsh 启动时执行投影缓存回写。
     // 增强项而非启动前置:装不上只退化回旧行为(点击会话才刷新标题),只记日志。
     let titleRepairReady = false;
@@ -657,9 +671,11 @@ if (!app.requestSingleInstanceLock()) {
     } catch (err) {
       console.warn(`[dsh-buddy] title repair install skipped: ${err.message}`);
     }
+    if (win) win.setStartupStage('正在启动 dsh 服务…');
     const ok = await ensureDsh();
     if (!ok) {
-      // 失败详情已由 ensureDsh 通过 showDshFailure 呈现(含日志路径与最近输出)
+      // 失败详情已由 ensureDsh 通过 showDshFailure 呈现(含日志路径与最近输出);
+      // 启动期用户关窗(quitting)同样落到这里,重复 app.quit 无副作用
       app.quit();
       return;
     }
@@ -672,8 +688,8 @@ if (!app.requestSingleInstanceLock()) {
           (gate.error ? `: ${gate.error}` : '')
       );
     }
-    createWindow();
-    scheduleUpdateCheck(); // 窗口出来之后再查,全程与启动链解耦
+    if (win) win.loadContent(DSH_URL); // 加载页 → dsh 页面原地切换
+    scheduleUpdateCheck(); // 内容切换之后再查,全程与启动链解耦
     schedulePluginChannelCheck(); // 插件热更检测,同样解耦
   });
 }

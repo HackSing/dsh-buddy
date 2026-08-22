@@ -142,9 +142,9 @@ function MANIFEST_MIN_DSH() {
   return require_(path.join(REPO_ROOT, 'package.json')).dependencies['@deepseek-ai/dsh'];
 }
 
-function freshOldProfileHome(oldTar, label) {
+async function freshOldProfileHome(oldTar, label) {
   const home = fs.mkdtempSync(path.join(WORK, `home-${label}-`));
-  const result = installBundledProfile({
+  const result = await installBundledProfile({
     tarballPath: oldTar,
     dshHome: home,
     profileName: PROFILE,
@@ -183,7 +183,7 @@ async function main() {
   // ==================== 场景 1:单插件外科更新 ====================
   console.log('\n========== 场景 1: git-graph 单插件外科更新 ==========');
   {
-    const home = freshOldProfileHome(oldTar, 's1');
+    const home = await freshOldProfileHome(oldTar, 's1');
     const profileDir = path.join(home, 'profiles', PROFILE);
     const downloadDir = path.join(home, 'downloads');
     const fetchImpl = makeLocalFetch(single.releaseDir, single.channel);
@@ -245,7 +245,7 @@ async function main() {
   // ==================== 场景 2:双插件外科更新 ====================
   console.log('\n========== 场景 2: git-graph + task-board 双插件外科更新 ==========');
   {
-    const home = freshOldProfileHome(oldTar, 's2');
+    const home = await freshOldProfileHome(oldTar, 's2');
     const profileDir = path.join(home, 'profiles', PROFILE);
     const downloadDir = path.join(home, 'downloads');
     const fetchImpl = makeLocalFetch(double.releaseDir, double.channel);
@@ -288,7 +288,7 @@ async function main() {
   // ==================== 场景 3:sha256 故意改错 → 整体回滚 ====================
   console.log('\n========== 场景 3: task-board sha256 故意改错 → 整体 failed,不留半成品 ==========');
   {
-    const home = freshOldProfileHome(oldTar, 's3');
+    const home = await freshOldProfileHome(oldTar, 's3');
     const profileDir = path.join(home, 'profiles', PROFILE);
     const downloadDir = path.join(home, 'downloads');
     const fetchImpl = makeLocalFetch(double.releaseDir, double.channel);

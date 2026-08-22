@@ -1,0 +1,22 @@
+[0.0s] fresh DSH_HOME: C:\Users\freed\AppData\Local\Temp\dsh-buddy-l3-f07teP
+[0.2s] main instance spawned, pid=31760
+  [app] 
+  [app:err] 
+DevTools listening on ws://127.0.0.1:9223/devtools/browser/9cf28c13-94d6-4477-9fcc-98e72543d1bc
+  [app] [dsh-buddy] installed bundled presets: preset, zero-anchored-standard, whoami-standard
+ok   loading.html 页面目标出现(窗口内容可见) (t=0.673s)
+ok   第二实例自行退出(单实例锁) (code=0)
+ok   主实例在二次点击后存活
+  [app] [dsh-buddy] bundled profile: installed
+  [app] [dsh-buddy] title repair: plugin installed, patch applied
+  [app] [dsh-buddy] launcher=embedded entry=D:\Project\dsh-buddy\node_modules\@deepseek-ai\dsh\lib\bin.js cmd=D:\Project\dsh-buddy\node_modules\electron\dist\electron.exe args=["D:\\Project\\dsh-buddy\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js","web","--host","127.0.0.1","--port","3180","--no-open"]
+  [app] [ui-skin-center] legacy bridge: no legacy managed skin state; nothing to migrate
+  [app] dsh web: http://127.0.0.1:3180
+  [app] [dsh-buddy] session titles settled before first paint
+  [app] [dsh-buddy] plugin channel: throttled
+ok   内容切换到 dsh 页面 (t=70.876s)
+ok   加载页先于 dsh 就绪呈现 (0.673s < 70.876s)
+ok   切换后 loading.html 目标已退场(原地导航而非双窗) (file:///D:/Project/dsh-buddy/lib/update-overlay.html | http://127.0.0.1:3180/ | file:///D:/Project/dsh-buddy/lib/frameless-titlebar.html)
+[71.3s] main exited=true
+[72.6s] temp home removed=true
+L3 PASS

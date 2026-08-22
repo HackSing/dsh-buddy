@@ -1,0 +1,20 @@
+[0.2s] registry before: DSH Buddy 0.4.1|"D:\Project\dsh-buddy-verify-install\DSH Buddy\Uninstall DSH Buddy.exe" /currentuser
+ok   覆盖安装完成(卸载器+注册表就绪) (DSH Buddy 0.4.1|"D:\Project\dsh-buddy-verify-install\DSH Buddy\Uninstall DSH Buddy.exe" /currentuser)
+ok   主程序落位
+ok   启动前 3080 未被占用
+[121.1s] packaged app spawned, pid=6344
+ok   冷启动 loading.html 可见(点击→窗口,含 Defender 首扫) (t=2.37s)
+ok   启动期二次点击:第二实例自行退出 (code=0)
+ok   主实例存活
+ok   原地切换到 dsh 页面 (t=71.8s)
+ok   切换后 loading 目标退场 (file:///D:/Project/dsh-buddy-verify-install/DSH%20Buddy/resources/app.asar/lib/update-overlay.html | http://127.0.0.1:3080/ | file:///D:/Project/dsh-buddy-verify-install/DSH%20Buddy/resources/app.asar/lib/frameless-titlebar.html)
+ok   回收后主实例已退出
+ok   热启动 loading.html 可见 (t=0.32s)
+ok   热启动点击→窗口 ≤2s (t=0.32s)
+ok   热启动实例回收
+ok   失败路径仍先出加载窗口
+ok   失败路径不切换内容(503 预占端口,dsh EADDRINUSE)
+ok   失败路径进程存活(错误对话框挂起态)
+ok   强杀后无进程残留
+ok   全部 DSH Buddy 进程归零 (count=0)
+L4 PASS

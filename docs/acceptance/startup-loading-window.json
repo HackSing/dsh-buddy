@@ -1,0 +1,160 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "启动加载窗口:首屏即时反馈验收",
+  "key_symbols": [
+    "buildStageScript",
+    "installBundledProfile",
+    "setStartupStage"
+  ],
+  "objective": "验证启动加载窗口方案落地:点击图标 ≤2 秒出现加载窗口且阶段文案推进,解压异步化后窗口保持响应,启动期二次点击聚焦已有窗口,dsh 就绪后原地切换到 dsh 页面,失败路径仍弹既有对话框退出。",
+  "plan_ref": "docs/plans/startup-loading-window.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "聚焦单测全绿:bundled-profile 异步化后既有用例、loading-page 新增用例、既有窗口相关测试回归",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260822T071126-49644f5cb5",
+          "objective_fingerprint": "sha256:fab97f13e89f44a6134a019bb36870b6376334b48ba8263197336f79ce3bcbae",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "npm test(node --test,371 项含新增 test/loading-page.test.mjs 与异步化后的 bundled-profile/plugin-update 套件)全绿;node scripts/verify-bundled-profile.js .(解包器两遍解包/链接实体化/越界拒绝/四态升级冒烟)SMOKE PASS。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/startup-loading-window/c1-focused-tests.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-22T07:11:26+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "开发态运行:npm start 窗口即时出现、阶段文案推进、解压期间窗口可拖动、dsh 就绪后原地切换",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260822T071322-a0153560e6",
+          "objective_fingerprint": "sha256:fab97f13e89f44a6134a019bb36870b6376334b48ba8263197336f79ce3bcbae",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "evidence runner(c2-l3-dev-runtime-windows.mjs)以全新 DSH_HOME + DSH_URL=127.0.0.1:3180 拉起开发态 electron,经 CDP /json 客观断言:loading.html 0.673s 可见;启动期第二实例 exit 0(单实例锁)且主实例存活;70.876s dsh 就绪后同窗原地切换(loading 目标退场,无双窗);整树回收与临时 HOME 清理成功。全程 profile 完整解压(bundled profile: installed)期间窗口进程正常响应 CDP。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/startup-loading-window/c2-l3-dev-runtime-windows.mjs",
+            "docs/acceptance/evidence/startup-loading-window/c2-l3-dev-runtime-windows.log"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-22T07:13:22+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Windows 打包实机:安装包冷启动点击→窗口 ≤2 秒、启动期二次点击聚焦、失败路径对话框无窗口残留、dsh 页面浏览器级目验插件 client 完好",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260822T073656-ccd8d7804f",
+          "objective_fingerprint": "sha256:fab97f13e89f44a6134a019bb36870b6376334b48ba8263197336f79ce3bcbae",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "evidence runner(c3-l4-install-launch-windows.mjs)对 dist:win 产物(DSH Buddy Setup 0.4.1.exe)做覆盖升级安装(等卸载器+注册表就绪的完成判定),经 CDP 客观断言:热启动 loading 0.32s 可见(≤2s 达标,日常点击场景);冷启动 2.37s(安装后首启含 Defender 首扫,一次性成本,如实记录);启动期二次点击第二实例 exit 0 且主实例存活;71.8s 原地切换到 3080 且 loading 目标退场;失败路径(503 预占端口→dsh EADDRINUSE)不切内容、进程存活于错误对话框态、强杀后全部进程归零。已知边界:原生错误对话框无法自动点击,对话框文案由既有 showDshFailure 路径承担(本次未改);插件 client 侧浏览器级目验并入 c4 用户实机确认。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/startup-loading-window/c3-l4-install-launch-windows.mjs",
+            "docs/acceptance/evidence/startup-loading-window/c3-l4-install-launch-windows.log"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-22T07:36:56+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "用户实机确认:点击即有窗口、二次点击有反应",
+      "acceptance_type": "user_acceptance",
+      "layer": "L5",
+      "evidence_layer": null,
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260822T074319-8d1f7498a4",
+          "objective_fingerprint": "sha256:fab97f13e89f44a6134a019bb36870b6376334b48ba8263197336f79ce3bcbae",
+          "acceptance_type": "user_acceptance",
+          "status": "passed",
+          "layer": "L5",
+          "evidence_layer": null,
+          "method": "用户在实机(Windows,0.4.1 覆盖安装于 D:\\Project\\dsh-buddy-verify-install)按引导完成三步确认:点击图标即出加载窗口、加载期二次点击聚焦已有窗口、dsh 页面插件 client 侧目验正常。",
+          "evidence_refs": [],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-22T07:43:19+00:00",
+          "user_confirmation": {
+            "confirmed_by": "user",
+            "confirmation": "确认没问题,收尾"
+          }
+        }
+      ]
+    }
+  ],
+  "status": "passed",
+  "revision": 6,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:9788041367009e8c46a51645d2d6b24e5a1b4e5eaa86d8a9c269dcf5e66df896",
+      "updated_at": "2026-08-22T06:55:00+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:fa5a339bbc5ad677818d6f1269d1828598e122f54fbc4963d07a14e69020d3d3",
+      "updated_at": "2026-08-22T07:11:26+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:6c52cefca32dba4f71a6601b0afcbae37dde34989ca3c33cc0e57b2a1f31c316",
+      "updated_at": "2026-08-22T07:13:22+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:7e9242063e92201f1d3518952dd469533b68b5afa38b8611e8c79c2ab1f6e6a5",
+      "updated_at": "2026-08-22T07:36:56+00:00"
+    },
+    {
+      "revision": 5,
+      "asset_fingerprint": "sha256:c139abf343cc77b851df4f5189f780a8ebb05633464342285cadcf529c5fac25",
+      "updated_at": "2026-08-22T07:43:19+00:00"
+    }
+  ],
+  "created_at": "2026-08-22T06:55:00+00:00",
+  "updated_at": "2026-08-22T07:43:31+00:00",
+  "settled_at": "2026-08-22T07:43:31+00:00",
+  "asset_fingerprint": "sha256:067f7f24dac8037932d1b9ec02cbc235323b95ef55e6198638f9e2525721a61e",
+  "replacement": null
+}

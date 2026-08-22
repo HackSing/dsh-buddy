@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<!--
+  启动加载页(本地静态文件,无网络请求、无 preload、无 IPC):
+  dsh 就绪前的首屏反馈。阶段文案由主进程经 executeJavaScript 单向推送
+  (lib/loading-page.js 的 buildStageScript),页内只暴露 window.__setStage。
+  底色/字体与 frameless-titlebar.html 同源,并与 createShellWindow 的
+  backgroundColor 一致,避免窗口出现时白闪。
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>DSH Buddy</title>
+<style>
+  :root { color-scheme: light; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font: 14px/1.6 system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+    color: #1b1b1b;
+    background: #f3f3f3;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+  }
+  #box { text-align: center; }
+  #name { font-size: 20px; font-weight: 600; letter-spacing: .5px; }
+  #spinner {
+    width: 28px; height: 28px; margin: 20px auto 14px;
+    border: 3px solid #d9d9d9; border-top-color: #1b1b1b;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  #stage { color: #5a5a5a; min-height: 1.6em; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    #spinner { animation: none; border-top-color: #d9d9d9; }
+  }
+</style>
+</head>
+<body>
+  <div id="box">
+    <div id="name">DSH Buddy</div>
+    <div id="spinner"></div>
+    <div id="stage" role="status" aria-live="polite">正在启动…</div>
+  </div>
+  <script>
+    // 主进程注入的唯一入口;textContent 赋值,不解析 HTML。
+    window.__setStage = (text) => {
+      document.getElementById('stage').textContent = String(text);
+    };
+  </script>
+</body>
+</html>

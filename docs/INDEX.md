@@ -24,6 +24,7 @@
 - [dsh 上游与预装插件的运行时更新通道](plans/dsh-upstream-update-channel.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-20 核对）；关键符号：`profileUpgradeDecision`、`installBundledProfile`、`checkPluginChannel`、`plugin-channel.json`
 - [插件按包增量更新(拆包发布 + 单插件外科替换)](plans/plugin-incremental-update.md) — 状态：有效（实施中）；关键符号：`applyPluginUpdate`、`installBundledProfile`、`buildWebProfileTar`、`checkPluginChannel`
 - [内嵌 dsh 升级:0.1.0-rc.8 → 0.1.1-rc.1](plans/dsh-upgrade-0.1.1-rc.1.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-21 核对）；关键符号：`DSH_VERSION`、`patchClient`、`buildWebProfileTar`、`checkDshCore`
+- [启动加载窗口:首屏即时反馈与启动链解耦](plans/startup-loading-window.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-22 核对）；关键符号：`installBundledProfile`、`attachContentExtras`、`buildStageScript`、`ensureDsh`
 <!-- docs-harness:plans-index:end -->
 
 <!-- docs-harness:knowledge-index:start -->
@@ -60,6 +61,7 @@
 - [dsh 上游与预装插件的运行时更新通道验收](acceptance/dsh-upstream-update-channel.md) — 状态：已验收-仅追溯；关键符号：`profileUpgradeDecision`、`installBundledProfile`、`checkPluginChannel`、`plugin-channel.json`
 - [内嵌 dsh 升级 0.1.0-rc.8 → 0.1.1-rc.1 的五层验收](acceptance/dsh-upgrade-0.1.1-rc.1.md) — 状态：已验收-仅追溯；关键符号：`DSH_VERSION`、`patchClient`、`buildWebProfileTar`、`checkDshCore`
 - [插件按包增量更新验收](acceptance/plugin-incremental-update.md) — 状态：已验收-仅追溯；关键符号：`applyPluginUpdate`、`installBundledProfile`、`buildWebProfileTar`、`checkPluginChannel`
+- [启动加载窗口:首屏即时反馈验收](acceptance/startup-loading-window.md) — 状态：已验收-仅追溯；关键符号：`buildStageScript`、`installBundledProfile`、`setStartupStage`
 <!-- docs-harness:acceptance-index:end -->
 
 <!-- docs-harness:adr-index:start -->

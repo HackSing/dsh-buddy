@@ -109,10 +109,14 @@ function freshHome(tag) {
   return home;
 }
 
+// 解包器已改 tar promise 模式（异步），场景统一在 async IIFE 中执行；
+// 断言与场景结构不变，仅调用处加 await。
+(async () => {
+
 // ---- 场景1：win32 正常安装（实体化 + 契约） ----
 {
   const home = freshHome('win');
-  const r = installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
+  const r = await installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
   check('win32 installed 返回契约', r.status === 'installed', `got ${JSON.stringify(r)}`);
   const pkgIndex = path.join(home, 'profiles', 'web', 'node_modules', 'pkg', 'index.js');
   check('win32 实体文件内容', fs.readFileSync(pkgIndex, 'utf8') === 'pkg-file');
@@ -134,7 +138,7 @@ function freshHome(tag) {
   check('win32 条目路径穿越未越界', !fs.existsSync(path.join(base, 'evil.txt')));
   check('win32 无 staging 残留', !fs.existsSync(path.join(home, 'profiles', '.web.installing')));
   // 已存在但无 package.json(无法判定) → preserved,不覆盖
-  const r2 = installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
+  const r2 = await installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
   check('win32 无 package.json 重复安装 preserved', r2.status === 'preserved' && r2.extras.length === 0, `got ${JSON.stringify(r2)}`);
 }
 
@@ -167,7 +171,7 @@ const CURRENT_DEPS = { '@linxin666/dsh-skins': '0.2.2', '@aiwaretop/dsh-docs-har
   writeProfileDeps(home, CURRENT_DEPS);
   const pkgFile = path.join(home, 'profiles', 'web', 'package.json');
   const before = fs.statSync(pkgFile).mtimeMs;
-  const r = installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
+  const r = await installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
   check('up-to-date 返回契约', r.status === 'up-to-date', `got ${JSON.stringify(r)}`);
   check('up-to-date 不动磁盘', fs.statSync(pkgFile).mtimeMs === before);
   check('up-to-date 无备份目录', fs.readdirSync(path.join(home, 'profiles')).length === 1);
@@ -177,7 +181,7 @@ const CURRENT_DEPS = { '@linxin666/dsh-skins': '0.2.2', '@aiwaretop/dsh-docs-har
 {
   const home = freshHome('upgrade');
   writeProfileDeps(home, { '@linxin666/dsh-skins': '0.1.16', '@aiwaretop/dsh-docs-harness': '0.1.1' });
-  const r = installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
+  const r = await installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
   check('upgraded 返回契约', r.status === 'upgraded' && r.backup === 'web.backup-0.1.16', `got ${JSON.stringify(r)}`);
   const backupPkg = path.join(home, 'profiles', 'web.backup-0.1.16', 'package.json');
   check('upgraded 旧 profile 已备份', fs.existsSync(backupPkg) && JSON.parse(fs.readFileSync(backupPkg, 'utf8')).dependencies['@linxin666/dsh-skins'] === '0.1.16');
@@ -192,7 +196,7 @@ const CURRENT_DEPS = { '@linxin666/dsh-skins': '0.2.2', '@aiwaretop/dsh-docs-har
   writeProfileDeps(home, { ...CURRENT_DEPS, 'dsh-my-own': '1.0.0' });
   const pkgFile = path.join(home, 'profiles', 'web', 'package.json');
   const before = fs.readFileSync(pkgFile, 'utf8');
-  const r = installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
+  const r = await installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
   check('preserved 返回契约含包名', r.status === 'preserved' && r.extras.join(',') === 'dsh-my-own', `got ${JSON.stringify(r)}`);
   check('preserved 原 profile 不变', fs.readFileSync(pkgFile, 'utf8') === before && fs.readFileSync(path.join(home, 'profiles', 'web', 'marker.txt'), 'utf8') === 'old-profile');
   check('preserved 无备份无 staging', fs.readdirSync(path.join(home, 'profiles')).length === 1);
@@ -204,7 +208,7 @@ const CURRENT_DEPS = { '@linxin666/dsh-skins': '0.2.2', '@aiwaretop/dsh-docs-har
   writeProfileDeps(home, { '@linxin666/dsh-skins': '0.1.16', '@aiwaretop/dsh-docs-harness': '0.1.1' });
   let thrown = null;
   try {
-    installBundledProfile({ tarballPath: rejectTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
+    await installBundledProfile({ tarballPath: rejectTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
   } catch (err) {
     thrown = err;
   }
@@ -219,7 +223,7 @@ const CURRENT_DEPS = { '@linxin666/dsh-skins': '0.2.2', '@aiwaretop/dsh-docs-har
   const home = freshHome('reject');
   let thrown = null;
   try {
-    installBundledProfile({ tarballPath: rejectTar, dshHome: home, profileName: 'web' });
+    await installBundledProfile({ tarballPath: rejectTar, dshHome: home, profileName: 'web' });
   } catch (err) {
     thrown = err;
   }
@@ -230,7 +234,7 @@ const CURRENT_DEPS = { '@linxin666/dsh-skins': '0.2.2', '@aiwaretop/dsh-docs-har
 // ---- 场景3：no-tarball 契约 ----
 {
   const home = freshHome('notar');
-  const r = installBundledProfile({ tarballPath: path.join(base, 'missing.tar.gz'), dshHome: home, profileName: 'web' });
+  const r = await installBundledProfile({ tarballPath: path.join(base, 'missing.tar.gz'), dshHome: home, profileName: 'web' });
   check('no-tarball 静默返回', r.status === 'no-tarball', `got ${JSON.stringify(r)}`);
 }
 
@@ -242,7 +246,7 @@ const CURRENT_DEPS = { '@linxin666/dsh-skins': '0.2.2', '@aiwaretop/dsh-docs-har
     // 无法在本机构造 symlink 断言；win32 实体化行为已由场景1覆盖。
     console.log('skip posix symlink 断言（Windows 无符号链接特权，fs.symlinkSync EPERM 实证）');
   } else {
-    const r = installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
+    const r = await installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
     check('posix installed 返回契约', r.status === 'installed', `got ${JSON.stringify(r)}`);
     const depDir = path.join(home, 'profiles', 'web', 'node_modules', 'pkg', 'node_modules', 'dep');
     const st = fs.lstatSync(depDir);
@@ -254,3 +258,8 @@ const CURRENT_DEPS = { '@linxin666/dsh-skins': '0.2.2', '@aiwaretop/dsh-docs-har
 fs.rmSync(base, { recursive: true, force: true });
 console.log(failures === 0 ? 'SMOKE PASS' : `SMOKE FAIL (${failures})`);
 process.exit(failures === 0 ? 0 : 1);
+
+})().catch((err) => {
+  console.log(`SMOKE FAIL (uncaught: ${err.message})`);
+  process.exit(1);
+});
