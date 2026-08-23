@@ -218,6 +218,23 @@ test('v2 清单外插件:preserved,连下载都不发起', async (t) => {
   assert.deepEqual(result.extras, ['user-own-plugin']);
 });
 
+test('v2 preserved-current:外挂存在但 channel 集合全满足 → up-to-date,不发起下载', async (t) => {
+  const { dshHome, downloadDir, update } = scaffold(t, { extraDeps: { 'user-own-plugin': '9.9.9' } });
+  // channel 集合与本地版本完全一致(本地 plugin-one 1.0.0),只剩外挂这一层差异
+  const currentUpdate = {
+    ...update,
+    packages: [
+      { name: '@a/plugin-one', version: '1.0.0' },
+      { name: '@a/plugin-two', version: '2.0.0' },
+    ],
+  };
+  const result = await applyPluginUpdate({
+    update: currentUpdate, dshHome, profileName: 'web', downloadDir,
+    fetchImpl: async () => assert.fail('preserved-current 判定在下载前,不应发起 fetch'),
+  });
+  assert.equal(result.outcome, 'up-to-date'); // 无真实更新,静默
+});
+
 test('v2 聚合进度:transferred 单调递增,终值 = 各切片与簿记 size 之和', async (t) => {
   const { dshHome, downloadDir, update, fetchImpl, slice, bookkeeping } = scaffold(t);
   const events = [];

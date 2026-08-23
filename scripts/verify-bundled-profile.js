@@ -3,7 +3,8 @@
 // fixture 用手写 ustar 条目构造（不依赖本机创建符号链接的权限），gzip 后喂给解包器。
 // 覆盖：实体文件/目录、相对 symlink（含多层链接链）、hardlink、绝对链接拒绝、
 // 越界链接拒绝、条目路径穿越（tar 库 sanitize）、未知条目类型、返回契约、staging 清理、
-// 已存在 profile 的四态升级判定（up-to-date/upgraded/preserved/升级失败回滚）。
+// 已存在 profile 的五态升级判定（up-to-date/upgraded/preserved/preserved-current/
+// 升级失败回滚,含 retired 退休包判定）。
 // 平台自适应：win32 上 POSIX 分支（fs.symlinkSync）无符号链接特权恒 EPERM（实证），
 // 该分支断言仅在 POSIX 平台执行；CI（ubuntu）复跑可补全两分支覆盖。
 // 用法：node scripts/verify-bundled-profile.js <repo-root>
@@ -121,8 +122,14 @@ function freshHome(tag) {
   const pkgIndex = path.join(home, 'profiles', 'web', 'node_modules', 'pkg', 'index.js');
   check('win32 实体文件内容', fs.readFileSync(pkgIndex, 'utf8') === 'pkg-file');
   const depDir = path.join(home, 'profiles', 'web', 'node_modules', 'pkg', 'node_modules', 'dep');
-  const st = fs.lstatSync(depDir);
-  check('win32 symlink 实体化为目录', st.isDirectory() && !st.isSymbolicLink());
+  if (process.platform === 'win32') {
+    const st = fs.lstatSync(depDir);
+    check('win32 symlink 实体化为目录', st.isDirectory() && !st.isSymbolicLink());
+  } else {
+    // POSIX 分支保持链接语义(fs.symlinkSync),实体化断言只在 Windows 成立;
+    // POSIX 链接行为由场景4 覆盖
+    console.log('skip win32 symlink 实体化断言(非 Windows 平台,POSIX 保持链接语义)');
+  }
   check(
     'win32 实体化内容正确',
     fs.readFileSync(path.join(depDir, 'index.js'), 'utf8') === 'dep-file'
@@ -158,11 +165,19 @@ const CURRENT_DEPS = { '@linxin666/dsh-skins': '0.2.2', '@aiwaretop/dsh-docs-har
   const d2 = profileUpgradeDecision({ '@linxin666/dsh-skins': '0.1.16', '@aiwaretop/dsh-docs-harness': '0.1.1' }, MANIFEST);
   check('decision 版本落后 upgrade', d2.status === 'upgrade', `got ${JSON.stringify(d2)}`);
   const d3 = profileUpgradeDecision({ ...CURRENT_DEPS, 'dsh-my-own': '1.0.0' }, MANIFEST);
-  check('decision 清单外依赖 preserved 并报名', d3.status === 'preserved' && d3.extras.join(',') === 'dsh-my-own', `got ${JSON.stringify(d3)}`);
+  check('decision 清单外依赖但全满足 preserved-current 并报名', d3.status === 'preserved-current' && d3.extras.join(',') === 'dsh-my-own', `got ${JSON.stringify(d3)}`);
+  const d3b = profileUpgradeDecision({ '@linxin666/dsh-skins': '0.1.16', '@aiwaretop/dsh-docs-harness': '0.1.3', 'dsh-my-own': '1.0.0' }, MANIFEST);
+  check('decision 清单外依赖 + 真实落后 preserved', d3b.status === 'preserved' && d3b.extras.join(',') === 'dsh-my-own', `got ${JSON.stringify(d3b)}`);
   const d4 = profileUpgradeDecision(null, MANIFEST);
   check('decision 不可读 preserved', d4.status === 'preserved' && d4.extras.length === 0, `got ${JSON.stringify(d4)}`);
   const d5 = profileUpgradeDecision({ '@linxin666/dsh-skins': '0.2.2' }, MANIFEST);
   check('decision 缺包 upgrade', d5.status === 'upgrade', `got ${JSON.stringify(d5)}`);
+  // retired 退休包判定:不计 extras,出现即强制 upgrade(整目录替换清退)
+  const RETIRED = ['@linxin666/dsh-client-ui-task-board'];
+  const d6 = profileUpgradeDecision({ ...CURRENT_DEPS, '@linxin666/dsh-client-ui-task-board': '0.2.2' }, MANIFEST, RETIRED);
+  check('decision 含退休包强制 upgrade', d6.status === 'upgrade', `got ${JSON.stringify(d6)}`);
+  const d7 = profileUpgradeDecision({ ...CURRENT_DEPS, '@linxin666/dsh-client-ui-task-board': '0.2.2', 'dsh-my-own': '1.0.0' }, MANIFEST, RETIRED);
+  check('decision 退休包不计 extras,与真外挂并存 preserved', d7.status === 'preserved' && d7.extras.join(',') === 'dsh-my-own', `got ${JSON.stringify(d7)}`);
 }
 
 // 5a：版本一致 → up-to-date,不动磁盘
@@ -190,16 +205,50 @@ const CURRENT_DEPS = { '@linxin666/dsh-skins': '0.2.2', '@aiwaretop/dsh-docs-har
   check('upgraded 无 staging 残留', !fs.existsSync(path.join(home, 'profiles', '.web.installing')));
 }
 
-// 5c：含清单外依赖 → preserved,原 profile 逐字节不变
+// 5c：含清单外依赖且有真实落后 → preserved,原 profile 逐字节不变
 {
   const home = freshHome('preserved');
-  writeProfileDeps(home, { ...CURRENT_DEPS, 'dsh-my-own': '1.0.0' });
+  writeProfileDeps(home, { '@linxin666/dsh-skins': '0.1.16', '@aiwaretop/dsh-docs-harness': '0.1.3', 'dsh-my-own': '1.0.0' });
   const pkgFile = path.join(home, 'profiles', 'web', 'package.json');
   const before = fs.readFileSync(pkgFile, 'utf8');
   const r = await installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
   check('preserved 返回契约含包名', r.status === 'preserved' && r.extras.join(',') === 'dsh-my-own', `got ${JSON.stringify(r)}`);
   check('preserved 原 profile 不变', fs.readFileSync(pkgFile, 'utf8') === before && fs.readFileSync(path.join(home, 'profiles', 'web', 'marker.txt'), 'utf8') === 'old-profile');
   check('preserved 无备份无 staging', fs.readdirSync(path.join(home, 'profiles')).length === 1);
+}
+
+// 5e：含清单外依赖但清单内全满足 → preserved-current,同样不动磁盘(弹窗由壳层抑制)
+{
+  const home = freshHome('preserved-current');
+  writeProfileDeps(home, { ...CURRENT_DEPS, 'dsh-my-own': '1.0.0' });
+  const pkgFile = path.join(home, 'profiles', 'web', 'package.json');
+  const before = fs.readFileSync(pkgFile, 'utf8');
+  const r = await installBundledProfile({ tarballPath: goodTar, dshHome: home, profileName: 'web', manifestPackages: MANIFEST });
+  check('preserved-current 返回契约含包名', r.status === 'preserved-current' && r.extras.join(',') === 'dsh-my-own', `got ${JSON.stringify(r)}`);
+  check('preserved-current 原 profile 不变', fs.readFileSync(pkgFile, 'utf8') === before && fs.readFileSync(path.join(home, 'profiles', 'web', 'marker.txt'), 'utf8') === 'old-profile');
+  check('preserved-current 无备份无 staging', fs.readdirSync(path.join(home, 'profiles')).length === 1);
+}
+
+// 5f：存量迁移——deps 含退休包,传 retiredPackages 后强制 upgrade,
+// 整目录备份替换,新 profile 自然不含退休包(复用 good fixture tar)
+{
+  const home = freshHome('retired-migration');
+  const RETIRED = ['@linxin666/dsh-client-ui-task-board'];
+  writeProfileDeps(home, { ...CURRENT_DEPS, '@linxin666/dsh-client-ui-task-board': '0.2.2' });
+  const r = await installBundledProfile({
+    tarballPath: goodTar,
+    dshHome: home,
+    profileName: 'web',
+    manifestPackages: MANIFEST,
+    retiredPackages: RETIRED,
+  });
+  check('退休包存量迁移判 upgrade', r.status === 'upgraded' && typeof r.backup === 'string', `got ${JSON.stringify(r)}`);
+  const backupPkg = path.join(home, 'profiles', r.backup || 'missing', 'package.json');
+  check('退休包迁移备份目录存在且含旧 deps', fs.existsSync(backupPkg) && JSON.parse(fs.readFileSync(backupPkg, 'utf8')).dependencies['@linxin666/dsh-client-ui-task-board'] === '0.2.2');
+  const newProfile = path.join(home, 'profiles', 'web');
+  check('退休包迁移新版落位', fs.readFileSync(path.join(newProfile, 'node_modules', 'pkg', 'index.js'), 'utf8') === 'pkg-file');
+  check('退休包迁移新 profile 不含退休包', !fs.existsSync(path.join(newProfile, 'node_modules', '@linxin666', 'dsh-client-ui-task-board')));
+  check('退休包迁移无 staging 残留', !fs.existsSync(path.join(home, 'profiles', '.web.installing')));
 }
 
 // 5d：升级时解包失败 → 旧 profile 不变,不留半成品

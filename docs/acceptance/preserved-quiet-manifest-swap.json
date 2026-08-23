@@ -1,0 +1,109 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "preserved 弹窗降噪与清单换血验收",
+  "key_symbols": [
+    "profileUpgradeDecision",
+    "preserved-current",
+    "retiredPackages"
+  ],
+  "objective": "验证 preserved/preserved-current 五态判定、file: 开发覆盖、retired 存量清退与 dispatch 预装换血在测试层、构建产物层与真实装载层全部成立",
+  "plan_ref": "docs/plans/preserved-quiet-manifest-swap.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "判定层与热更链聚焦回归全绿(npm test + verify-bundled-profile 含五态/retired/file:/迁移用例)",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260823T042804-a56c5790cc",
+          "objective_fingerprint": "sha256:ea12efd0b4d18c151d72e34b4303091db6ddab2ed9e8d7e944bddabff593fb7c",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "npm test(node --test 全量 381 例,380 pass/0 fail/1 既有 skip)与 node scripts/verify-bundled-profile.js .(SMOKE PASS,46 项 ok 含 d3/d3b/d6/d7/5e/5f 新用例),主控会话在批次执行后独立复跑",
+          "evidence_refs": [
+            "docs/acceptance/evidence/preserved-quiet-manifest-swap/l2-regression.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-23T04:28:04+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "构建产物换血核对(web-profile.tar.gz 含 dispatch 58 条目、task-board 0 条目)",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260823T042804-f4d08d44b8",
+          "objective_fingerprint": "sha256:ea12efd0b4d18c151d72e34b4303091db6ddab2ed9e8d7e944bddabff593fb7c",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "npmjs 直连运行 scripts/build-web-profile.js 产出 build/web-profile.tar.gz(129MB),tar -tzf 独立复核:@aiwaretop/dsh-dispatch 58 条目、task-board 0 条目",
+          "evidence_refs": [
+            "docs/acceptance/evidence/preserved-quiet-manifest-swap/l4-build-tar.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-23T04:28:04+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "真实装载与开发机判定(Electron ABI 拉起 dsh:SSE/task:list/app:status 全通;真实 profile 判定 up-to-date)",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260823T042804-e377d71755",
+          "objective_fingerprint": "sha256:ea12efd0b4d18c151d72e34b4303091db6ddab2ed9e8d7e944bddabff593fb7c",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "产物解至临时 DSH_HOME,Electron+ELECTRON_RUN_AS_NODE=1 拉起内嵌 dsh:SSE 200、task:list 真实读库、app:status 0.1.1 应答、日志无错;另以真实 ~/.dsh/profiles/web/package.json 调 profileUpgradeDecision 断言 up-to-date",
+          "evidence_refs": [
+            "docs/acceptance/evidence/preserved-quiet-manifest-swap/l3-load-and-devcheck.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-23T04:28:04+00:00"
+        }
+      ]
+    }
+  ],
+  "status": "passed",
+  "revision": 2,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:186ebd5e39cd50cdc622370b672c7725f53f3627f7050fe665b63a2de228201d",
+      "updated_at": "2026-08-23T04:27:51+00:00"
+    }
+  ],
+  "created_at": "2026-08-23T04:27:51+00:00",
+  "updated_at": "2026-08-23T04:28:04+00:00",
+  "settled_at": "2026-08-23T04:28:04+00:00",
+  "asset_fingerprint": "sha256:30d5747455388a2d81c00b7c7221202307c7996dedc0f5f8971070215b4f8f96",
+  "replacement": null
+}

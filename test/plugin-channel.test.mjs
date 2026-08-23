@@ -153,7 +153,7 @@ test('diffChannelVersions lists only strictly newer channel packages', () => {
   assert.deepEqual(diffChannelVersions(VALID_CHANNEL.packages, local), [
     { name: '@a/plugin-one', from: '0.2.2', to: '0.3.0' },
   ]);
-  // 本地领先或持平 → 无更新;缺失/不可解析 → 需要更新
+  // 本地领先或持平 → 无更新;缺失/不可解析(乱码 spec)→ 需要更新
   assert.deepEqual(
     diffChannelVersions(VALID_CHANNEL.packages, {
       '@a/plugin-one': '0.3.0',
@@ -167,10 +167,21 @@ test('diffChannelVersions lists only strictly newer channel packages', () => {
   ]);
   assert.deepEqual(
     diffChannelVersions(VALID_CHANNEL.packages, {
+      '@a/plugin-one': 'not-a-version',
+      '@a/plugin-two': '0.2.0',
+    }),
+    [{ name: '@a/plugin-one', from: 'not-a-version', to: '0.3.0' }]
+  );
+});
+
+test('diffChannelVersions: 本地 file: spec 视为开发者覆盖,不产生更新项', () => {
+  // 决策 B:file: spec 是手工本地安装,热更不得反复提示/回滚它
+  assert.deepEqual(
+    diffChannelVersions(VALID_CHANNEL.packages, {
       '@a/plugin-one': 'file:../local',
       '@a/plugin-two': '0.2.0',
     }),
-    [{ name: '@a/plugin-one', from: 'file:../local', to: '0.3.0' }]
+    []
   );
 });
 

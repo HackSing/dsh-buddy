@@ -130,6 +130,22 @@ test('profile with extra packages is preserved, not overwritten', async (t) => {
   assert.equal(readDeps(dshHome)['@a/plugin-one'], '0.2.2');
 });
 
+test('preserved-current:外挂存在但 channel 集合全满足 → up-to-date,静默不动磁盘', async (t) => {
+  const { dshHome, downloadDir, update, fetchImpl } = scaffold(t, {
+    '@a/plugin-one': '0.3.0',
+    '@a/plugin-two': '0.2.0',
+  });
+  writeProfile(dshHome, {
+    '@a/plugin-one': '0.3.0',
+    '@a/plugin-two': '0.2.0',
+    'user-plugin': '1.0.0',
+  });
+  const before = readDeps(dshHome);
+  const result = await applyPluginUpdate({ update, dshHome, profileName: PROFILE, downloadDir, fetchImpl });
+  assert.equal(result.outcome, 'up-to-date'); // 无真实更新,折叠为幂等结局而非 preserved
+  assert.deepEqual(readDeps(dshHome), before); // 原样保留,含外挂
+});
+
 test('onProgress 逐块累计上报,total 取 content-length', async (t) => {
   const { dshHome, downloadDir, update, fetchImpl } = scaffold(t, {
     '@a/plugin-one': '0.3.0',

@@ -131,7 +131,8 @@ size}, minDshVersion }`。
   窗口期；两者都不匹配 → `invalid-channel`，不误装不崩（v0.2.2 旧客户端读 v2 实测
   落此 outcome）。
 - `diffChannelVersions`：本地缺失或版本不可解析一律视为需要更新（保守方向，无法证明
-  足够新）。
+  足够新）；唯一例外是本地 spec 以 `file:` 开头的包——视为开发者本地覆盖，跳过
+  不产生更新项（决策 B，与 `profileSatisfiesManifest` 的 file: 判满足同源）。
 - 版本集合指纹 `channelFingerprint`（`name@version` 排序拼接）去重：同一集合只提示一次。
 - `installable = !isNewerRelease(channel.minDshVersion, currentDshVersion)`：
   通道要求的内嵌 dsh 比当前新时**只提示不安装**，提示用户先更应用本体。
@@ -165,9 +166,21 @@ size}, minDshVersion }`。
    pnpm-lock 决定加载，无副作用）。
 
 结局四态（`PLUGIN_UPDATE_OUTCOME`）：`installed` / `upgraded`（旧目录备份于
-`profiles/web.backup-<版本>`）/ `preserved`（清单外插件，未覆盖）/ `failed`
+`profiles/web.backup-<版本>`）/ `preserved`（真实更新被清单外插件挡住，未覆盖）/ `failed`
 （原 profile 分毫不动）。v1 整包路径 `applyPluginUpdateV1` 保留为通道未切 v2 的
 兼容窗口，入口 `applyPluginUpdate` 按 `update.schema` 分流。
+
+判定层 `profileUpgradeDecision`（`lib/bundled-profile.js`）自身是五态，安装层把
+其中两态折叠掉：`preserved` 拆分为——清单外插件存在**且**清单内有真实待升级（落后 /
+缺包 / 含退休包）才 `preserved`（弹窗）；清单外插件存在但清单内全部满足则为
+`preserved-current`，v1/v2 安装层与启动链（`main.js` 的 `ensureBundledAssets`）都
+将其折叠为静默结局（`up-to-date` outcome / 一行日志），**不弹窗**——这是
+preserved 弹窗降噪的直接修复。`package.json` 不可读维持 `preserved`（保守弹窗）。
+
+退休包清退（决策 C）：`plugins/preinstall-manifest.json` 的 `retired` 数组登记被取代
+的包；判定层对退休包**不计入 extras**（不算清单外），但 profile 中一旦出现退休包即
+强制判 `upgrade`——触发整目录备份替换，替换后的新 profile 自然不含退休包。直接从
+`packages` 删条目会让存量 profile 被判永久 `preserved`，退休包机制就是为避开这个坑。
 
 ### 布局前提（spike 实证，不要再验）
 

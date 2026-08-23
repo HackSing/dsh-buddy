@@ -10,12 +10,17 @@
   "source": "https://github.com/zhu1090093659/dsh-web-ui",
   "license": "Apache-2.0",
   "packages": [
-    { "name": "@linxin666/dsh-client-ui-task-board", "version": "0.2.2" },
     { "name": "@linxin666/dsh-client-ui-git-graph", "version": "0.2.2" },
     { "name": "@linxin666/dsh-skins", "version": "0.2.2" },
     { "name": "@linxin666/dsh-pet", "version": "0.2.2" },
     { "name": "@linxin666/dsh-live-stats", "version": "0.1.20" },
     { "name": "@linxin666/dsh-client-ui-web-ui-settings", "version": "0.2.2" },
+    {
+      "name": "@aiwaretop/dsh-dispatch",
+      "version": "0.1.1",
+      "license": "MIT",
+      "comment": "本生态自研任务收件箱/agent 调度插件,源码在 dispatch 仓库 dsh-plugin/(无独立 GitHub 仓);协议门 green:LICENSE 全文 MIT + 包 license 字段 MIT,发布包无 install/postinstall 脚本,peer 仅 @deepseek-ai/cordis;已知缺陷挂账(2026-08-23 macOS 先行决策):vendor 的 better_sqlite3.node 仅 darwin-arm64 Electron ABI,win32 构建装载会失败,补多平台前 Windows 不可用"
+    },
     {
       "name": "@aiwaretop/dsh-docs-harness",
       "version": "0.2.0",
@@ -28,6 +33,10 @@
       "license": "MIT",
       "comment": "VSCode 风格右侧侧边栏(资源管理器/编辑器/终端/Git/浏览器),源码 https://github.com/omdsh-dev/DSH-better-sidebar;已发布 npm,走同一 registry 链路。过门证据:LICENSE 全文 MIT、包 license 字段 MIT、发布包无 install/postinstall 脚本;依赖 node-pty(原生,本仓 allowScripts 已含)、mermaid、codemirror,无隧道/凭据存储类敏感依赖;发布物经 GitHub Actions OIDC 可信发布(_npmUser=npm-oidc-no-reply@github.com)并带 SLSA provenance 与 registry 签名,repository 字段即上游 omdsh-dev 仓库,HackSing 同名仓库为 fork 且无独立 npm 包"
     }
+  ],
+  "retired_comment": "退休包清单(决策 C):profileUpgradeDecision 中退休包不计入 extras(不算清单外),且 profile 中出现退休包即强制判 upgrade,触发整目录备份替换——替换后的新 profile 自然不含退休包,完成存量清退;元素形状 { name, reason }",
+  "retired": [
+    { "name": "@linxin666/dsh-client-ui-task-board", "reason": "被 @aiwaretop/dsh-dispatch 取代(2026-08-23);存量 profile 中不计清单外并强制触发整目录替换清退" }
   ],
   "excluded": [
     { "name": "@linxin666/dsh-ssh", "reason": "SSH 凭据明文存 ~/.dsh/dsh-ssh.json,不默认替用户开启" },

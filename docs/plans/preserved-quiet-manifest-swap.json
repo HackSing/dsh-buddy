@@ -1,0 +1,50 @@
+{
+  "schema_version": "docs-harness/plan/v3",
+  "plan_level": "full",
+  "plan_profile": "migration_release",
+  "secondary_profiles": [],
+  "template_versions": [
+    "level/full@2.10.0",
+    "profile/migration_release@2.10.0"
+  ],
+  "selection_fingerprint": "sha256:850680a5527626de618432a0aa219acc9d76174872ff2d138108733991e5ec0b",
+  "content": {
+    "title": "preserved 弹窗降噪与预装清单 task-board→dispatch 换血",
+    "key_symbols": [
+      "profileUpgradeDecision",
+      "preserved-current",
+      "retiredPackages",
+      "diffChannelVersions"
+    ],
+    "background": "启动路径 ensureBundledAssets→installBundledProfile 的 profileUpgradeDecision 在 extras 存在时先于落后/缺包判定返回 preserved,main.js 据此弹窗且文案断言『内置插件包有更新』——只要 profile 含清单外插件(如开发者 file: 安装的 @aiwaretop/dsh-dispatch),每次启动都弹窗,即使没有任何真实待升级。同时预装清单中的 @linxin666/dsh-client-ui-task-board 已被自研 @aiwaretop/dsh-dispatch(任务收件箱/agent 调度)取代,需换血;直接删清单条目会让存量用户 profile 中的 task-board 被判清单外→永久 preserved,再收不到任何升级。",
+    "objective": "1) preserved 拆两态:有清单外插件且清单内存在真实待升级(落后/缺包/含退休包)才 preserved 弹窗;清单内全部满足则 preserved-current 仅日志不弹窗。2) file: spec 视为开发者本地覆盖判满足,启动链不回滚、热更检测不骚扰。3) 清单新增 retired 机制完成 task-board 存量清退:退休包不计 extras、出现即强制整目录备份替换。4) @aiwaretop/dsh-dispatch@0.1.1 发布 npmjs 并入预装清单。",
+    "non_goals": "不修 Windows 平台的 dispatch 插件 sqlite 二进制问题(vendor 的 better_sqlite3.node 仅 darwin-arm64 Electron ABI,win32 装载必失败——用户拍板 macOS 先行、风险挂账,已写入清单 comment);不改 PLUGIN_UPDATE_OUTCOME 枚举与热更下载/切片链路;不清理 v2 热更迁移场景遗留的退休包孤儿 node_modules 目录(下次整包替换自然清除);不做增量 diff 或按平台拆分 profile tar。",
+    "success_criteria": "1) 有清单外插件但清单内全满足时启动不弹窗仅日志(preserved-current);2) 真实更新被清单外插件挡住时弹窗保持(preserved);3) 开发机 file: 安装的 dispatch 不被整目录替换回滚,判定 up-to-date;4) 存量 profile 含 task-board 时判 upgrade,替换后新 profile 无 task-board 有 dispatch,备份目录保留;5) 构建产物 web-profile.tar.gz 含 dispatch 不含 task-board,且真实装载(Electron ABI)下 SSE/task:list/app:status 全通;6) npm test 与 verify-bundled-profile.js 全绿。",
+    "execution_scope": "dsh-buddy:lib/bundled-profile.js(判定层五态)、lib/plugin-update.js(V1/V2 retired 透传与 preserved-current 折叠)、lib/plugin-channel.js(diffChannelVersions file: 跳过)、main.js(RETIRED_PLUGINS 常量与 preserved-current 日志分支)、plugins/preinstall-manifest.json(packages 换血 + retired 字段)、scripts/verify-bundled-profile.js、test/ 四个测试文件、docs/update-mechanism.md。dispatch 仓库:dsh-plugin/package.json(0.1.1、license、publishConfig 钉 npmjs)与 LICENSE,npm publish 由用户亲自执行。",
+    "implementation": "批次1 判定层:profileUpgradeDecision(deps, manifestPackages, retiredNames) 重写——extras 剔除退休包、hasRetired 强制 stale、extras 存在时按 stale 分 preserved/preserved-current;profileSatisfiesManifest 对 file: 前缀判满足;installBundledProfile 增 retiredPackages 透传;applyPluginUpdateV1/V2 增 retired 参数,preserved-current 折叠为 up-to-date outcome;main.js 增 RETIRED_PLUGINS 投影与 preserved-current 仅日志分支;diffChannelVersions 跳过 file: spec。批次2 发布:dsh-plugin 0.1.1 加 license/publishConfig(registry 钉 npmjs,本机默认 registry 是 npmmirror 镜像)/LICENSE,用户 npm publish(web 认证)。批次3 换血:manifest 移除 task-board→retired,新增 dispatch@0.1.1 条目(含协议门证据与 Windows 挂账 comment);verify 脚本新增 5f 存量迁移用例;npmjs 直连构建 web-profile.tar.gz 并核对内容;临时 DSH_HOME 真实装载验收;开发机 profile 判定自查。",
+    "acceptance_plan": "L2 聚焦回归:npm test(node --test 全量单测)与 node scripts/verify-bundled-profile.js .(隔离 DSH_HOME 五态/迁移场景)。L4 构建产物:npm_config_registry=npmjs node scripts/build-web-profile.js 产出 tar,tar -tzf 核对 dispatch 58 条目、task-board 0 条目。L3 真实装载:tar 解到临时 DSH_HOME,Electron+ELECTRON_RUN_AS_NODE=1 拉起内嵌 dsh web profile,验证 SSE 200、task:list 真实读库、app:status 版本应答、日志无错;另以真实 ~/.dsh/profiles/web/package.json 跑判定断言 up-to-date。",
+    "acceptance_required": true,
+    "knowledge_impact": "unchanged",
+    "constraints": "kimi CLI(0.36.1)print 模式执行各批次,主控会话逐批审查 diff 并亲自复跑验证;两仓改动经用户裁决暂缓提交直至收尾;npm publish 与发布顺序由用户人工执行。",
+    "risks_and_rollback": "Windows 挂账为已知缺陷(见 non_goals);老客户端(无 retired 逻辑)在应用新版与新 channel 发布的窗口期内遇真实更新会 preserved 弹窗跳过,应用自动更新收敛后消失;v2 热更迁移路径的退休包孤儿目录无功能影响。回滚:整目录备份机制(profiles/web.backup-*)保留旧 profile;manifest 换血可 revert 单文件;npm 已发版本不可撤但可发补丁版。",
+    "source_target": "源:预装清单含 task-board@0.2.2、判定层三态(preserved 单态弹窗)、dispatch 仅本地 file: tgz。目标:清单含 dispatch@0.1.1(npmjs)、task-board 入 retired 清退、判定层五态(preserved/preserved-current 拆分+file: 覆盖+retired 强制升级)。",
+    "versions_artifacts": "dsh-buddy 下一发布版(v0.4.2 计划);@aiwaretop/dsh-dispatch@0.1.1(npmjs,publishConfig 钉 registry.npmjs.org);build/web-profile.tar.gz(129MB,含 dispatch 58 条目);plugin-channel v2 产物待 manifest 换血后由 plugin-channel.yml 重建。",
+    "compatibility_rollout": "发布顺序纪律:先推 v* tag 发应用新版(存量用户经 bundled-profile 路径完成 task-board→dispatch 整目录替换迁移),后手动触发 plugin-channel.yml(新 channel 含 dispatch 不含 task-board)。老客户端读新 channel:遇真实更新走 preserved 弹窗跳过,不破坏 profile,应用自动更新收敛;新客户端 retired 逻辑完整。开发机 file: 安装不受影响(判满足)。",
+    "data_safety": "所有替换路径先 staging 解包再原子 rename,失败回滚旧目录;升级前整目录备份 profiles/web.backup-<版本>;preserved/preserved-current 分毫不动磁盘;package.json 不可读维持 preserved 保守弹窗;验收全部在隔离/临时 DSH_HOME 进行,开发机自查为只读。",
+    "monitoring_stop": "观察点:启动日志 bundled profile 状态行(preserved-current 应仅日志)、热更浮层结局、老客户端 preserved 弹窗反馈。停止条件:新版应用出现启动弹窗回归、存量迁移后插件缺失、或 Windows 之外平台出现装载失败,即停 channel 发布并 revert manifest。",
+    "rollback": "应用层:electron-updater 可回退到上一 Release;manifest 换血 revert 单提交后重发 channel(客户端按版本集合指纹去重,回退集合会重新提示);用户侧旧 profile 有整目录备份可手工恢复;npm 包不可删版但清单钉版可退回不含 dispatch 的集合。",
+    "delivery_layers": "L1 契约:判定函数纯函数单测与 schema 校验;L2 聚焦测试:npm test 380/380 + verify 脚本 SMOKE PASS;L3 本地运行:临时 DSH_HOME 真实拉起 dsh 装载 dispatch(SSE/task:list/app:status);L4 包/安装:web-profile.tar.gz 构建与内容核对;L5 用户可见:开发机弹窗消失需装上新版应用后由用户确认,不以测试层替代。"
+  },
+  "acceptance_refs": [
+    "docs/acceptance/preserved-quiet-manifest-swap.json"
+  ],
+  "governance": {
+    "acceptance_required": true,
+    "knowledge_impact": "unchanged",
+    "updated_knowledge_refs": [],
+    "unchanged_reason": "preserved/preserved-current 五态、retired 清退与 file: 覆盖机制已写入 docs/update-mechanism.md 作为更新链路文档真源;无既有 Knowledge 资产记录该领域事实,无需更新",
+    "governance_settled_at": "2026-08-23T04:28:09+00:00"
+  },
+  "frozen_at": "2026-08-23T04:26:41+00:00",
+  "plan_fingerprint": "sha256:e6eb8e4dc0cae5aee583b5b8f96ac61f0dbf60967f3eac61db80bacb3d8ac706"
+}

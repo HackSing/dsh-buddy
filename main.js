@@ -30,6 +30,9 @@ const {
   quitAndInstall,
 } = require('./lib/auto-update');
 const preinstallManifest = require('./plugins/preinstall-manifest.json');
+// 退休包名清单(决策 C):不计入判定层 extras,profile 中出现即强制整目录替换清退;
+// 唯一来源是 preinstall-manifest 的 retired 字段,此处只做一次投影
+const RETIRED_PLUGINS = preinstallManifest.retired.map((r) => r.name);
 
 // ---- 配置区 ----
 // 默认走「内嵌 dsh」:用 Electron 自带的 Node 运行时执行随包分发的 dsh,用户机器无需 Node。
@@ -191,13 +194,15 @@ async function ensureBundledAssets() {
       dshHome,
       profileName: preinstallManifest.profile,
       manifestPackages: preinstallManifest.packages,
+      retiredPackages: RETIRED_PLUGINS,
     });
     console.log(
       `[dsh-buddy] bundled profile: ${profileResult.status}` +
         (profileResult.backup ? ` (旧版备份于 profiles/${profileResult.backup})` : '')
     );
     if (profileResult.status === 'preserved') {
-      // 存量 profile 含清单外插件(或 package.json 不可读):不覆盖,告知用户如何手动接收升级。
+      // 存量 profile 含清单外插件且清单内存在真实待升级(或 package.json 不可读):
+      // 不覆盖,告知用户如何手动接收升级。
       const extras = profileResult.extras || [];
       console.warn(`[dsh-buddy] bundled profile upgrade held by extra packages: ${extras.join(', ')}`);
       dialog.showMessageBox({
@@ -212,6 +217,10 @@ async function ensureBundledAssets() {
         buttons: ['OK'],
         noLink: true,
       });
+    } else if (profileResult.status === 'preserved-current') {
+      // 有清单外插件但清单内全部满足:无真实更新,不弹窗,仅留一行日志。
+      const extras = profileResult.extras || [];
+      console.log(`[dsh-buddy] bundled profile up-to-date, extra packages kept as-is: ${extras.join(', ')}`);
     }
   } catch (err) {
     dialog.showErrorBox(
@@ -414,6 +423,7 @@ async function runPluginInstall({ update, dshHome }) {
     update,
     dshHome,
     profileName: preinstallManifest.profile,
+    retired: RETIRED_PLUGINS,
     downloadDir: app.getPath('userData'),
     onProgress: (progress) => overlay && overlay.setProgress(progress),
     prepareInstall: () => {
