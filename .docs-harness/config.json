@@ -1,7 +1,7 @@
 {
   "schema_version": "docs-harness/project-config/v11",
   "version": "2.10.0",
-  "installed_script_fingerprint": "sha256:972a331aeaf42257e940720fdca58a72a8595141f2bd835e63835eddc1cebb76",
+  "installed_script_fingerprint": "sha256:4c3d337cec9a734abf4e0b59340cfae70b4115024132f76fb45901b735525a81",
   "installed_module_fingerprints": {
     "managed_assets.py": "sha256:298c73562c7a93442c592aa342a19572f88c7c0150d496ef8c944c6bb268157e",
     "asset_checks.py": "sha256:2de0cacd269a6936e5a91be4fdfce92b81acfcead0f1ee81ee423ff5bb1cb5ee",

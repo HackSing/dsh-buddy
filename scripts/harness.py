@@ -3934,7 +3934,9 @@ ACCEPTANCE_EPILOG = _EPILOG_INTRO + "\n\n" + "\n\n".join((
 ADR_EPILOG = _EPILOG_INTRO + "\n\n" + _schema_example_block(
     f"adr create --input（{ADR_INPUT_SCHEMA}）：",
     ADR_INPUT_EXAMPLE,
-    "ADR 定稿后不可更新；失效时 adr settle --status deprecated|superseded（superseded 需 --replacement）。",
+    (
+        "ADR 定稿后不可更新；失效时 adr settle --status deprecated|superseded（superseded 需 --replacement）。",
+    ),
 )
 
 
