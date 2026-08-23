@@ -179,6 +179,14 @@ scripts\dist-win.bat # 本机 Windows 打包入口(IDE 终端里务必走它):�
 
 > dsh 版本在 `dependencies` 中钉死为 `0.1.1-rc.1`——它仍处于 developer preview,有破坏性变更风险。
 
+## 深入了解：DeepSeek Harness 蓝皮书
+
+<a href="https://github.com/HackSing/deepseek-harness-blue-book"><img src="https://raw.githubusercontent.com/HackSing/deepseek-harness-blue-book/main/cover.png" width="150" align="right" alt="蓝皮书封面"></a>
+
+本项目是《DeepSeek Harness 蓝皮书》Part 4 的工程样本。这本 48 页的免费电子书系统讲解 dsh 的运行时架构、capability seam、插件开发九坑，以及本项目的完整工程决策——Electron 宿主边界、随包资产升级、投影缓存故障排查、插件热更新通道，全部对应真实代码与固定 HEAD。
+
+📘 [仓库与下载（PDF / 单文件 HTML / 全文 Markdown）](https://github.com/HackSing/deepseek-harness-blue-book)
+
 ## Roadmap
 
 - [x] 打包分发(electron-builder,macOS arm64 dmg)
