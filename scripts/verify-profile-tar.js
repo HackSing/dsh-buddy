@@ -38,6 +38,22 @@ const REQUIRED_PLATFORMS = ['darwin-arm64', 'win32-x64'];
 // 二进制数为 0,以二进制为触发条件会静默放过"只剩核心包、任何平台都跑不起来"的产物。
 const NATIVE_PACKAGES = [
   {
+    // 断言 3 第三次被真实产物触发(2026-08-23):@aiwaretop/dsh-dispatch 预装入清单,
+    // 其 vendor 的 better_sqlite3.node 仅 darwin-arm64 Electron ABI——用户拍板
+    // 「macOS 先行,Windows 风险挂账」(见 preinstall-manifest 该包 comment 与
+    // docs/plans/preserved-quiet-manifest-swap),win32 装载 fail-soft 降级
+    // runtime-unavailable 不 crash。singlePlatformExemption 只豁免 REQUIRED_PLATFORMS
+    // 覆盖检查(仍验 darwin-arm64 二进制存在);补齐多平台 vendor 后删掉此豁免。
+    // prefix 收窄到 vendored better-sqlite3:插件混入其他二进制仍判 FAIL。
+    name: '@aiwaretop/dsh-dispatch(vendored better-sqlite3)',
+    requiredWhen: 'node_modules/@aiwaretop/dsh-dispatch/',
+    prefix: 'node_modules/@aiwaretop/dsh-dispatch/vendor/node_modules/better-sqlite3/',
+    platformDirs: {
+      'darwin-arm64': 'node_modules/@aiwaretop/dsh-dispatch/vendor/node_modules/better-sqlite3/build/Release/',
+    },
+    singlePlatformExemption: true,
+  },
+  {
     name: 'node-pty',
     requiredWhen: 'node_modules/node-pty/',
     prefix: 'node_modules/node-pty/',
@@ -101,7 +117,9 @@ function checkBinaries(entries, fail) {
 
   for (const p of NATIVE_PACKAGES) {
     if (!entries.some((e) => e.path.startsWith(inProfile(p.requiredWhen)))) continue;
-    for (const plat of REQUIRED_PLATFORMS) {
+    // singlePlatformExemption:挂账包只验已声明平台的二进制存在,不要求覆盖全部发布目标
+    const requiredPlatforms = p.singlePlatformExemption ? Object.keys(p.platformDirs) : REQUIRED_PLATFORMS;
+    for (const plat of requiredPlatforms) {
       const dir = p.platformDirs[plat];
       if (!dir) {
         fail(`${p.name} 未声明发布目标平台 ${plat} 的目录`);
