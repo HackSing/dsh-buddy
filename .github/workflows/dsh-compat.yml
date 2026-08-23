@@ -23,9 +23,9 @@ jobs:
         with:
           node-version: 24
 
-      # dsh plugin 子命令把安装转发给 pnpm,corepack 提供它
+      # dsh plugin 子命令把安装转发给 pnpm;pnpm 版本钉在 .github/actions/setup-pnpm,根因见该文件
       - name: 启用 pnpm
-        run: corepack enable
+        uses: ./.github/actions/setup-pnpm
 
       - name: 比对 dist-tag 与钉住版本
         id: probe

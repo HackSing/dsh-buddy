@@ -103,7 +103,7 @@ gh release upload "$TAG" dist/*.dmg --clobber
 | cron 首跑幻觉 | 上游没有新版本时，值班工作流只走"版本相同→跳过"的快路径，绿色≠完整链路验证过 | 用 workflow_dispatch + 已知旧版本号强制跑一次完整验证 |
 | tag 漂移 | tag 与 manifest 版本不一致，产物命名错乱 | 版本守卫，构建前快速失败 |
 | 发版空窗 404 | 双平台打包并行，先完成的 job 创建 Release 后，electron-updater 的 latest 即指向它，但另一平台的 latest.yml 还没传完——构建窗口期内用户点「检查更新」收到满屏 404 堆栈 | Release 草稿先行：profile job 建 draft，双平台产物传完由末尾 publish job 统一转正，转正前 latest 始终指向上一版；客户端再把 "latest.yml 404" 识别为窗口期折叠为「已是最新」兜底残缺 Release（`isPendingReleaseError`）|
-| pnpm v11 ignored builds | CI corepack 默认拉最新 pnpm，v11 起 node-pty 构建脚本被忽略直接报错退出，profile 构建 5 秒即挂 | 两个 workflow 钉住 `corepack prepare pnpm@10.33.0 --activate` |
+| pnpm v11 ignored builds | CI corepack 默认拉最新 pnpm，v11 起 node-pty 构建脚本被忽略直接报错退出，profile 构建 5 秒即挂（dsh-compat 的 ④ 项同根因连挂多日，误报为候选版本回归） | 跑 `dsh plugin add` 的三个 workflow 统一经 `.github/actions/setup-pnpm` 取得钉住的 pnpm，pin 版本以该 action 为单一来源 |
 | 通道抢占 latest | 数据通道 release 以正式身份晚于版本 release 发布，抢占 /releases/latest，整包更新摸到通道里的 latest.yml 404 | 通道 release 永远 `--prerelease`（见下节）|
 | 无 checkout 的 gh | 末尾 publish job 一行 `gh release edit` 直接挂："failed to run git: fatal: not a git repository"——gh 靠 git remote 推断目标仓库 | 不 checkout 的 job 里 gh 命令一律带 `--repo "$GITHUB_REPOSITORY"` |
 | 产物名两套规则 | electron-builder 磁盘产物保留空格（`DSH Buddy Setup 0.3.0.exe`），但 latest*.yml 里写的是空格→连字符的安全名；GitHub 资产上传又把空格转点号——三方错位，应用内更新下载 404（v0.3.0 实炸） | 上传前统一把 dist 产物改名为连字符形式，与 yml 清单对齐；已发布的 release 可用 API PATCH 资产名补救，不必重打包 |

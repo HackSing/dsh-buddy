@@ -1,0 +1,16 @@
+# corepack 默认解析 latest pnpm;pnpm v11 起 ignored build scripts(node-pty)直接报错
+# 退出(ERR_PNPM_IGNORED_BUILDS,退出码 1),v10 仅告警。所有跑 `dsh plugin add` 的
+# workflow 必须经由本 action 取得 pnpm,pin 版本以此文件为单一来源。
+name: 启用 pnpm(钉住 pnpm@10)
+description: >-
+  钉住 pnpm 10.33.0:corepack 默认拉 latest;pnpm v11 起 ignored builds(node-pty)
+  直接报错退出,v10 仅告警。所有跑 `dsh plugin add` 的 workflow 必须经由本 action
+  取得 pnpm,pin 版本以此文件为单一来源。
+runs:
+  using: composite
+  steps:
+    - name: 启用 pnpm
+      shell: bash
+      run: |
+        corepack enable
+        corepack prepare pnpm@10.33.0 --activate
