@@ -4,6 +4,29 @@
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-08-23
+
+### Changed
+
+- **预装 dispatch 插件升至 0.1.2,Windows 可用性由推断转为 CI 实证**:npm 包 vendor 不再只带构建机单平台的 `better_sqlite3.node`,改为按构建期运行时推导的 Electron ABI 从上游 WiseLibs releases 下载 darwin-arm64 与 win32-x64 两份官方 prebuild(落位 `build/Release/<platform-arch>/`,魔数断言硬失败),vendored `database.js` 的 bindings 加载行锚点替换为按 `process.platform-arch` 直拼(锚点不中即抛错要求人工重验);`bindings`/`file-uri-to-path` 随之移出 vendor。
+- `verify-profile-tar` 删除 0.4.2 引入的 `singlePlatformExemption` 豁免机制,dispatch 回归标准双平台覆盖断言(prefix 收窄到 vendored better-sqlite3,插件混入其他二进制仍判 FAIL)。
+
+### Added
+
+- release 流水线 windows job 新增「dispatch sqlite 装载 smoke」门禁:打包前从分发的 profile tar 解出 vendored better-sqlite3,在真实 win32-x64 runner 上以 `ELECTRON_RUN_AS_NODE=1` 建内存库读写断言——此后任何破坏 Windows 装载的改动都推不出 tag。
+
+## [0.4.2] - 2026-08-23
+
+### Fixed
+
+- **preserved 弹窗降噪**:启动时 profile 升级判定原先只要存在清单外插件就弹「内置插件包有更新」,即使实际没有任何待升级。判定层拆为五态——清单外插件存在且清单内确有落后/缺包才 `preserved`(弹窗),清单内全部满足则 `preserved-current`(仅日志不弹窗);`package.json` 不可读维持保守弹窗。热更 v1/v2 链路同步折叠,无真实更新不再打扰。
+- `file:` spec 视为开发者本地覆盖判满足:此前「不可解析即落后」会让手工 `file:` 安装的插件每次启动被整目录替换回滚,热更检测也反复提示假更新;现启动链不回滚、`diffChannelVersions` 跳过。
+
+### Changed
+
+- **预装清单换血**:`@linxin666/dsh-client-ui-task-board` 退役,由自研 `@aiwaretop/dsh-dispatch@0.1.1`(任务收件箱/agent 调度)取代。清单新增 `retired` 机制完成存量清退——退休包不计清单外、出现即触发整目录备份替换,替换后的新 profile 自然不含退休包;直接删条目会让存量用户被判永久 preserved,该机制即为避开此坑。
+- 已知限制(0.4.3 已解除):本版 dispatch 插件的 sqlite 二进制仅 darwin-arm64,Windows 端 dispatch 面板不可用(fail-soft 降级,不影响其他功能);`verify-profile-tar` 以显式 `singlePlatformExemption` 豁免登记该挂账。
+
 ## [0.4.1] - 2026-08-22
 
 ### Fixed

@@ -61,6 +61,9 @@ jobs:
       # 草稿先行:Release 以 draft 身份创建,双平台产物传完前对外不可见——
       # electron-updater 只认已发布的 latest release,草稿期检查更新不会踩到
       # "latest.yml 还没传上来"的空窗 404。末尾 publish job 统一转正。
+      # body 由 scripts/release-notes.js 从 CHANGELOG.md 提取(下载指引 + 当版段落
+      # + 比对链接);正式版缺 changelog 条目脚本非零退出,发版直接失败——changelog
+      # 纪律即发版门禁。create 后再 edit 一次:tag 重推复用已有草稿时也刷新 body。
       - name: 创建草稿 Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -69,7 +72,9 @@ jobs:
           tag="$GITHUB_REF_NAME"
           prerelease=""
           case "$tag" in *-*) prerelease="--prerelease" ;; esac
-          gh release create "$tag" --draft --title "$tag" --generate-notes $prerelease || true
+          node scripts/release-notes.js "${tag#v}" > /tmp/release-notes.md
+          gh release create "$tag" --draft --title "$tag" --notes-file /tmp/release-notes.md $prerelease || true
+          gh release edit "$tag" --notes-file /tmp/release-notes.md
 
   macos:
     runs-on: macos-14
