@@ -26,7 +26,7 @@
 - [内嵌 dsh 升级:0.1.0-rc.8 → 0.1.1-rc.1](plans/dsh-upgrade-0.1.1-rc.1.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-21 核对）；关键符号：`DSH_VERSION`、`patchClient`、`buildWebProfileTar`、`checkDshCore`
 - [启动加载窗口:首屏即时反馈与启动链解耦](plans/startup-loading-window.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-22 核对）；关键符号：`installBundledProfile`、`attachContentExtras`、`buildStageScript`、`ensureDsh`
 - [preserved 弹窗降噪与预装清单 task-board→dispatch 换血](plans/preserved-quiet-manifest-swap.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）；关键符号：`profileUpgradeDecision`、`preserved-current`、`retiredPackages`、`diffChannelVersions`
-- [dispatch vendored sqlite 多平台化,解除 Windows 挂账](plans/multiplatform-sqlite-vendor.md) — 状态：有效（实施中）；关键符号：`seedNativeAddons`、`patchDatabaseJs`、`platformDirs`、`PREBUILD_TARGETS`
+- [dispatch vendored sqlite 多平台化,解除 Windows 挂账](plans/multiplatform-sqlite-vendor.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）；关键符号：`seedNativeAddons`、`patchDatabaseJs`、`platformDirs`、`PREBUILD_TARGETS`
 <!-- docs-harness:plans-index:end -->
 
 <!-- docs-harness:knowledge-index:start -->
@@ -65,7 +65,7 @@
 - [插件按包增量更新验收](acceptance/plugin-incremental-update.md) — 状态：已验收-仅追溯；关键符号：`applyPluginUpdate`、`installBundledProfile`、`buildWebProfileTar`、`checkPluginChannel`
 - [启动加载窗口:首屏即时反馈验收](acceptance/startup-loading-window.md) — 状态：已验收-仅追溯；关键符号：`buildStageScript`、`installBundledProfile`、`setStartupStage`
 - [preserved 弹窗降噪与清单换血验收](acceptance/preserved-quiet-manifest-swap.md) — 状态：已验收-仅追溯；关键符号：`profileUpgradeDecision`、`preserved-current`、`retiredPackages`
-- [dispatch 多平台 sqlite vendor 验收](acceptance/multiplatform-sqlite-vendor.md) — 状态：有效（待验收）；关键符号：`seedNativeAddons`、`patchDatabaseJs`、`platformDirs`
+- [dispatch 多平台 sqlite vendor 验收](acceptance/multiplatform-sqlite-vendor.md) — 状态：已验收-仅追溯；关键符号：`seedNativeAddons`、`patchDatabaseJs`、`platformDirs`
 <!-- docs-harness:acceptance-index:end -->
 
 <!-- docs-harness:adr-index:start -->

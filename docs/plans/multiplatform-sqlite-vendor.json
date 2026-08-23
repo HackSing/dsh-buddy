@@ -42,9 +42,9 @@
     "acceptance_required": true,
     "knowledge_impact": "unchanged",
     "updated_knowledge_refs": [],
-    "unchanged_reason": null,
-    "governance_settled_at": null
+    "unchanged_reason": "多平台 vendor 布局与锚点补丁纪律已写入 dsh-plugin/scripts/seed-vendor.mjs 头注释与 verify-profile-tar 断言注释作为真源;无既有 Knowledge 资产记录该领域事实",
+    "governance_settled_at": "2026-08-23T05:48:04+00:00"
   },
   "frozen_at": "2026-08-23T05:41:04+00:00",
-  "plan_fingerprint": "sha256:275cf091edb99c43c2886d64b7e5d15e81a18c6bb314ea0d685dcf6505f1fa13"
+  "plan_fingerprint": "sha256:e804d20d090c9b1a98a0a3c87887d3c58dd4910fb10ecb1c3811db0aa3b443d8"
 }

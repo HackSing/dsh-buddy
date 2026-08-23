@@ -1,9 +1,9 @@
-> 状态：有效（实施中）
+> 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）
 <!-- docs-harness:plan-document/v1 -->
 
 # dispatch vendored sqlite 多平台化,解除 Windows 挂账
 
-- 冻结合同：`sha256:275cf091edb99c43c2886d64b7e5d15e81a18c6bb314ea0d685dcf6505f1fa13`
+- 冻结合同：`sha256:e804d20d090c9b1a98a0a3c87887d3c58dd4910fb10ecb1c3811db0aa3b443d8`
 - 关键符号：`seedNativeAddons`、`patchDatabaseJs`、`platformDirs`、`PREBUILD_TARGETS`
 
 ## 背景

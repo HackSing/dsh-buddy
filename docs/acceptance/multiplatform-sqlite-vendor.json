@@ -97,12 +97,30 @@
       "acceptance_type": "behavior_acceptance",
       "layer": "L4",
       "evidence_layer": "package_or_install",
-      "status": "pending",
-      "records": []
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260823T054804-30e39c7ea8",
+          "objective_fingerprint": "sha256:b7e496043a844d257524c6485fa4979f14e303e48a44b6fc4c4fd1aaf49c4170",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "release run 32621000695 windows job 的 sqlite smoke:真实 win32-x64 runner 上 ELECTRON_RUN_AS_NODE require 分发 tar 内 vendored better-sqlite3,内存库建表/插入/查询断言通过,输出 WIN32 SQLITE LOAD OK",
+          "evidence_refs": [
+            "docs/acceptance/evidence/multiplatform-sqlite-vendor/l4-win32-smoke.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-23T05:48:04+00:00"
+        }
+      ]
     }
   ],
-  "status": "pending",
-  "revision": 4,
+  "status": "passed",
+  "revision": 6,
   "revision_history": [
     {
       "revision": 1,
@@ -118,10 +136,21 @@
       "revision": 3,
       "asset_fingerprint": "sha256:bc698238f4a8551491c6de1420d0c3ccb300facf1cc95aac7c034432d4864871",
       "updated_at": "2026-08-23T05:41:31+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:5de007e7e914da2f55750e1ec6747021ddbe955aa3faa203a11a986a4f97c4ab",
+      "updated_at": "2026-08-23T05:41:31+00:00"
+    },
+    {
+      "revision": 5,
+      "asset_fingerprint": "sha256:f7367c3b140456435552e3bd03ce02b55c37c597630c1961d3742d6504f6b5e6",
+      "updated_at": "2026-08-23T05:48:04+00:00"
     }
   ],
   "created_at": "2026-08-23T05:41:21+00:00",
-  "updated_at": "2026-08-23T05:41:31+00:00",
-  "settled_at": null,
-  "asset_fingerprint": "sha256:5de007e7e914da2f55750e1ec6747021ddbe955aa3faa203a11a986a4f97c4ab"
+  "updated_at": "2026-08-23T05:48:04+00:00",
+  "settled_at": "2026-08-23T05:48:04+00:00",
+  "asset_fingerprint": "sha256:80fc65a8a4676fcfb8f88f6925822f32faedce09e097cc248bfda313fc1bdf6d",
+  "replacement": null
 }

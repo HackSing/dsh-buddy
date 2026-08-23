@@ -1,11 +1,11 @@
-> 状态：有效（待验收）
+> 状态：已验收-仅追溯
 <!-- docs-harness:acceptance-document/v1 -->
 
 # dispatch 多平台 sqlite vendor 验收
 
-- 修订：4
+- 修订：6
 - 关键符号：`seedNativeAddons`、`patchDatabaseJs`、`platformDirs`
-- 资产指纹：`sha256:5de007e7e914da2f55750e1ec6747021ddbe955aa3faa203a11a986a4f97c4ab`
+- 资产指纹：`sha256:80fc65a8a4676fcfb8f88f6925822f32faedce09e097cc248bfda313fc1bdf6d`
 - 关联方案：`docs/plans/multiplatform-sqlite-vendor.json`
 
 ## 验收目标
@@ -37,7 +37,7 @@
 
 ### `c4` Windows CI 装载 smoke(release.yml windows job 在真实 win32-x64 runner 上加载 vendored sqlite 并读写内存库,输出 WIN32 SQLITE LOAD OK)
 
-- 状态：pending
+- 状态：passed
 - 类型：behavior_acceptance
 - 层级：L4
-- 证据：尚无
+- 证据：`docs/acceptance/evidence/multiplatform-sqlite-vendor/l4-win32-smoke.md`
