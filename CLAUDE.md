@@ -1,9 +1,9 @@
 # CLAUDE.md
 
 <!-- docs-harness:claude-bridge:start -->
-## Docs Harness 2.10.1：默认直跑，能力按需
+## Docs Harness 2.10.2：默认直跑，能力按需
 
-Docs Harness 当前版本：2.10.1
+Docs Harness 当前版本：2.10.2
 
 - 普通问答、只读检查、代码修改、构建和测试默认由 agent 直接完成；Harness 不作为任务入口，也不创建任务控制状态。
 - 用户明确说“不使用 Harness”时必须直接执行，不得暗中恢复旧流程。

@@ -59,7 +59,7 @@ from adr_assets import (
     create as create_adr_asset,
     settle as settle_adr_asset,
 )
-VERSION = "2.10.1"
+VERSION = "2.10.2"
 CONFIG_SCHEMA = "docs-harness/project-config/v11"
 KNOWN_LEGACY_CONFIG_SCHEMAS = {
     f"docs-harness/project-config/v{version}" for version in range(1, 11)
@@ -515,6 +515,15 @@ def remove_managed_block(text: str, begin: str, end: str) -> str:
         return text
     pattern = r"\n*" + re.escape(begin) + r".*?" + re.escape(end) + r"\n*"
     return re.sub(pattern, "\n", text, flags=re.DOTALL).strip() + "\n"
+
+
+def plan_index_doc_tokens(basename: str) -> tuple[str, ...]:
+    """INDEX 条目引用 plans 文档的两种合法形态：Markdown 链接与反引号路径。
+
+    带 plans/ 前缀的 token 防止 acceptance/ 等区块同名文档误伤；反引号形态
+    兼容表格式索引的存量项目（如 ZBuddy），二者语义等同。
+    """
+    return (f"(plans/{basename})", f"`plans/{basename}`")
 
 
 def plan_index_entry_lines(text: str) -> list[str]:
@@ -3635,14 +3644,17 @@ def command_plan_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             )
 
     # C2：活文档必须进 INDEX.md 且条目带关键符号；归档文档必须退出活索引。
-    # 匹配链接 token 而非裸子串：acceptance/ 等其他区块存在同名文档时不得误伤
-    # （与 update_plan_index_text 的 link_tokens 写法一致）。
+    # 匹配带 plans/ 前缀的 token 而非裸子串：acceptance/ 等其他区块存在同名
+    # 文档时不得误伤；同时接受 Markdown 链接与反引号路径两种存量条目形态。
     index_lines = index_path.read_text(encoding="utf-8").splitlines()
     for path in live_docs:
         relative = path.relative_to(target).as_posix()
         basename = path.name
-        link_token = f"(plans/{basename})"
-        entries = [line for line in index_lines if link_token in line]
+        tokens = plan_index_doc_tokens(basename)
+        entries = [
+            line for line in index_lines
+            if any(token in line for token in tokens)
+        ]
         if not entries:
             failures.append(f"FAIL: docs/INDEX.md: 缺少 {relative} 的条目")
         else:
@@ -3655,10 +3667,11 @@ def command_plan_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                     f"FAIL: docs/INDEX.md: {basename} 条目须包含 2-4 个关键符号"
                 )
     for basename in archived_names:
-        link_token = f"(plans/{basename})"
+        tokens = plan_index_doc_tokens(basename)
         leaked = [
             line for line in index_lines
-            if link_token in line and PLAN_CHECK_ARCHIVE_EXEMPTION not in line
+            if any(token in line for token in tokens)
+            and PLAN_CHECK_ARCHIVE_EXEMPTION not in line
         ]
         if leaked:
             failures.append(
