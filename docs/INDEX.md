@@ -27,6 +27,7 @@
 - [启动加载窗口:首屏即时反馈与启动链解耦](plans/startup-loading-window.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-22 核对）；关键符号：`installBundledProfile`、`attachContentExtras`、`buildStageScript`、`ensureDsh`
 - [preserved 弹窗降噪与预装清单 task-board→dispatch 换血](plans/preserved-quiet-manifest-swap.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）；关键符号：`profileUpgradeDecision`、`preserved-current`、`retiredPackages`、`diffChannelVersions`
 - [dispatch vendored sqlite 多平台化,解除 Windows 挂账](plans/multiplatform-sqlite-vendor.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）；关键符号：`seedNativeAddons`、`patchDatabaseJs`、`platformDirs`、`PREBUILD_TARGETS`
+- [内嵌 dsh 0.1.1-rc.1 → 0.1.1-rc.2 全家族钉版同抬](plans/dsh-upgrade-0.1.1-rc.2.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）；关键符号：`DSH_VERSION`、`@deepseek-ai/dsh`、`allowScripts`
 <!-- docs-harness:plans-index:end -->
 
 <!-- docs-harness:knowledge-index:start -->
