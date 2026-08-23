@@ -250,10 +250,11 @@ def _change_plan_backref(
     acceptance_ref: str,
     *,
     add: bool,
+    allow_archived_plan: bool = False,
 ) -> bool:
     try:
         action = add_acceptance_ref if add else remove_acceptance_ref
-        return action(target, plan_ref, acceptance_ref)
+        return action(target, plan_ref, acceptance_ref, allow_archived_plan=allow_archived_plan)
     except PlanGovernanceError as exc:
         raise AssetError(str(exc), "acceptance_plan_ref_invalid") from exc
 
@@ -423,15 +424,28 @@ def settle(
     revision, history = _next_revision(current, now)
     current.update({"status": status, "replacement": replacement, "revision": revision, "revision_history": history, "updated_at": now, "settled_at": now})
     asset = seal_asset(current)
-    write_asset(target, ACCEPTANCE_SPEC, source, document, asset, render_markdown(asset), STATUS_LABELS[status])
-    if status != "superseded":
-        payload = {"status": status, "acceptance_ref": raw_asset, "revision": revision}
-    else:
-        archived_source, archived_document = archive_asset(target, ACCEPTANCE_SPEC, source, document)
-        rewritten = rewrite_links(target, ACCEPTANCE_SPEC, source.stem, markdown_files)
-        if current.get("plan_ref"):
-            _change_plan_backref(target, current["plan_ref"], raw_asset, add=False)
-        payload = {"status": status, "acceptance_ref": archived_source.relative_to(target).as_posix(), "document_ref": archived_document.relative_to(target).as_posix(), "rewritten_links": rewritten}
+    # superseded 归档动作前先退出 Plan 反向登记(Plan 可能已被 settle deprecated 移入
+    # archive/,按归档位置回退解析);解析失败即中止,不产生半完成状态。后续任何失败
+    # 补偿回登记,与 create 的回滚方向对称。
+    unlinked = False
+    if status == "superseded" and current.get("plan_ref"):
+        unlinked = _change_plan_backref(
+            target, current["plan_ref"], raw_asset, add=False, allow_archived_plan=True
+        )
+    try:
+        write_asset(target, ACCEPTANCE_SPEC, source, document, asset, render_markdown(asset), STATUS_LABELS[status])
+        if status != "superseded":
+            payload = {"status": status, "acceptance_ref": raw_asset, "revision": revision}
+        else:
+            archived_source, archived_document = archive_asset(target, ACCEPTANCE_SPEC, source, document)
+            rewritten = rewrite_links(target, ACCEPTANCE_SPEC, source.stem, markdown_files)
+            payload = {"status": status, "acceptance_ref": archived_source.relative_to(target).as_posix(), "document_ref": archived_document.relative_to(target).as_posix(), "rewritten_links": rewritten}
+    except Exception:
+        if unlinked:
+            _change_plan_backref(
+                target, current["plan_ref"], raw_asset, add=True, allow_archived_plan=True
+            )
+        raise
     if records:
         payload["recorded"] = recorded
         payload["record_ids"] = record_ids

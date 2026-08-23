@@ -268,7 +268,14 @@ def update_plan_markdown(markdown: str, frozen: dict[str, Any]) -> str:
     return updated.rstrip() + "\n\n" + block + "\n"
 
 
-def _plan_pair(target: Path, raw: str) -> tuple[Path, Path]:
+def _pair_exists(source: Path, document: Path) -> bool:
+    return (
+        source.is_file() and not source.is_symlink()
+        and document.is_file() and not document.is_symlink()
+    )
+
+
+def _plan_pair(target: Path, raw: str, *, allow_archived: bool = False) -> tuple[Path, Path]:
     relative = Path(raw)
     if relative.is_absolute() or relative.parent.as_posix() not in {
         "docs/plans", "docs/plans/archive",
@@ -276,16 +283,22 @@ def _plan_pair(target: Path, raw: str) -> tuple[Path, Path]:
         raise PlanGovernanceError("plan_ref 必须指向项目内 Plan JSON")
     source = target / relative
     document = source.with_suffix(".md")
-    if (
-        not source.is_file() or source.is_symlink()
-        or not document.is_file() or document.is_symlink()
-    ):
-        raise PlanGovernanceError(f"Plan 引用不存在：{raw}")
-    return source, document
+    if _pair_exists(source, document):
+        return source, document
+    # allow_archived：引用登记时的 plan_ref 指向活路径,方案随后被 settle deprecated
+    # 移入 archive/;反向登记维护(如 acceptance settle 退出登记)按归档位置回退解析
+    if allow_archived and relative.parent.as_posix() == "docs/plans":
+        archived_source = target / "docs/plans/archive" / relative.name
+        archived_document = archived_source.with_suffix(".md")
+        if _pair_exists(archived_source, archived_document):
+            return archived_source, archived_document
+    raise PlanGovernanceError(f"Plan 引用不存在：{raw}")
 
 
-def _update_acceptance_ref(target: Path, plan_ref: str, acceptance_ref: str, add: bool) -> bool:
-    source, document = _plan_pair(target, plan_ref)
+def _update_acceptance_ref(
+    target: Path, plan_ref: str, acceptance_ref: str, add: bool, *, allow_archived: bool = False
+) -> bool:
+    source, document = _plan_pair(target, plan_ref, allow_archived=allow_archived)
     frozen = validate_plan(json.loads(source.read_text(encoding="utf-8")))
     if frozen["schema_version"] == PLAN_SCHEMA_V2:
         return False
@@ -304,12 +317,20 @@ def _update_acceptance_ref(target: Path, plan_ref: str, acceptance_ref: str, add
     return True
 
 
-def add_acceptance_ref(target: Path, plan_ref: str, acceptance_ref: str) -> bool:
-    return _update_acceptance_ref(target, plan_ref, acceptance_ref, True)
+def add_acceptance_ref(
+    target: Path, plan_ref: str, acceptance_ref: str, *, allow_archived_plan: bool = False
+) -> bool:
+    return _update_acceptance_ref(
+        target, plan_ref, acceptance_ref, True, allow_archived=allow_archived_plan
+    )
 
 
-def remove_acceptance_ref(target: Path, plan_ref: str, acceptance_ref: str) -> bool:
-    return _update_acceptance_ref(target, plan_ref, acceptance_ref, False)
+def remove_acceptance_ref(
+    target: Path, plan_ref: str, acceptance_ref: str, *, allow_archived_plan: bool = False
+) -> bool:
+    return _update_acceptance_ref(
+        target, plan_ref, acceptance_ref, False, allow_archived=allow_archived_plan
+    )
 
 
 def _load_linked_asset(target: Path, raw: str, schema: str) -> dict[str, Any]:
