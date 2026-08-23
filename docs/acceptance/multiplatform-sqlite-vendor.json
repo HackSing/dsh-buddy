@@ -1,0 +1,127 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "dispatch 多平台 sqlite vendor 验收",
+  "key_symbols": [
+    "seedNativeAddons",
+    "patchDatabaseJs",
+    "platformDirs"
+  ],
+  "objective": "验证 dispatch 插件多平台 sqlite vendor 在测试层、包/产物层、macOS 运行层与 Windows CI 装载层全部成立",
+  "plan_ref": "docs/plans/multiplatform-sqlite-vendor.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "两仓聚焦回归全绿(dsh-plugin Electron-as-Node 11 例真实加载 darwin 新布局;dsh-buddy npm test + verify-bundled-profile)",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260823T054121-4fb4446230",
+          "objective_fingerprint": "sha256:b7e496043a844d257524c6485fa4979f14e303e48a44b6fc4c4fd1aaf49c4170",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "dsh-plugin npm test 11/11(Electron-as-Node 真实加载 darwin 新布局);dsh-buddy npm test 380/380 + verify-bundled-profile SMOKE PASS,主控会话独立复跑",
+          "evidence_refs": [
+            "docs/acceptance/evidence/multiplatform-sqlite-vendor/l2-l4-build.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-23T05:41:21+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "产物核对(0.1.2 tgz 双平台二进制+魔数;profile tar 门禁无豁免 PASS,sqlite 二进制恰好两份)",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260823T054131-51c71d8ecd",
+          "objective_fingerprint": "sha256:b7e496043a844d257524c6485fa4979f14e303e48a44b6fc4c4fd1aaf49c4170",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "0.1.2 tgz 39 文件含双平台二进制(魔数 cffaedfe/4d5a 亲验,bindings 不入包);profile tar 门禁无豁免 PASS(binaries=26),sqlite 二进制恰好 2 份",
+          "evidence_refs": [
+            "docs/acceptance/evidence/multiplatform-sqlite-vendor/l2-l4-build.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-23T05:41:31+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "macOS 真实装载(临时 DSH_HOME + Electron 拉起,SSE/task:list 通,app:status 返回 0.1.2)",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260823T054131-d6147d8364",
+          "objective_fingerprint": "sha256:b7e496043a844d257524c6485fa4979f14e303e48a44b6fc4c4fd1aaf49c4170",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "临时 DSH_HOME + Electron ELECTRON_RUN_AS_NODE 拉起内嵌 dsh web profile:SSE 200、task:list 真实读库、app:status 返回 version 0.1.2,日志无错,清理无残留",
+          "evidence_refs": [
+            "docs/acceptance/evidence/multiplatform-sqlite-vendor/l3-load-mac.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-23T05:41:31+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "Windows CI 装载 smoke(release.yml windows job 在真实 win32-x64 runner 上加载 vendored sqlite 并读写内存库,输出 WIN32 SQLITE LOAD OK)",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "pending",
+      "records": []
+    }
+  ],
+  "status": "pending",
+  "revision": 4,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:15d0d08e3dad208a5a27e2766689aba3d9b84d12a54fcf37da5d51ff0a0a8adf",
+      "updated_at": "2026-08-23T05:41:21+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:ba50211e864c613467c59a01ec1fa10f434e9ef954ef2911b95442f946a42e68",
+      "updated_at": "2026-08-23T05:41:21+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:bc698238f4a8551491c6de1420d0c3ccb300facf1cc95aac7c034432d4864871",
+      "updated_at": "2026-08-23T05:41:31+00:00"
+    }
+  ],
+  "created_at": "2026-08-23T05:41:21+00:00",
+  "updated_at": "2026-08-23T05:41:31+00:00",
+  "settled_at": null,
+  "asset_fingerprint": "sha256:5de007e7e914da2f55750e1ec6747021ddbe955aa3faa203a11a986a4f97c4ab"
+}

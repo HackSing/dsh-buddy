@@ -15,6 +15,7 @@
 // macOS 与 Windows,少任一平台说明产物只对单平台可用,与随包 profile 跨平台分发的
 // 前提冲突,仍判 FAIL。@linxin666 六件套升到 0.2.x 后 skin-center 引入 lightningcss,
 // 该包按平台拆分发,是这条断言第二次被真实产物触发(构建机之外的平台会 require 失败)。
+// 第三次触发(dispatch vendored sqlite)以补齐多平台收场,豁免机制随之删除。
 //
 // 用法: node scripts/verify-profile-tar.js [tar路径]  (默认 build/web-profile.tar.gz)
 const path = require('path');
@@ -28,7 +29,8 @@ const BINARY_EXT = /\.(node|dll|exe|dylib|so)$/;
 // 发布目标:macOS(arm64 dmg)与 Windows(x64 nsis);每个原生包都要同时覆盖两者才算跨平台可用
 const REQUIRED_PLATFORMS = ['darwin-arm64', 'win32-x64'];
 
-// 放行的原生包。两个包的跨平台布局不同,规则不能共用:
+// 放行的原生包。三个包的跨平台布局不同,规则不能共用:
+//  - dispatch vendor 的 better-sqlite3 按 build/Release/<plat>/ 分目录放官方 prebuild;
 //  - node-pty 把各平台产物打在同一个包里(prebuilds/<plat>/ 的 pty.node、winpty,
 //    以及 third_party/conpty/ 的 conpty.dll、OpenConsole.exe),装上就自带全平台;
 //  - lightningcss(@linxin666/dsh-client-ui-skin-center 0.2.x 的运行时依赖)按平台拆成
@@ -38,20 +40,17 @@ const REQUIRED_PLATFORMS = ['darwin-arm64', 'win32-x64'];
 // 二进制数为 0,以二进制为触发条件会静默放过"只剩核心包、任何平台都跑不起来"的产物。
 const NATIVE_PACKAGES = [
   {
-    // 断言 3 第三次被真实产物触发(2026-08-23):@aiwaretop/dsh-dispatch 预装入清单,
-    // 其 vendor 的 better_sqlite3.node 仅 darwin-arm64 Electron ABI——用户拍板
-    // 「macOS 先行,Windows 风险挂账」(见 preinstall-manifest 该包 comment 与
-    // docs/plans/preserved-quiet-manifest-swap),win32 装载 fail-soft 降级
-    // runtime-unavailable 不 crash。singlePlatformExemption 只豁免 REQUIRED_PLATFORMS
-    // 覆盖检查(仍验 darwin-arm64 二进制存在);补齐多平台 vendor 后删掉此豁免。
-    // prefix 收窄到 vendored better-sqlite3:插件混入其他二进制仍判 FAIL。
+    // @aiwaretop/dsh-dispatch 预装入清单,其 vendor 的 better-sqlite3 自带
+    // darwin-arm64 与 win32-x64 两份官方 prebuild(Release/<平台>/ 分目录),
+    // 走标准双平台覆盖断言。prefix 收窄到 vendored better-sqlite3:
+    // 插件混入其他二进制仍判 FAIL。
     name: '@aiwaretop/dsh-dispatch(vendored better-sqlite3)',
     requiredWhen: 'node_modules/@aiwaretop/dsh-dispatch/',
     prefix: 'node_modules/@aiwaretop/dsh-dispatch/vendor/node_modules/better-sqlite3/',
     platformDirs: {
-      'darwin-arm64': 'node_modules/@aiwaretop/dsh-dispatch/vendor/node_modules/better-sqlite3/build/Release/',
+      'darwin-arm64': 'node_modules/@aiwaretop/dsh-dispatch/vendor/node_modules/better-sqlite3/build/Release/darwin-arm64/',
+      'win32-x64': 'node_modules/@aiwaretop/dsh-dispatch/vendor/node_modules/better-sqlite3/build/Release/win32-x64/',
     },
-    singlePlatformExemption: true,
   },
   {
     name: 'node-pty',
@@ -117,9 +116,7 @@ function checkBinaries(entries, fail) {
 
   for (const p of NATIVE_PACKAGES) {
     if (!entries.some((e) => e.path.startsWith(inProfile(p.requiredWhen)))) continue;
-    // singlePlatformExemption:挂账包只验已声明平台的二进制存在,不要求覆盖全部发布目标
-    const requiredPlatforms = p.singlePlatformExemption ? Object.keys(p.platformDirs) : REQUIRED_PLATFORMS;
-    for (const plat of requiredPlatforms) {
+    for (const plat of REQUIRED_PLATFORMS) {
       const dir = p.platformDirs[plat];
       if (!dir) {
         fail(`${p.name} 未声明发布目标平台 ${plat} 的目录`);

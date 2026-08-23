@@ -169,6 +169,30 @@ jobs:
       - name: 安装依赖
         run: npm ci --legacy-peer-deps --no-audit --no-fund
 
+      # dispatch vendor 的 win32-x64 sqlite 二进制装载实证:从分发的 profile tar 解出
+      # vendored better-sqlite3 子树(tar 内是 POSIX 路径,Windows runner 自带 tar.exe
+      # 可直接按子树解出),再用仓内 electron 以 ELECTRON_RUN_AS_NODE=1 直接 require
+      # 并建库读写,把「Windows 上能不能加载」前移到打包前门禁
+      - name: dispatch sqlite 装载 smoke
+        run: |
+          set -euo pipefail
+          smoke_dir=".sqlite-smoke"
+          trap 'rm -rf "$smoke_dir"' EXIT
+          mkdir -p "$smoke_dir"
+          tar -xzf build/web-profile.tar.gz -C "$smoke_dir" web/node_modules/@aiwaretop/dsh-dispatch/vendor/node_modules/better-sqlite3
+          cat > "$smoke_dir/smoke.cjs" <<'EOF'
+          const path = require('path');
+          const Database = require(path.resolve(process.argv[2]));
+          const db = new Database(':memory:');
+          db.exec('CREATE TABLE t(x)');
+          db.prepare('INSERT INTO t VALUES (?)').run(7);
+          const row = db.prepare('SELECT x FROM t').get();
+          if (!row || row.x !== 7) { console.error('ASSERT FAIL: unexpected row', row); process.exit(1); }
+          db.close();
+          console.log('WIN32 SQLITE LOAD OK');
+          EOF
+          ELECTRON_RUN_AS_NODE=1 ./node_modules/electron/dist/electron.exe "$smoke_dir/smoke.cjs" "./$smoke_dir/web/node_modules/@aiwaretop/dsh-dispatch/vendor/node_modules/better-sqlite3"
+
       - name: 构建 Windows 安装包(nsis x64,使用分发的 profile)
         run: DSH_SKIP_PROFILE=1 npm run dist:win
 

@@ -17,9 +17,9 @@
     { "name": "@linxin666/dsh-client-ui-web-ui-settings", "version": "0.2.2" },
     {
       "name": "@aiwaretop/dsh-dispatch",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "license": "MIT",
-      "comment": "本生态自研任务收件箱/agent 调度插件,源码在 dispatch 仓库 dsh-plugin/(无独立 GitHub 仓);协议门 green:LICENSE 全文 MIT + 包 license 字段 MIT,发布包无 install/postinstall 脚本,peer 仅 @deepseek-ai/cordis;已知缺陷挂账(2026-08-23 macOS 先行决策):vendor 的 better_sqlite3.node 仅 darwin-arm64 Electron ABI,win32 构建装载会失败,补多平台前 Windows 不可用"
+      "comment": "本生态自研任务收件箱/agent 调度插件,源码在 dispatch 仓库 dsh-plugin/(无独立 GitHub 仓);协议门 green:LICENSE 全文 MIT + 包 license 字段 MIT,发布包无 install/postinstall 脚本,peer 仅 @deepseek-ai/cordis;多平台 vendor(darwin-arm64 + win32-x64 官方 prebuild,Electron ABI 构建期运行时推导),Windows 装载由 release.yml windows job 的 sqlite smoke 实证"
     },
     {
       "name": "@aiwaretop/dsh-docs-harness",
