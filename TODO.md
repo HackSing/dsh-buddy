@@ -4,7 +4,18 @@
 
 ## 待办
 
-（暂无）
+- [ ] 产品瘦身:压缩安装包体积（aiware，2026-08-23）
+
+  现状(v0.4.3 实测):mac zip 274MB / dmg 264MB / win Setup 248MB,大头是随包
+  web-profile tar(≈129MB、1.5 万+文件)。已知的候选杠杆,立项时先量化再取舍:
+  1. **profile 内插件体积**:channel 切片实测 skins ≈89MB、better-sidebar ≈75MB,
+     两者占 profile 绝对大头——可谈判裁剪(skins 素材按需下载?)或与上游商量拆包。
+  2. **supportedArchitectures 叉积开销**:os×cpu 取 4 份分包,darwin-x64/win32-arm64
+     两份是必然浪费(build-web-profile.js 注释估 ≈35MB)——若改按平台出两份 profile
+     tar,可各省一份异构分包,代价是 CI 产物翻倍与解包器分流,需评估。
+  3. **profile 按需化**:随包只带核心插件、首启后台经既有 plugin-channel 切片链路
+     补装大件——复用现成下载/校验/簿记机制,代价是首启网络依赖与空窗体验,需设计。
+  非目标:删 Release 资产(zip/blockmap/latest*.yml 均为自动更新链路必需,已核)。
 
 ## 已完成
 
