@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-08-23
+
+### Fixed
+
+- **修复 Docs Harness 升级提示方向倒挂**:治理插件 `@aiwaretop/dsh-docs-harness` 0.2.0 的升级判定是「版本不等即提示」,不做方向比较——项目内 harness 比插件 vendored 种子更新时(如 2.10.2 对种子 2.9.1)会弹出「升级到更旧版本」的假提示,点 Upgrade 会把项目的 managed files 回写成旧版。0.2.1 改为数值分段比较(`versionBehind`),仅当种子严格更新时才提示;vendored 种子同步抬到 2.10.2。预装清单钉版升至 0.2.1。
+
+### Changed
+
+- 内嵌 dsh 由 0.1.1-rc.1 升至 0.1.1-rc.2,`@deepseek-ai/*` 全家族 19 个钉版整组同抬。
+- Release body 改由 `scripts/release-notes.js` 从 CHANGELOG.md 提取(下载指引 + 当版段落 + 比对链接),正式版缺 changelog 条目则发版失败——changelog 纪律前移为发版门禁。
+
 ## [0.4.3] - 2026-08-23
 
 ### Changed
