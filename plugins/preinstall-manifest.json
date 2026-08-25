@@ -17,7 +17,7 @@
     { "name": "@linxin666/dsh-client-ui-web-ui-settings", "version": "0.2.2" },
     {
       "name": "@aiwaretop/dsh-dispatch",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "license": "MIT",
       "comment": "本生态自研任务收件箱/agent 调度插件,源码在 dispatch 仓库 dsh-plugin/(无独立 GitHub 仓);协议门 green:LICENSE 全文 MIT + 包 license 字段 MIT,发布包无 install/postinstall 脚本,peer 仅 @deepseek-ai/cordis;多平台 vendor(darwin-arm64 + win32-x64 官方 prebuild,Electron ABI 构建期运行时推导),Windows 装载由 release.yml windows job 的 sqlite smoke 实证"
     },
