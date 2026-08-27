@@ -25,6 +25,7 @@ if str(SCRIPT_MODULE_DIR) not in sys.path:
 from managed_assets import AssetError, apply_structure, structure_changes
 from asset_checks import run_assets_check
 from script_hygiene import check_script_line_endings
+from structure_check import CODEMAP_SCAFFOLD, check_structure, structure_report
 from plan_governance import (
     FAILURE_ATTRIBUTION_CATEGORIES, PLAN_GOVERNANCE_INPUT_SCHEMA, PLAN_SCHEMA_V3, PlanGovernanceError,
     governance_from_content, legacy_plan_template_fingerprints, new_plan_fields, nonempty_string_list,
@@ -59,10 +60,10 @@ from adr_assets import (
     create as create_adr_asset,
     settle as settle_adr_asset,
 )
-VERSION = "2.10.2"
-CONFIG_SCHEMA = "docs-harness/project-config/v11"
+VERSION = "2.11.0"
+CONFIG_SCHEMA = "docs-harness/project-config/v12"
 KNOWN_LEGACY_CONFIG_SCHEMAS = {
-    f"docs-harness/project-config/v{version}" for version in range(1, 11)
+    f"docs-harness/project-config/v{version}" for version in range(1, 12)
 }
 PLAN_TEMPLATE_SCHEMA = "docs-harness/plan-template/v3"
 PLAN_SELECTION_SCHEMA = "docs-harness/plan-selection/v2"
@@ -91,6 +92,7 @@ MANAGED_MODULE_RELATIVE_FILES = (
     "acceptance_assets.py",
     "adr_assets.py",
     "script_hygiene.py",
+    "structure_check.py",
 )
 PLAN_DOCS_RELATIVE = "docs/plans"
 PLAN_ARCHIVE_RELATIVE = "docs/plans/archive"
@@ -387,6 +389,16 @@ _GENERIC_STANDARDS = """
 7. **不擅自加依赖。** 新增第三方库前必须说明：解决什么问题、为何标准库或现有依赖不够。未经用户确认不引入。
 8. **收尾自查。** 报告改动时额外回答两个问题：本次是否引入了重复逻辑（答"没有"要说明依据）；本次新增的抽象各自的职责是什么。答不出视为未完成。
 9. **业务默认值单一来源。** 所有业务默认值必须定义为具名常量并在唯一位置赋值，不得在 fallback、反序列化、条件分支中硬编码。修改默认值时只改一处，不会因遗漏产生隐性分歧。
+10. **抽象同样要证据。** 抽公共模块或加抽象层需要真实证据：第 3 次重复出现，或已存在的第二个实现；不为尚未出现的复用场景预留抽象层。与第 2 条互为边界：两次重复时保持原样，三次必抽。
+
+## 结构护栏
+
+编码质量规范的机械支撑面；四条各自独立触发。
+
+1. **动手前查 CODEMAP。** 写代码前先查 `docs/CODEMAP.md` 定位可复用模块与其公开接口，命中即复用；新增代码文件或公开接口变化时，同一批次内更新对应条目（格式：`模块路径` — 职责：一句话；公开接口：`符号`）。测试文件不必登记。
+2. **骨架先行（复杂任务）。** Full Plan 的 `module_interfaces` 字段冻结模块划分与接口骨架；实施先落文件与接口签名（空实现），再分批填充逻辑，不得绕开骨架直接堆代码。
+3. **增量检查随批次跑。** `assets-check` 内置 Structure 增量检查（对比 HEAD，只对本次改动归责，WARN 级）；分批交付的每批验证点可用 `structure check` 单独快跑，WARN 按"WARN 消费"规则在收尾转达，确实拆不动的说明理由即可。
+4. **存量债走定期整理。** 既有超红线文件/函数不在功能任务里顺手重构（见"不顺手加固"）；需要偿还时运行 `structure report` 拿存量清单，以报告开专门整理任务。
 
 ## 防御代码准入
 
@@ -481,6 +493,7 @@ Docs Harness 当前版本：{VERSION}
 {knowledge_line}
 - pre-2.0 项目只通过 project upgrade 单向迁移；迁移后不保留旧运行能力。
 - 不在没有证据或没有明确维护任务时自动更新 Knowledge、Changelog、TODO 或质量账本。架构决策由主 agent 通过 adr create 登记（定稿不可改，复杂决策可选只读子智能体复审）；决策失效时用 adr settle 废弃或标记被替代。
+- 改动涉及用户可见行为、对外接口或命令契约、版本发布时同步更新 CHANGELOG；任务产生待跟进事项时登记 TODO；不满足触发条件则不更新。
 {_GENERIC_STANDARDS}"""
 
 
@@ -696,6 +709,7 @@ def project_doc_scaffolds(target: Path) -> dict[str, str]:
         "CHANGELOG.md": PROJECT_CHANGELOG_SCAFFOLD,
         "TODO.md": PROJECT_TODO_SCAFFOLD,
         "README.md": f"# {target.resolve().name}\n\n（项目简介占位：一句话说明这个项目是什么。）\n",
+        "docs/CODEMAP.md": CODEMAP_SCAFFOLD,
     }
 
 
@@ -3813,8 +3827,17 @@ def command_assets_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]
         acceptance_checker=check_acceptance_assets,
         adr_checker=check_adr_assets,
         script_hygiene_checker=check_script_line_endings,
+        structure_checker=check_structure,
     )
     return (0 if payload["status"] == "passed" else 1), payload
+
+
+def command_structure(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
+    """structure check/report 的 CLI 投影；规则实现与阈值真源在 structure_check 模块。"""
+    target = safe_target(args.target)
+    if args.action == "report":
+        return 0, structure_report(target)
+    return 0, check_structure(target)
 
 
 def command_self_test(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
@@ -3848,7 +3871,7 @@ def command_self_test(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         "script_version": script_version_valid,
         "command_parser": all(
             name in build_parser().format_help()
-            for name in ("knowledge", "plan", "acceptance", "adr", "project", "release", "assets-check", "self-test")
+            for name in ("knowledge", "plan", "acceptance", "adr", "project", "release", "assets-check", "structure", "self-test")
         ),
         "asset_check_flags": strict_parse_ok,
         "direct_mode_default": (
@@ -4068,12 +4091,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--strict", action="store_true", help="CHANGELOG 顶部版本与 VERSION 不一致时退出码非 0"
     )
 
+    structure = commands.add_parser(
+        "structure",
+        help="结构护栏：check 增量体量与 CODEMAP 检查，report 存量结构债报告",
+    )
+    structure.add_argument("action", choices=("check", "report"))
+    add_target(structure)
+
     self_test = commands.add_parser("self-test", help=f"运行 {VERSION} 内置自检")
     add_target(self_test)
 
     assets_check = commands.add_parser(
         "assets-check",
-        help="统一检查 Plan、Knowledge、Acceptance、ADR 与跨资产关系",
+        help="统一检查 Plan、Knowledge、Acceptance、ADR、脚本卫生、结构护栏与跨资产关系",
     )
     add_check_options(assets_check)
     return parser
@@ -4136,6 +4166,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             code, payload = command_release(args)
         elif args.command == "assets-check":
             code, payload = command_assets_check(args)
+        elif args.command == "structure":
+            code, payload = command_structure(args)
         else:
             code, payload = command_self_test(args)
         emit(payload, args.json)
