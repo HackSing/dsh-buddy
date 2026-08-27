@@ -1,7 +1,7 @@
 {
   "schema_version": "docs-harness/project-config/v12",
   "version": "2.11.0",
-  "installed_script_fingerprint": "sha256:f511fbce2fed62a2db0e785253057845a9fe66f7df908793f1a194869114d67a",
+  "installed_script_fingerprint": "sha256:e91096ce79ee4e36954c17f4a12caf88247a18e60f95c345086b9f6073dbe16e",
   "installed_module_fingerprints": {
     "managed_assets.py": "sha256:298c73562c7a93442c592aa342a19572f88c7c0150d496ef8c944c6bb268157e",
     "asset_checks.py": "sha256:2d38d6fa1fb62609c6422763cadd18ca45babc251ae0e19d55bcc65e222c2f47",
@@ -10,7 +10,7 @@
     "acceptance_assets.py": "sha256:bd59f2e39e4196f09a9086a895dc1e2bab27128244099ab7b3fb4d5ff3a18f78",
     "adr_assets.py": "sha256:8a4c7ccdfe6be892315502d1dc6b5df0c66e52180b44f8755cca07f0bbd0de73",
     "script_hygiene.py": "sha256:1db484e0ac9e2f033fa779b07c112cf614ab63877f03c7f046a99adc10bde9c8",
-    "structure_check.py": "sha256:45efc4ea67ed9682027b6b6c95b7ab105d806373b9fcf55c3dd0b89e6028c81e"
+    "structure_check.py": "sha256:29b06ea77c554dfb84fd6b258ccd7442238907fe914dce541533e86c21946d9b"
   },
   "installed_plan_template_fingerprints": {
     "levels/brief.json": "sha256:79d8d390fbc92968073b4e9342505a05558781f3b3795ad396977e3250457be0",

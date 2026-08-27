@@ -1,10 +1,10 @@
-"""结构护栏检查：增量体量红线与 CODEMAP 能力索引一致性。
+"""结构护栏检查：增量体量预警与 CODEMAP 能力索引一致性。
 
 设计要点（与 plan docs-harness-structure-guardrails 一致）：
 - 增量优先：体量检查只对"本次改动"（工作区+暂存区+未跟踪 vs HEAD）归责，
   不扫存量，避免遗留大文件造成 WARN 疲劳；存量结构债由 structure_report 按需报告。
-- 全部 WARN 级：检查负责让问题被看见，拆分与豁免的处方权留给人（体量红线自带
-  "说明理由"出口）。CI --strict 下增量天然为空，仅 CODEMAP 存量一致性生效。
+- 全部 WARN 级：行数只触发结构评估；是否拆分取决于职责、分层和可测试性，
+  处方权留给人。CI --strict 下增量天然为空，仅 CODEMAP 存量一致性生效。
 - git 语义：文件清单全部来自 git（untracked 遵守 .gitignore），不建目录排除清单；
   非 git 目标 checked=0 跳过，与 ScriptHygiene 同口径。
 - 函数级检查仅覆盖 Python（标准库 ast，零依赖）；其他语言只做文件级净增检查。
@@ -150,8 +150,8 @@ def _file_size_warnings(relative: str, status: str, current: str, head: str | No
     if status == "A" or head is None:
         if lines > FILE_RED_LINE:
             return [
-                f"新增文件 {relative} 共 {lines} 行，超过 {FILE_RED_LINE} 行红线，"
-                "按职责拆分或在收尾报告说明不可拆的理由"
+                f"新增文件 {relative} 共 {lines} 行，超过 {FILE_RED_LINE} 行结构评估阈值，"
+                "检查职责是否混合；职责单一可保留并说明理由"
             ]
         return []
     old_lines = _line_count(head)
@@ -159,12 +159,14 @@ def _file_size_warnings(relative: str, status: str, current: str, head: str | No
     if old_lines <= FILE_RED_LINE < lines:
         return [
             f"{relative} 本次净增 {growth} 行（{old_lines}→{lines}），"
-            f"突破 {FILE_RED_LINE} 行红线，按职责拆分或说明理由"
+            f"突破 {FILE_RED_LINE} 行结构评估阈值，检查职责是否混合；"
+            "职责单一可保留并说明理由"
         ]
     if old_lines > FILE_RED_LINE and growth >= OVERSIZE_FILE_GROWTH_ALERT:
         return [
             f"{relative} 已超 {FILE_RED_LINE} 行红线仍净增 {growth} 行"
-            f"（{old_lines}→{lines}），优先把新增逻辑落到独立模块"
+            f"（{old_lines}→{lines}），复核新增逻辑是否形成独立职责；"
+            "没有独立职责时可保留并说明理由"
         ]
     return []
 
@@ -186,12 +188,14 @@ def _function_warnings(relative: str, current: str, head: str | None) -> list[st
         if old_span is None:
             warnings.append(
                 f"{relative} 新增函数 {name} 共 {span} 行，"
-                f"超过 {FUNC_RED_LINE} 行红线，拆出子步骤或说明理由"
+                f"超过 {FUNC_RED_LINE} 行结构评估阈值，检查是否含可独立测试的子步骤；"
+                "职责单一可保留并说明理由"
             )
         elif span - old_span >= FUNC_GROWTH_ALERT:
             warnings.append(
                 f"{relative} 函数 {name} 本次增长 {span - old_span} 行"
-                f"（{old_span}→{span}），已超 {FUNC_RED_LINE} 行红线，停止继续膨胀"
+                f"（{old_span}→{span}），已超 {FUNC_RED_LINE} 行结构评估阈值，"
+                "复核是否产生可独立测试的子步骤"
             )
     return warnings
 
