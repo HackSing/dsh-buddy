@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **修复 Windows 退出应用时闪出终端窗口**:日常退出的宽限强杀原先派生一个 `detached` 的孤儿 `cmd`(先 `timeout` 再 `taskkill`)来承担 1s 宽限,而 Windows 会给 `detached` 子进程强制分配控制台窗口(`windowsHide` 对其无效),这个孤儿恰活在退出后的宽限期里,就是用户看到的「退出时闪终端」。改为 `before-quit` 内 `preventDefault` 拦住退出,主进程自己等满宽限期后再非 detached 强杀(默认隐藏窗口)并 `app.exit`。宽限语义(给 dsh 写后会话日志留 drain 窗口)不变,安装态与 POSIX 退出行为不变。
+
 ## [0.4.4] - 2026-08-23
 
 ### Fixed

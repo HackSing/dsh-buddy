@@ -16,7 +16,7 @@ const { resolveWindowMode } = require('./lib/window-mode');
 const { attachDragStrip } = require('./lib/immersive-titlebar');
 const { binEntryFrom } = require('./lib/dsh-entry');
 const { probeHttp, waitForHttp } = require('./lib/http-probe');
-const { killProcessTree, killProcessTreeAfterGrace } = require('./lib/process-tree');
+const { killProcessTree } = require('./lib/process-tree');
 const { createDshLogger } = require('./lib/dsh-log');
 const { checkForUpdate, UPDATE_OUTCOME, RELEASES_PAGE_URL } = require('./lib/update-check');
 const { attachGlobalHotkey, hotkeyChildEnv } = require('./lib/global-hotkey');
@@ -47,10 +47,12 @@ let dshLog = null; // dsh 子进程输出捕获器,仅在本壳拉起 dsh 时创
 let globalHotkey = null; // 全局快捷键句柄(attachGlobalHotkey 返回,before-quit 清理)
 let win = null;
 let quitting = false;
-let installPending = false; // quitAndInstall 已触发:下一次退出是安装态,不走宽限强杀
+let installPending = false; // quitAndInstall 已触发:下一次退出是安装态,不走宽限延迟
+let quitGracePending = false; // before-quit 已排程宽限延迟退出:防重入,后续 quit 保持拦截
 
 // 日常退出的宽限时长:dsh 会话日志写后批窗口 200ms(dsh-session-persistence
-// writeBatchMaxDelayMs),1s 覆盖 deadline 触发 + 落盘耗时,见 lib/process-tree.js。
+// writeBatchMaxDelayMs),1s 覆盖 deadline 触发 + 落盘耗时。宽限期由 before-quit
+// 在主进程内自己等(见下),等满再非 detached 强杀,避免 detached 孤儿 cmd 闪窗。
 const QUIT_GRACE_MS = 1000;
 
 // 从 DSH_URL 反推监听地址,让 DSH_URL 单个变量同时决定「探测哪里」和「拉起在哪里」
@@ -709,29 +711,55 @@ if (!app.requestSingleInstanceLock()) {
   });
 }
 
-// 退出时整组回收 dsh 进程树,不留孤儿(复用的外部服务不在此列:dshProc 为空)
+// 立即整组回收 dsh 进程树,不留孤儿(复用的外部服务不在此列:dshProc 为空)。
 // expectedExit 必须先于 kill 置位:exit 事件异步到达,晚一步就会被
 // exit 监听误判为「意外退出」(插件热更重启链路实测踩过,code 1 + app.quit)。
-// graceMs:Windows 下改用宽限强杀(见 lib/process-tree.js),给 dsh 的写后日志
-// 留 drain 窗口;POSIX 是 SIGTERM 优雅停机,grace 参数无效果。
-function killDsh({ graceMs } = {}) {
+function killDsh() {
   if (!dshProc) return;
   const proc = dshProc;
   proc.expectedExit = true;
   dshProc = null;
-  if (graceMs) killProcessTreeAfterGrace(proc.pid, graceMs);
-  else killProcessTree(proc.pid);
+  killProcessTree(proc.pid);
 }
 
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
   quitting = true;
   globalHotkey?.dispose();
-  // 宽限只给日常退出(关窗/Cmd+Q):安装态退出(quitAndInstall)立即杀,见 notifyUpdateReady。
-  killDsh({ graceMs: installPending ? 0 : QUIT_GRACE_MS });
   if (dshLog) {
     dshLog.close();
     dshLog = null;
   }
+  // 宽限延迟已排程:后续 quit 保持拦截,让已排程的定时器统一收尾(强杀后 app.exit),
+  // 不再二次排程;此处若放行退出,定时器会随进程一起消失,dsh 进程树被留成孤儿。
+  if (quitGracePending) {
+    event.preventDefault();
+    return;
+  }
+  // 日常退出(关窗/Cmd+Q)在 Windows 上走宽限延迟:此前是派生 detached cmd 延时后
+  // taskkill,而 detached 子进程会被 Windows 强制分配控制台窗口(windowsHide 对其无效),
+  // 恰活在退出后的宽限期里就成了「退出时闪出终端」。改由主进程自己 preventDefault 拦住退出、
+  // 等满宽限期再非 detached 强杀(默认隐藏窗口),最后 app.exit。以下四个条件缺一即立即回收:
+  //   - 非 win32:POSIX 走 SIGTERM 优雅停机,本无闪窗也无需延迟;
+  //   - installPending:安装态退出必须立即杀,宽限期内 dsh 持 app 目录文件锁会撞 NSIS 安装器;
+  //   - dshProc 为空:复用的外部 dsh 不在回收之列;
+  //   - quitGracePending:已在宽限等待中(上面已处理)。
+  if (process.platform === 'win32' && !installPending && dshProc) {
+    event.preventDefault();
+    quitGracePending = true;
+    // 立即标记预期退出并解引用(沿用 killDsh 写法):宽限期内 dsh 若自行退出,
+    // 不得被 dshProc 的 exit 监听误判为意外退出而弹窗。
+    const proc = dshProc;
+    proc.expectedExit = true;
+    dshProc = null;
+    // 等 dsh 写后日志(200ms 批窗口)自然 drain 再非 detached 强杀整棵树,然后立即退出。
+    setTimeout(() => {
+      killProcessTree(proc.pid);
+      app.exit(0);
+    }, QUIT_GRACE_MS);
+    return;
+  }
+  // 立即回收:安装态 / POSIX / 复用外部 dsh 走此路,killDsh 打 expectedExit 后强杀,退出正常继续。
+  killDsh();
 });
 
 app.on('window-all-closed', () => {
