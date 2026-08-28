@@ -60,7 +60,7 @@ from adr_assets import (
     create as create_adr_asset,
     settle as settle_adr_asset,
 )
-VERSION = "2.11.0"
+VERSION = "2.11.1"
 CONFIG_SCHEMA = "docs-harness/project-config/v12"
 KNOWN_LEGACY_CONFIG_SCHEMAS = {
     f"docs-harness/project-config/v{version}" for version in range(1, 12)
@@ -384,7 +384,7 @@ _GENERIC_STANDARDS = """
 2. **重复即抽象。** 同一段逻辑出现第 3 次时必须抽成独立函数或模块，并让原有调用点改用它；不允许复制粘贴后微调。
 3. **分层隔离。** 界面/渲染代码、业务逻辑、外部 IO（文件、网络、进程间通信、系统调用）不得混在同一个函数里。
 4. **接口先行。** 新增模块必须先定义对外接口和数据类型，再写实现；对外暴露的东西越少越好，默认不导出。
-5. **体量预警。** 单个函数超过 60 行、单个文件超过 500 行时必须进行结构评估。存在多重职责、跨层混合、独立变化方向或难以独立测试时，应按职责拆分；职责单一且拆分只会增加跳转、耦合或样板代码时可以保留，并在收尾报告中说明理由。不得仅为满足行数阈值机械切割。
+5. **体量预警。** 单个函数超过 60 行、单个文件超过 600 行时必须进行结构评估。存在多重职责、跨层混合、独立变化方向或难以独立测试时，应按职责拆分；职责单一且拆分只会增加跳转、耦合或样板代码时可以保留，并在收尾报告中说明理由。不得仅为满足行数阈值机械切割。
 6. **错误不许吞。** 每个错误要么正确处理，要么明确向上传递；不得静默忽略或仅打印日志后继续。
 7. **不擅自加依赖。** 新增第三方库前必须说明：解决什么问题、为何标准库或现有依赖不够。未经用户确认不引入。
 8. **收尾自查。** 报告改动时额外回答两个问题：本次是否引入了重复逻辑（答"没有"要说明依据）；本次新增的抽象各自的职责是什么。答不出视为未完成。
@@ -459,7 +459,7 @@ Knowledge 资产只记录有当前源码或项目文档证据支持的可复用�
 记录 User Acceptance 通过；合同、测试、运行、安装和用户可见层不得相互替代。
 
 收尾统一运行 `assets-check`，不要求智能体手动拼接三个 check。提交时由入库 pre-commit 钩子执行
-`assets-check --fast`；GitHub CI 执行 `assets-check --strict`（新克隆机器先运行 `setup.sh` 激活钩子）。
+`assets-check --fast`；GitHub CI 执行 `assets-check --strict`（新克隆机器先运行 `scripts/githooks/setup.sh` 激活钩子）。
 
 ## 收尾
 
@@ -671,6 +671,77 @@ def githook_fingerprints(root: Path) -> dict[str, str]:
             return {}
         fingerprints[relative] = file_fingerprint(path)
     return fingerprints
+
+
+GITHOOK_SHIM_MARKER = "docs-harness-hook-shim"
+
+
+def git_hook_directory(target: Path) -> Path | None:
+    """真实钩子目录（git worktree 之间共享）；非 git 目标或 git 不可用时返回 None。"""
+    root = git_root(target)
+    if root is None:
+        return None
+    result = git_command(root, "rev-parse", "--git-common-dir")
+    if result.returncode != 0:
+        return None
+    common = Path(result.stdout.decode("utf-8", errors="replace").strip())
+    if not common.is_absolute():
+        common = root / common
+    return common / "hooks"
+
+
+def check_githook_health(target: Path, findings: list[dict[str, str]]) -> None:
+    """钩子健康检查（yellow）：受管钩子入库可执行位 + hooksPath 屏蔽冲突。
+
+    内容指纹比对（githook_drift）检测不到索引模式差异与 hooksPath 替换语义
+    导致的静默失效，这两条 finding 覆盖这两类盲区；非 git 目标整体跳过。
+    """
+    root = git_root(target)
+    if root is None:
+        return
+    result = git_command(
+        root,
+        "ls-files",
+        "-s",
+        "--",
+        *(f"{GIT_HOOKS_RELATIVE}/{relative}" for relative in GIT_HOOK_RELATIVE_FILES),
+    )
+    if result.returncode == 0:
+        non_executable = []
+        for line in result.stdout.decode("utf-8", errors="replace").splitlines():
+            meta, _, path = line.partition("\t")
+            mode = meta.split(None, 1)[0] if meta.strip() else ""
+            if path and mode and mode != "100755":
+                non_executable.append(path)
+        if non_executable:
+            findings.append(
+                {
+                    "severity": "yellow",
+                    "code": "githook_index_mode",
+                    "message": "受管钩子入库模式非 100755，类 Unix 克隆上不会执行："
+                    + ", ".join(sorted(non_executable)),
+                }
+            )
+    hooks_dir = git_hook_directory(target)
+    if hooks_dir is None or not hooks_dir.is_dir():
+        return
+    current = git_command(root, "config", "--get", "core.hooksPath")
+    hooks_path = current.stdout.decode("utf-8", errors="replace").strip()
+    if current.returncode == 0 and hooks_path:
+        shadowed = sorted(
+            entry.name
+            for entry in hooks_dir.iterdir()
+            if entry.is_file() and not entry.name.endswith(".sample")
+        )
+        if shadowed:
+            findings.append(
+                {
+                    "severity": "yellow",
+                    "code": "githook_hookspath_conflict",
+                    "message": f"core.hooksPath={hooks_path} 已设置，钩子目录内这些钩子不会运行："
+                    + ", ".join(shadowed),
+                }
+            )
 
 
 def managed_module_fingerprints(root: Path) -> dict[str, str]:
@@ -2909,6 +2980,7 @@ def project_findings(target: Path) -> list[dict[str, str]]:
                 "message": "git 钩子缺失或漂移",
             }
         )
+    check_githook_health(target, findings)
     try:
         structure_changes = plan_docs_structure_changes(target)
     except HarnessError as exc:
@@ -3194,6 +3266,7 @@ def command_project(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                 "owned asset lifecycle modules",
                 "owned plan-templates files",
                 "owned scripts/githooks files",
+                "installed pre-commit shim in git hook directory",
                 *cleanup["remove_files"],
                 *cleanup["remove_directories"],
             ],
@@ -3274,6 +3347,19 @@ def command_project(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                 removed.append(f"{GIT_HOOKS_RELATIVE}/{relative}")
         with contextlib.suppress(OSError):
             (target / GIT_HOOKS_RELATIVE).rmdir()
+    # 清理 setup.sh 装进真实钩子目录的转发 shim（按标记识别，不动他人钩子）。
+    hooks_dir = git_hook_directory(target)
+    if hooks_dir is not None:
+        shim = hooks_dir / "pre-commit"
+        try:
+            shim_owned = shim.is_file() and GITHOOK_SHIM_MARKER in shim.read_text(
+                encoding="utf-8", errors="replace"
+            )
+        except OSError:
+            shim_owned = False
+        if shim_owned:
+            shim.unlink()
+            removed.append(str(shim))
     config_path = target / ".docs-harness" / "config.json"
     if config_path.is_file():
         config_path.unlink()

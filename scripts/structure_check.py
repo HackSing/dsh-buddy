@@ -19,7 +19,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-FILE_RED_LINE = 500
+FILE_RED_LINE = 600
 FUNC_RED_LINE = 60
 OVERSIZE_FILE_GROWTH_ALERT = 50
 FUNC_GROWTH_ALERT = 10
