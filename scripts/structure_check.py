@@ -27,7 +27,7 @@ CODEMAP_RELATIVE = "docs/CODEMAP.md"
 CODE_SUFFIXES = frozenset({
     ".py", ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx", ".vue", ".go", ".rs",
     ".java", ".kt", ".swift", ".c", ".h", ".cc", ".cpp", ".hpp", ".cs", ".rb",
-    ".php", ".lua",
+    ".php", ".lua", ".dart",
 })
 _TEST_FILE_HINTS = ("test_", "_test.", ".test.", ".spec.")
 _CODEMAP_ENTRY_PATTERN = re.compile(r"^\s*-\s*`([^`]+)`")
