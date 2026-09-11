@@ -60,7 +60,7 @@ from adr_assets import (
     create as create_adr_asset,
     settle as settle_adr_asset,
 )
-VERSION = "2.12.1"
+VERSION = "2.12.3"
 CONFIG_SCHEMA = "docs-harness/project-config/v12"
 KNOWN_LEGACY_CONFIG_SCHEMAS = {
     f"docs-harness/project-config/v{version}" for version in range(1, 12)
@@ -393,12 +393,13 @@ _GENERIC_STANDARDS = """
 
 ## 结构护栏
 
-编码质量规范的机械支撑面；四条各自独立触发。
+编码质量规范的机械支撑面；五条各自独立触发。
 
 1. **动手前查 CODEMAP。** 写代码前先查 `docs/CODEMAP.md` 定位可复用模块与其公开接口，命中即复用；新增代码文件或公开接口变化时，同一批次内更新对应条目（格式：`模块路径` — 职责：一句话；公开接口：`符号`）。测试文件不必登记。
 2. **骨架先行（复杂任务）。** Full Plan 的 `module_interfaces` 字段冻结模块划分与接口骨架；实施先落文件与接口签名（空实现），再分批填充逻辑，不得绕开骨架直接堆代码。
 3. **增量检查随批次跑。** `assets-check` 内置 Structure 增量检查（对比 HEAD，只对本次改动归责，WARN 级）；分批交付的每批验证点可用 `structure check` 单独快跑，WARN 按"WARN 消费"规则在收尾转达，确实拆不动的说明理由即可。
 4. **存量债走定期整理。** 既有超红线文件/函数不在功能任务里顺手重构（见"不顺手加固"）；需要偿还时运行 `structure report` 拿存量清单，以报告开专门整理任务。
+5. **搜索面收敛。** 禁止无界递归检索——不得从仓库根对 `.` 做递归搜索，也不得让工具自己决定范围；路径必须落到本次任务相关的具体目录或文件，够用即止，并排除 `node_modules`、`.git`、构建产物（`dist`/`build`/`out`/`coverage`/`target`/`__pycache__`）、依赖缓存与生成物目录，大目录写宽了扫不出结果还拖慢任务。
 
 ## 防御代码准入
 
@@ -3767,6 +3768,10 @@ def command_plan_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                     f"FAIL: docs/INDEX.md: {basename} 条目须包含 2-4 个关键符号"
                 )
     for basename in archived_names:
+        # 同名活文档存在时，活索引条目指向的是活文档（plans/<basename>），不构成归档泄漏；
+        # 「新文档同名取代归档草稿」是受支持的工作流。
+        if any(path.name == basename for path in live_docs):
+            continue
         tokens = plan_index_doc_tokens(basename)
         leaked = [
             line for line in index_lines
@@ -3802,6 +3807,9 @@ def command_plan_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     # C3：全仓 .md 不得引用已归档文档的旧路径 docs/plans/<basename>。
     markdown_files = plan_check_markdown_files(target)
     for basename in archived_names:
+        # 同名活文档存在时 docs/plans/<basename> 指向活文档（新文档同名取代归档草稿），不构成死链。
+        if any(path.name == basename for path in live_docs):
+            continue
         stale = re.compile(r"docs/plans/" + re.escape(basename) + r"(?![\w.-])")
         for path in markdown_files:
             try:
