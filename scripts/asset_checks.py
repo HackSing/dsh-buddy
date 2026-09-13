@@ -49,21 +49,21 @@ def _load_plan_path(target: Path, raw: str) -> tuple[Path, dict[str, Any]]:
         raise AssetError(f"Plan 引用无法读取：{raw}") from exc
 
 
-def _is_stale(value: dict[str, Any], now: dt.datetime) -> bool:
-    raw = value.get("updated_at")
+def _is_stale(raw: Any, now: dt.datetime) -> bool:
     if not isinstance(raw, str):
         return False
     try:
-        updated = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        moment = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
     except ValueError:
         return False
-    return now - updated > dt.timedelta(days=ASSET_STALE_DAYS)
+    return now - moment > dt.timedelta(days=ASSET_STALE_DAYS)
 
 
 def _check_plan_relations(
     target: Path,
     path: Path,
     plan: dict[str, Any],
+    now: dt.datetime,
 ) -> tuple[list[str], list[str]]:
     failures: list[str] = []
     warnings: list[str] = []
@@ -79,6 +79,7 @@ def _check_plan_relations(
     governance = plan.get("governance")
     if isinstance(governance, dict) and not governance["acceptance_required"] and refs:
         warnings.append(f"WARN: {plan_ref}: acceptance_required=false 但存在关联 Acceptance")
+    linked: list[dict[str, Any]] = []
     for ref in refs:
         try:
             acceptance = load_asset(target / ref, ACCEPTANCE_SPEC)
@@ -86,8 +87,33 @@ def _check_plan_relations(
         except AssetError as exc:
             failures.append(f"FAIL: {plan_ref}: 关联 Acceptance 无效：{ref}：{exc}")
             continue
+        linked.append(acceptance)
         if acceptance.get("plan_ref") != plan_ref:
             failures.append(f"FAIL: {plan_ref}: 与 {ref} 的正反向引用不一致")
+    # 结算泄漏预警：关联验收已全部结项但 Plan 仍挂着未 settle，活索引会随之淤积。
+    if (
+        linked
+        and len(linked) == len(refs)
+        and all(item.get("settled_at") for item in linked)
+        and isinstance(governance, dict)
+        and not governance.get("governance_settled_at")
+        and relative_plan.parent.as_posix() != "docs/plans/archive"
+    ):
+        warnings.append(
+            f"WARN: {plan_ref}: 关联 Acceptance 已全部结项，Plan 仍未 settle"
+            "（plan settle --status implemented|deprecated）"
+        )
+    # 结算泄漏预警（超期形态）：方案冻结后长期不 settle，活索引随之淤积。
+    if (
+        relative_plan.parent.as_posix() != "docs/plans/archive"
+        and isinstance(governance, dict)
+        and not governance.get("governance_settled_at")
+        and _is_stale(plan.get("frozen_at"), now)
+    ):
+        warnings.append(
+            f"WARN: {plan_ref}: 冻结超过 {ASSET_STALE_DAYS} 天仍未 settle"
+            "（plan settle --status implemented|deprecated）"
+        )
     if not isinstance(governance, dict) or not governance.get("governance_settled_at"):
         return failures, warnings
     if governance.get("knowledge_impact") != "updated":
@@ -109,10 +135,11 @@ def check_cross_asset_relations(target: Path) -> dict[str, Any]:
     warnings: list[str] = []
     plan_paths = sorted((target / "docs/plans").glob("*.json"))
     plan_paths.extend(sorted((target / "docs/plans/archive").glob("*.json")))
+    now = dt.datetime.now(dt.timezone.utc)
     for path in plan_paths:
         try:
             plan = validate_plan(json.loads(path.read_text(encoding="utf-8")))
-            plan_failures, plan_warnings = _check_plan_relations(target, path, plan)
+            plan_failures, plan_warnings = _check_plan_relations(target, path, plan, now)
             failures.extend(plan_failures)
             warnings.extend(plan_warnings)
         except (
@@ -123,7 +150,6 @@ def check_cross_asset_relations(target: Path) -> dict[str, Any]:
             PlanGovernanceError,
         ) as exc:
             failures.append(f"FAIL: {path.relative_to(target)}: {exc}")
-    now = dt.datetime.now(dt.timezone.utc)
     acceptance_paths = sorted((target / ACCEPTANCE_SPEC.root).glob("*.json"))
     for path in acceptance_paths:
         try:
@@ -149,7 +175,7 @@ def check_cross_asset_relations(target: Path) -> dict[str, Any]:
             continue
         if "archive" in plan_path.relative_to(target).parts:
             warnings.append(f"WARN: {relative}: pending Acceptance 指向已归档 Plan")
-        if _is_stale(acceptance, now):
+        if _is_stale(acceptance.get("updated_at"), now):
             warnings.append(
                 f"WARN: {relative}: pending 超过 {ASSET_STALE_DAYS} 天仍未结项"
             )

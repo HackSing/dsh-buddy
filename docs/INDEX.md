@@ -28,6 +28,7 @@
 - [preserved 弹窗降噪与预装清单 task-board→dispatch 换血](plans/preserved-quiet-manifest-swap.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）；关键符号：`profileUpgradeDecision`、`preserved-current`、`retiredPackages`、`diffChannelVersions`
 - [dispatch vendored sqlite 多平台化,解除 Windows 挂账](plans/multiplatform-sqlite-vendor.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）；关键符号：`seedNativeAddons`、`patchDatabaseJs`、`platformDirs`、`PREBUILD_TARGETS`
 - [内嵌 dsh 0.1.1-rc.1 → 0.1.1-rc.2 全家族钉版同抬](plans/dsh-upgrade-0.1.1-rc.2.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）；关键符号：`DSH_VERSION`、`@deepseek-ai/dsh`、`allowScripts`
+- [壳层页面守护:内容页死亡检测与自动恢复](plans/shell-page-guard.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）；关键符号：`attachPageGuard`、`createReloadGovernor`、`extractBootRev`、`probeBody`
 <!-- docs-harness:plans-index:end -->
 
 <!-- docs-harness:knowledge-index:start -->
@@ -67,6 +68,7 @@
 - [启动加载窗口:首屏即时反馈验收](acceptance/startup-loading-window.md) — 状态：已验收-仅追溯；关键符号：`buildStageScript`、`installBundledProfile`、`setStartupStage`
 - [preserved 弹窗降噪与清单换血验收](acceptance/preserved-quiet-manifest-swap.md) — 状态：已验收-仅追溯；关键符号：`profileUpgradeDecision`、`preserved-current`、`retiredPackages`
 - [dispatch 多平台 sqlite vendor 验收](acceptance/multiplatform-sqlite-vendor.md) — 状态：已验收-仅追溯；关键符号：`seedNativeAddons`、`patchDatabaseJs`、`platformDirs`
+- [壳层页面守护:三类恢复路径与回归安全](acceptance/shell-page-guard.md) — 状态：已验收-仅追溯；关键符号：`attachPageGuard`、`createReloadGovernor`、`probeBody`
 <!-- docs-harness:acceptance-index:end -->
 
 <!-- docs-harness:adr-index:start -->

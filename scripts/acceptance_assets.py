@@ -160,37 +160,99 @@ def _criterion(value: Any) -> dict[str, Any]:
     }
 
 
-def validate_input(target: Path, value: Any) -> dict[str, Any]:
+def _parse_input(target: Path, value: Any) -> tuple[list[AssetError], dict[str, Any] | None]:
+    """收集 Acceptance 目标输入的全部错误（--dry-run 用）；无错误时返回规范化内容。"""
+    errors: list[AssetError] = []
     if not isinstance(value, dict) or value.get("schema_version") != ACCEPTANCE_TARGET_INPUT_SCHEMA:
-        raise AssetError(f"Acceptance 目标输入 Schema 无效，必须为 {ACCEPTANCE_TARGET_INPUT_SCHEMA}", "acceptance_target_invalid")
+        errors.append(AssetError(
+            f"Acceptance 目标输入 Schema 无效，必须为 {ACCEPTANCE_TARGET_INPUT_SCHEMA}",
+            "acceptance_target_invalid",
+        ))
+        return errors, None
     allowed = {"schema_version", "title", "key_symbols", "objective", "plan_ref", "knowledge_refs", "criteria"}
-    if set(value) - allowed:
-        raise AssetError("Acceptance 目标包含未注册字段", "acceptance_target_invalid")
+    unknown = sorted(set(value) - allowed)
+    if unknown:
+        errors.append(AssetError(
+            "Acceptance 目标包含未注册字段：" + ", ".join(unknown), "acceptance_target_invalid"
+        ))
+    parsed: dict[str, Any] = {}
+    for field in ("title", "objective"):
+        try:
+            parsed[field] = _string(value.get(field), field)
+        except AssetError as exc:
+            errors.append(exc)
+    try:
+        parsed["key_symbols"] = _symbols(value.get("key_symbols"))
+    except AssetError as exc:
+        errors.append(exc)
     plan_ref = value.get("plan_ref")
     if plan_ref is not None:
-        plan_ref = _string(plan_ref, "plan_ref")
-        _project_file(target, plan_ref, PLAN_SCHEMAS)
+        try:
+            plan_ref = _string(plan_ref, "plan_ref")
+            _project_file(target, plan_ref, PLAN_SCHEMAS)
+            parsed["plan_ref"] = plan_ref
+        except AssetError as exc:
+            errors.append(exc)
+    else:
+        parsed["plan_ref"] = None
     knowledge_refs = value.get("knowledge_refs", [])
     if not isinstance(knowledge_refs, list):
-        raise AssetError("knowledge_refs 必须是数组", "acceptance_target_invalid")
-    knowledge_refs = [_string(item, "knowledge_ref") for item in knowledge_refs]
+        errors.append(AssetError("knowledge_refs 必须是数组", "acceptance_target_invalid"))
+        knowledge_refs = []
+    normalized_refs: list[str] = []
     for ref in knowledge_refs:
-        _project_file(target, ref, "docs-harness/knowledge-asset/v1")
+        try:
+            normalized = _string(ref, "knowledge_ref")
+            _project_file(target, normalized, "docs-harness/knowledge-asset/v1")
+            normalized_refs.append(normalized)
+        except AssetError as exc:
+            errors.append(exc)
+    parsed["knowledge_refs"] = normalized_refs
     raw_criteria = value.get("criteria")
+    criteria: list[dict[str, Any]] = []
     if not isinstance(raw_criteria, list) or not raw_criteria:
-        raise AssetError("criteria 必须是非空数组", "acceptance_target_invalid")
-    criteria = [_criterion(item) for item in raw_criteria]
-    ids = [item["id"] for item in criteria]
-    if len(ids) != len(set(ids)):
-        raise AssetError("criterion id 不得重复", "acceptance_target_invalid")
-    return {
-        "title": _string(value.get("title"), "title"),
-        "key_symbols": _symbols(value.get("key_symbols")),
-        "objective": _string(value.get("objective"), "objective"),
-        "plan_ref": plan_ref,
-        "knowledge_refs": knowledge_refs,
-        "criteria": criteria,
-    }
+        errors.append(AssetError("criteria 必须是非空数组", "acceptance_target_invalid"))
+    else:
+        for item in raw_criteria:
+            try:
+                criteria.append(_criterion(item))
+            except AssetError as exc:
+                errors.append(exc)
+        ids = [
+            item.get("id") for item in raw_criteria
+            if isinstance(item, dict) and isinstance(item.get("id"), str)
+        ]
+        if len(ids) != len(set(ids)):
+            errors.append(AssetError("criterion id 不得重复", "acceptance_target_invalid"))
+    parsed["criteria"] = criteria
+    if errors:
+        return errors, None
+    return [], parsed
+
+
+def collect_input_errors(target: Path, value: Any) -> list[AssetError]:
+    return _parse_input(target, value)[0]
+
+
+def collect_create_errors(target: Path, value: Any, raw_output: str) -> list[AssetError]:
+    """acceptance create --dry-run：收集输入、输出路径与已存在冲突的全部错误，不落盘。"""
+    errors = collect_input_errors(target, value)
+    try:
+        output, document = output_pair(target, raw_output, ACCEPTANCE_SPEC)
+    except AssetError as exc:
+        errors.append(exc)
+    else:
+        if output.exists() or document.exists():
+            errors.append(AssetError("Acceptance 输出已存在", "acceptance_already_exists"))
+    return errors
+
+
+def validate_input(target: Path, value: Any) -> dict[str, Any]:
+    errors, parsed = _parse_input(target, value)
+    if errors:
+        raise errors[0]
+    assert parsed is not None
+    return parsed
 
 
 def validate_asset(value: dict[str, Any]) -> None:

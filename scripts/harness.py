@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Sequence
@@ -28,6 +29,7 @@ from script_hygiene import check_script_line_endings
 from structure_check import CODEMAP_SCAFFOLD, check_structure, structure_report
 from plan_governance import (
     FAILURE_ATTRIBUTION_CATEGORIES, PLAN_GOVERNANCE_INPUT_SCHEMA, PLAN_SCHEMA_V3, PlanGovernanceError,
+    collect_bugfix_plan_errors,
     governance_from_content, legacy_plan_template_fingerprints, new_plan_fields, nonempty_string_list,
     prepare_settlement as prepare_plan_settlement, render_governance_block, update_plan_markdown,
     validate_bugfix_plan_contract, validate_plan as validate_governed_plan,
@@ -48,6 +50,7 @@ from acceptance_assets import (
     ACCEPTANCE_SPEC,
     ACCEPTANCE_TARGET_INPUT_SCHEMA,
     check as check_acceptance_assets,
+    collect_create_errors as collect_acceptance_create_errors,
     create as create_acceptance_asset,
     record as record_acceptance_asset,
     settle as settle_acceptance_asset,
@@ -60,10 +63,17 @@ from adr_assets import (
     create as create_adr_asset,
     settle as settle_adr_asset,
 )
-VERSION = "2.11.1"
-CONFIG_SCHEMA = "docs-harness/project-config/v12"
+from usage_log import (
+    USAGE_LOG_DEFAULT_ENABLED,
+    USAGE_SCHEMA_VERSION,
+    append_event as append_usage_event,
+    is_enabled as usage_log_enabled,
+)
+from usage_report import USAGE_REPORT_DEFAULT_DAYS, build_report as build_usage_report
+VERSION = "2.16.2"
+CONFIG_SCHEMA = "docs-harness/project-config/v13"
 KNOWN_LEGACY_CONFIG_SCHEMAS = {
-    f"docs-harness/project-config/v{version}" for version in range(1, 12)
+    f"docs-harness/project-config/v{version}" for version in range(1, 13)
 }
 PLAN_TEMPLATE_SCHEMA = "docs-harness/plan-template/v3"
 PLAN_SELECTION_SCHEMA = "docs-harness/plan-selection/v2"
@@ -82,6 +92,9 @@ PLAN_TEMPLATE_RELATIVE_FILES = (
     "profiles/architecture.json",
     "profiles/migration-release.json",
 )
+TASK_INPUTS_RELATIVE = ".docs-harness/inputs"
+# 与 usage_log._GITIGNORE_CONTENT 同口径的嵌套忽略（该写法的第 2 次出现，第 3 次再抽）。
+TASK_INPUTS_GITIGNORE_CONTENT = "*\n"
 GIT_HOOKS_RELATIVE = "scripts/githooks"
 GIT_HOOK_RELATIVE_FILES = ("pre-commit", "setup.sh")
 MANAGED_MODULE_RELATIVE_FILES = (
@@ -93,6 +106,9 @@ MANAGED_MODULE_RELATIVE_FILES = (
     "adr_assets.py",
     "script_hygiene.py",
     "structure_check.py",
+    "structure_ts_functions.cjs",
+    "usage_log.py",
+    "usage_report.py",
 )
 PLAN_DOCS_RELATIVE = "docs/plans"
 PLAN_ARCHIVE_RELATIVE = "docs/plans/archive"
@@ -147,7 +163,7 @@ PLAN_CHECK_ARCHIVE_EXEMPTION = "已归档"
 PLAN_CHECK_EXCLUDED_DIRS = {"node_modules", ".worktrees", "deliverables", "output", "artifacts"}
 PLAN_CHECK_ARTIFACT_DIRS = {"dist", "build", "dist-electron", "release", "zbuddy-output", "test-results", "coverage", "软著"}
 PLAN_CHECK_SOURCE_SUFFIXES = {
-    ".go", ".ts", ".tsx", ".js", ".jsx", ".cjs", ".mjs", ".py",
+    ".dart", ".go", ".ts", ".tsx", ".js", ".jsx", ".cjs", ".mjs", ".py",
     ".ps1", ".psm1", ".bat", ".cmd", ".sh", ".json", ".toml", ".yaml", ".yml",
 }
 PLAN_CHECK_STALE_DAYS = 90
@@ -310,6 +326,18 @@ def git_root(target: Path) -> Path | None:
     return Path(result.stdout.decode("utf-8", errors="replace").strip()).resolve()
 
 
+def git_dir(target: Path) -> Path | None:
+    result = git_command(target, "rev-parse", "--git-dir")
+    if result.returncode != 0:
+        return None
+    raw = result.stdout.decode("utf-8", errors="replace").strip()
+    if not raw:
+        return None
+    path = Path(raw)
+    resolved = (path if path.is_absolute() else target / path).resolve()
+    return resolved if resolved.is_dir() else None
+
+
 def git_ignored_refs(target: Path, refs: list[str]) -> list[str]:
     """挑出 refs 里被 git 忽略的路径。
 
@@ -393,12 +421,13 @@ _GENERIC_STANDARDS = """
 
 ## 结构护栏
 
-编码质量规范的机械支撑面；四条各自独立触发。
+编码质量规范的机械支撑面；五条各自独立触发。
 
 1. **动手前查 CODEMAP。** 写代码前先查 `docs/CODEMAP.md` 定位可复用模块与其公开接口，命中即复用；新增代码文件或公开接口变化时，同一批次内更新对应条目（格式：`模块路径` — 职责：一句话；公开接口：`符号`）。测试文件不必登记。
 2. **骨架先行（复杂任务）。** Full Plan 的 `module_interfaces` 字段冻结模块划分与接口骨架；实施先落文件与接口签名（空实现），再分批填充逻辑，不得绕开骨架直接堆代码。
 3. **增量检查随批次跑。** `assets-check` 内置 Structure 增量检查（对比 HEAD，只对本次改动归责，WARN 级）；分批交付的每批验证点可用 `structure check` 单独快跑，WARN 按"WARN 消费"规则在收尾转达，确实拆不动的说明理由即可。
 4. **存量债走定期整理。** 既有超红线文件/函数不在功能任务里顺手重构（见"不顺手加固"）；需要偿还时运行 `structure report` 拿存量清单，以报告开专门整理任务。
+5. **搜索面收敛。** 禁止无界递归检索——不得从仓库根对 `.` 做递归搜索，也不得让工具自己决定范围；路径必须落到本次任务相关的具体目录或文件，够用即止，并排除 `node_modules`、`.git`、构建产物（`dist`/`build`/`out`/`coverage`/`target`/`__pycache__`）、依赖缓存与生成物目录，大目录写宽了扫不出结果还拖慢任务。
 
 ## 防御代码准入
 
@@ -460,6 +489,8 @@ Knowledge 资产只记录有当前源码或项目文档证据支持的可复用�
 
 收尾统一运行 `assets-check`，不要求智能体手动拼接三个 check。提交时由入库 pre-commit 钩子执行
 `assets-check --fast`；GitHub CI 执行 `assets-check --strict`（新克隆机器先运行 `scripts/githooks/setup.sh` 激活钩子）。
+项目自定义提交检查写入 `scripts/githooks/pre-commit.local`（受管钩子在 assets-check 通过后自动 source，
+随项目提交、不计入受管指纹），不得分叉修改受管 pre-commit。
 
 ## 收尾
 
@@ -485,11 +516,11 @@ Docs Harness 当前版本：{VERSION}
 - 普通问答、只读检查、代码修改、构建和测试默认由 agent 直接完成；Harness 不作为任务入口，也不创建任务控制状态。
 - 用户明确说“不使用 Harness”时必须直接执行，不得暗中恢复旧流程。
 - 只有缺少的项目事实会改变目标、范围、方案或验收时才运行 knowledge query；需要长期维护的事实才进入 Knowledge 资产生命周期。
-- 简单任务不生成方案；复杂、跨模块、高风险或用户明确要求时依次运行 plan select/create，方案会自动落入 docs/plans 并登记 docs/INDEX；Full Plan 声明验收与知识影响，任务收尾按 Knowledge → Acceptance → Plan 顺序结算。
-- 复杂任务在 Plan 后创建 Acceptance 目标，执行中逐条记录真实证据并结项；证据文件必须位于随仓库提交的路径（如 docs/acceptance/evidence/<验收名>/），git 忽略路径会被拒绝登记；简单任务仍可直接验证，不强制创建资产。
-- 验收以真实功能为中心：能运行聚焦测试、接口、页面、应用、构建或安装流程时运行最小充分流程；不能独立判断时准备最低成本环境，再交给用户做最短确认。
+- 简单任务不生成方案；复杂、跨模块、高风险或用户明确要求时依次运行 plan select/create，方案会自动落入 docs/plans 并登记 docs/INDEX；plan create 的 --selection 可直接传 plan select 输出的 selection_ref（sha256 指纹），正式冻结前先以同参数 --dry-run 一次性校验全部字段；Full Plan 声明验收与知识影响，任务收尾按 Knowledge → Acceptance → Plan 顺序结算。
+- 复杂任务在 Plan 后创建 Acceptance 目标，执行中逐条记录真实证据并结项；acceptance create 同样支持 --dry-run 预检；证据文件必须位于随仓库提交的路径（如 docs/acceptance/evidence/<验收名>/），git 忽略路径会被拒绝登记；简单任务仍可直接验证，不强制创建资产。
+- 验收以真实功能为中心：能运行聚焦测试、接口、页面、应用、构建或安装流程时运行最小充分流程；改动产生运行态行为（页面、接口、应用、命令或安装流程）的任务完成后，agent 必须自己走一遍详细的运行态验证（模拟器/本地联调，可用 mock 数据），确认功能流程正常、视觉与交互对用户友好，发现不友好之处直接重新优化并复验，不把功能、视觉或交互体验的验证推给用户；纯文档、只读或不改变行为的任务只做与改动对应的验证；仅真实硬件、系统权限等本地确实无法运行的层准备最低成本环境交用户最短确认。
 - 高风险动作使用原生授权与沙箱，不建立第二套 Harness Gate 或授权协议。
-- Plan/Knowledge/Acceptance/ADR 输入 JSON 必须携带各自 schema_version 与注册字段（输入形状与示例见 python3 scripts/harness.py <cmd> --help）；校验失败报错直接附期望形状。
+- Plan/Knowledge/Acceptance/ADR 输入 JSON 必须携带各自 schema_version 与注册字段（输入形状与示例见 python3 scripts/harness.py <cmd> --help）；校验失败报错直接附期望形状；一次性输入 JSON 写入 `{TASK_INPUTS_RELATIVE}/`（安装器保证不入库、升级不清理）。
 {knowledge_line}
 - pre-2.0 项目只通过 project upgrade 单向迁移；迁移后不保留旧运行能力。
 - 不在没有证据或没有明确维护任务时自动更新 Knowledge、Changelog、TODO 或质量账本。架构决策由主 agent 通过 adr create 登记（定稿不可改，复杂决策可选只读子智能体复审）；决策失效时用 adr settle 废弃或标记被替代。
@@ -1175,8 +1206,93 @@ def build_plan_selection(
     return selection
 
 
+PLAN_SELECTION_CACHE_RELATIVE = "docs-harness/plan-selections"
+PLAN_SELECT_KNOWLEDGE_LIMIT = 5
+PLAN_SELECT_KNOWLEDGE_MAX_CHARS = 2000
+
+
+def plan_selection_cache_dir(target: Path) -> Path | None:
+    resolved = git_dir(target)
+    if resolved is None:
+        return None
+    return resolved / PLAN_SELECTION_CACHE_RELATIVE
+
+
+def cache_plan_selection(target: Path, selection: dict[str, Any]) -> bool:
+    """把 plan select 结果缓存进 git 运行态目录，供 plan create --selection sha256:<fp> 引用。
+
+    缓存只是便利性副本（真源仍是 selection 内容与其指纹校验），写入失败不阻断 select。"""
+    directory = plan_selection_cache_dir(target)
+    if directory is None:
+        return False
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        name = selection["selection_fingerprint"].removeprefix("sha256:") + ".json"
+        atomic_write_json(directory / name, selection)
+    except OSError:
+        return False
+    return True
+
+
+def resolve_plan_selection_path(target: Path, raw: str) -> Path:
+    if not raw.startswith("sha256:"):
+        return project_input_path(target, raw, code="invalid_plan_selection")
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", raw):
+        raise HarnessError(
+            "--selection 的 sha256 引用格式无效，应为 plan select 输出里的 selection_ref",
+            code="invalid_plan_selection",
+        )
+    directory = plan_selection_cache_dir(target)
+    candidate = (
+        directory / (raw.removeprefix("sha256:") + ".json") if directory is not None else None
+    )
+    if candidate is None or not candidate.is_file() or candidate.is_symlink():
+        raise HarnessError(
+            f"未找到 {raw} 对应的 plan select 缓存。下一步：在本项目重新运行 plan select"
+            "（其输出的 selection_ref 即为该指纹），或把 plan select 输出保存为项目内 JSON 文件后传文件路径",
+            code="invalid_plan_selection",
+        )
+    return candidate
+
+
+def plan_select_knowledge_payload(target: Path, task: str) -> dict[str, Any]:
+    """plan select 的知识被动注入：--task 给任务描述时附相关事实，否则只给存在性提示。"""
+    task = task.strip()
+    if task:
+        tokens = query_tokens(task)
+        if tokens:
+            try:
+                managed = query_knowledge_assets(
+                    target, tokens, PLAN_SELECT_KNOWLEDGE_LIMIT, PLAN_SELECT_KNOWLEDGE_MAX_CHARS
+                )
+            except AssetError as exc:
+                return {"knowledge_hits": [], "knowledge_hits_error": str(exc)}
+            return {
+                "knowledge_hits": managed["facts"],
+                "knowledge_conflicts": managed["conflicts"],
+            }
+    root = target / KNOWLEDGE_SPEC.root
+    count = 0
+    if root.is_dir() and not root.is_symlink():
+        count = sum(1 for path in root.glob("*.json") if path.is_file() and not path.is_symlink())
+    if count:
+        return {
+            "knowledge_hint": (
+                f"项目存在 {count} 个活跃 Knowledge；plan select 加 --task <任务描述> 可自动附带相关事实，"
+                "或用 knowledge query --query <关键词> 按需查询"
+            )
+        }
+    return {}
+
+
 def plan_select(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
-    safe_target(args.target)
+    target = safe_target(args.target)
+    if getattr(args, "query", None):
+        raise HarnessError(
+            "plan select 不支持 --query；查询项目事实请使用 knowledge query --query <关键词>。"
+            "下一步：去掉 --query 重跑 plan select（可加 --task <任务描述> 让结果自动附带相关 Knowledge）",
+            code="invalid_plan_selection",
+        )
     if args.level:
         level = args.level
         level_reason = "user_or_host_explicit"
@@ -1200,16 +1316,36 @@ def plan_select(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     if len(secondary) > 2:
         raise HarnessError("次级 Profile 最多两个", code="invalid_plan_selection")
     reason = level_reason + ("; profile_explicit" if args.profile else "; profile_from_surface")
-    return 0, build_plan_selection(
+    selection = build_plan_selection(
         level=level,
         profile=profile,
         secondary_profiles=secondary,
         reason=reason,
     )
+    payload: dict[str, Any] = dict(selection)
+    payload["selection_ref"] = selection["selection_fingerprint"]
+    payload["selection_cached"] = cache_plan_selection(target, selection)
+    payload.update(plan_select_knowledge_payload(target, getattr(args, "task", None) or ""))
+    return 0, payload
+
+
+# plan select 输出的展示性附加键（不是选择合同的一部分）；agent 常把整份输出存成文件
+# 传给 plan create --selection，校验前必须剥离，否则全等比较必然失败。
+SELECTION_AUXILIARY_KEYS = (
+    "selection_ref",
+    "selection_cached",
+    "knowledge_hits",
+    "knowledge_conflicts",
+    "knowledge_hint",
+    "knowledge_hits_error",
+)
 
 
 def validate_selection(value: Any) -> dict[str, Any]:
-    if not isinstance(value, dict) or value.get("schema_version") != PLAN_SELECTION_SCHEMA:
+    if not isinstance(value, dict):
+        raise HarnessError("方案选择文件无效", code="invalid_plan_selection")
+    value = {key: item for key, item in value.items() if key not in SELECTION_AUXILIARY_KEYS}
+    if value.get("schema_version") != PLAN_SELECTION_SCHEMA:
         raise HarnessError("方案选择文件无效", code="invalid_plan_selection")
     level = value.get("plan_level")
     profile = value.get("plan_profile")
@@ -1350,41 +1486,137 @@ PLAN_CONTENT_EXAMPLE = {
 PLAN_CONTENT_NOTES = (
     "content 字段以 plan select 输出的 fields 为准；上面是 brief 级最小示例。",
     "required=true 的字段必须非空，且不得出现未在 fields 中注册的字段。",
+    "--selection 可直接传 plan select 输出的 selection_ref（sha256:<指纹>，缓存在本机 .git 运行态目录），"
+    "或把 plan select 输出保存为项目内 JSON 文件后传文件路径。",
+    "正式冻结前建议先跑一次 plan create --dry-run（同参数）：一次性返回全部字段错误，不写任何文件。",
 )
+
+
+def inspect_plan_create(
+    target: Path, args: argparse.Namespace
+) -> tuple[list[HarnessError], dict[str, Any] | None]:
+    """收集 plan create 的全部输入错误（--dry-run 用）；无错误时返回各阶段产物。
+
+    依赖失败的阶段会被跳过（与原逐字段抛错的不可达路径一致）；错误追加顺序与原
+    抛错顺序一致，真实创建路径抛首个错误即与原行为等价。"""
+    if not args.selection or not args.content or not args.output:
+        return [HarnessError(
+            "plan create 必须提供 --selection、--content 和 --output",
+            code="missing_plan_input",
+        )], None
+    errors: list[HarnessError] = []
+    selection: dict[str, Any] | None = None
+    try:
+        selection = validate_selection(
+            read_json(resolve_plan_selection_path(target, args.selection))
+        )
+        if selection["plan_level"] == "none":
+            errors.append(
+                HarnessError("plan_level=none 不创建方案文件", code="plan_not_required")
+            )
+    except HarnessError as exc:
+        errors.append(exc)
+    content: dict[str, Any] | None = None
+    try:
+        raw_content = read_json(
+            project_input_path(target, args.content, code="invalid_plan_content")
+        )
+        if not isinstance(raw_content, dict):
+            raise HarnessError("方案内容必须是 JSON 对象", code="invalid_plan_content")
+        content = raw_content
+    except HarnessError as exc:
+        errors.append(exc)
+    title: str | None = None
+    symbols: list[str] | None = None
+    if selection is not None and content is not None:
+        fields = selection["fields"]
+        allowed = {item["id"] for item in fields}
+        required = {item["id"] for item in fields if item["required"]}
+        unknown = sorted(set(content) - allowed)
+        if unknown:
+            errors.append(HarnessError(
+                "方案包含未注册字段：" + ", ".join(unknown), code="invalid_plan_content"
+            ))
+        missing = sorted(
+            field for field in required if not nonempty_plan_value(content.get(field))
+        )
+        if missing:
+            errors.append(HarnessError(
+                "方案缺少必填字段：" + ", ".join(missing), code="invalid_plan_content"
+            ))
+        try:
+            title, symbols = plan_title_and_symbols(content)
+        except HarnessError as exc:
+            errors.append(exc)
+        errors.extend(
+            HarnessError(str(exc), code=exc.code)
+            for exc in collect_bugfix_plan_errors(selection, content)
+        )
+        try:
+            governance_from_content(selection["plan_level"], content)
+        except PlanGovernanceError as exc:
+            errors.append(HarnessError(str(exc), code=exc.code))
+    output: Path | None = None
+    document: Path | None = None
+    try:
+        output, document = plan_output_pair(target, args.output)
+    except HarnessError as exc:
+        errors.append(exc)
+    if (
+        errors
+        or selection is None or content is None
+        or output is None or document is None
+        or title is None or symbols is None
+    ):
+        return errors, None
+    return [], {
+        "selection": selection,
+        "content": content,
+        "output": output,
+        "document": document,
+        "title": title,
+        "symbols": symbols,
+    }
 
 
 def validate_plan_create_payload(
     target: Path, args: argparse.Namespace
 ) -> tuple[dict[str, Any], dict[str, Any], Path, Path, str, list[str]]:
-    if not args.selection or not args.content or not args.output:
-        raise HarnessError(
-            "plan create 必须提供 --selection、--content 和 --output",
-            code="missing_plan_input",
-        )
-    selection = validate_selection(
-        read_json(project_input_path(target, args.selection, code="invalid_plan_selection"))
+    errors, parts = inspect_plan_create(target, args)
+    if errors:
+        raise errors[0]
+    assert parts is not None
+    return (
+        parts["selection"], parts["content"], parts["output"],
+        parts["document"], parts["title"], parts["symbols"],
     )
-    if selection["plan_level"] == "none":
-        raise HarnessError("plan_level=none 不创建方案文件", code="plan_not_required")
-    content = read_json(project_input_path(target, args.content, code="invalid_plan_content"))
-    if not isinstance(content, dict):
-        raise HarnessError("方案内容必须是 JSON 对象", code="invalid_plan_content")
-    fields = selection["fields"]
-    allowed = {item["id"] for item in fields}
-    required = {item["id"] for item in fields if item["required"]}
-    if set(content) - allowed:
-        raise HarnessError("方案包含未注册字段", code="invalid_plan_content")
-    missing = sorted(field for field in required if not nonempty_plan_value(content.get(field)))
-    if missing:
-        raise HarnessError("方案缺少必填字段：" + ", ".join(missing), code="invalid_plan_content")
-    title, symbols = plan_title_and_symbols(content)
-    try:
-        validate_bugfix_plan_contract(selection, content)
-        governance_from_content(selection["plan_level"], content)
-    except PlanGovernanceError as exc:
-        raise HarnessError(str(exc), code=exc.code) from exc
-    output, document = plan_output_pair(target, args.output)
-    return selection, content, output, document, title, symbols
+
+
+def dry_run_plan_create(
+    target: Path, args: argparse.Namespace
+) -> tuple[int, dict[str, Any]]:
+    """plan create --dry-run：整体校验并报告全部错误，含已冻结冲突，不落任何文件。"""
+    errors, parts = inspect_plan_create(target, args)
+    if parts is not None:
+        frozen = build_frozen_plan(parts["selection"], parts["content"])
+        try:
+            preflight_plan_artifacts(parts["output"], frozen)
+        except HarnessError as exc:
+            errors.append(exc)
+        markdown = render_plan_markdown(parts["selection"], parts["content"], frozen)
+        document = parts["document"]
+        if document.is_file() and document.read_text(encoding="utf-8") != markdown:
+            errors.append(HarnessError(
+                "方案 Markdown 已存在且内容不同",
+                code="plan_document_conflict",
+                exit_code=3,
+            ))
+    payload = {
+        "status": "dry_run_invalid" if errors else "dry_run_valid",
+        "errors": [{"code": exc.code, "message": str(exc)} for exc in errors],
+        "writes": "none",
+    }
+    return (2 if errors else 0), payload
 
 
 def build_frozen_plan(selection: dict[str, Any], content: dict[str, Any]) -> dict[str, Any]:
@@ -1425,6 +1657,8 @@ def write_plan_artifacts(
 
 def plan_create(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     target = safe_target(args.target)
+    if getattr(args, "dry_run", False):
+        return dry_run_plan_create(target, args)
     selection, content, output, document, title, symbols = validate_plan_create_payload(
         target, args
     )
@@ -2027,6 +2261,7 @@ ACCEPTANCE_TARGET_INPUT_NOTES = (
     "耦合：contract_check=L1 且无 evidence_layer；user_acceptance=L5 且无 evidence_layer；",
     "behavior_acceptance 的 evidence_layer 映射 focused_test/repository_full_test→L2、"
     "local_runtime→L3、package_or_install→L4、real_device→L5。",
+    "正式创建前建议先跑 acceptance create --dry-run（同参数）：一次性返回全部字段错误，不写任何文件。",
 )
 
 
@@ -2038,6 +2273,17 @@ def acceptance_create(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         )
     target = safe_target(args.target)
     value = read_json(project_input_path(target, args.input, code="invalid_acceptance_target"))
+    if getattr(args, "dry_run", False):
+        try:
+            errors = collect_acceptance_create_errors(target, value, args.output)
+        except AssetError as exc:
+            raise translate_asset_error(exc) from exc
+        payload = {
+            "status": "dry_run_invalid" if errors else "dry_run_valid",
+            "errors": [{"code": exc.code, "message": str(exc)} for exc in errors],
+            "writes": "none",
+        }
+        return (1 if errors else 0), payload
     try:
         return 0, create_acceptance_asset(target, value, args.output, utc_now())
     except AssetError as exc:
@@ -2086,8 +2332,12 @@ def read_settle_input(
             f"settle 输入 Schema 无效，必须为 {ACCEPTANCE_SETTLE_INPUT_SCHEMA}",
             code="invalid_acceptance_settle_input",
         )
-    if set(value) - {"schema_version", "objective", "records"}:
-        raise HarnessError("settle 输入包含未注册字段", code="invalid_acceptance_settle_input")
+    unknown = sorted(set(value) - {"schema_version", "objective", "records"})
+    if unknown:
+        raise HarnessError(
+            "settle 输入包含未注册字段：" + ", ".join(unknown),
+            code="invalid_acceptance_settle_input",
+        )
     objective = value.get("objective")
     if not isinstance(objective, str) or not objective.strip():
         raise HarnessError("settle 输入 objective 不能为空", code="invalid_acceptance_settle_input")
@@ -2431,6 +2681,34 @@ def apply_legacy_cleanup(target: Path, plan: dict[str, Any]) -> list[str]:
     return changed
 
 
+USAGE_ENABLED_NOTICE = (
+    "本次升级开启了本地使用观测：harness 自身的命令调用会追加到 "
+    ".docs-harness/usage/YYYY-MM.jsonl（按月分文件）。日志只留在本地，"
+    "自带嵌套 .gitignore 不入库、不外发、不遥测，也不改变任何命令的行为与退出码。"
+    "不需要时把 .docs-harness/config.json 的 usage_log.enabled 改为 false 即可关闭。"
+)
+
+
+def usage_enabled_notices(existing: dict[str, Any] | None, enabled: bool) -> list[str]:
+    """首次开启 usage 观测时的一次性告知；其余情况返回空列表。
+
+    三个条件缺一不可：existing 是非空 dict（fresh init 的 existing 为 None，
+    init 与 upgrade --apply 共用同一条返回路径，靠这一条把 init 排除在外）；
+    existing 缺 usage_log 键（把范围锁死在 v12 及更早 → v13 这一次迁移，
+    已是 v13 的项目该键必在，再升级不再提示）；新配置确实开着。
+
+    两个调用点的 enabled 取值：upgrade 预览侧尚未写 config，取 USAGE_LOG_DEFAULT_ENABLED
+    ——existing 缺 usage_log 时 v2_config 必然回落该常量，取值确定；apply 侧 config 刚由
+    v2_config 写完，usage_log.enabled 是保证存在的 bool，直接按键取（边界已校验，
+    下游不再重复防御）。
+    """
+    if not isinstance(existing, dict) or not existing:
+        return []
+    if "usage_log" in existing or not enabled:
+        return []
+    return [USAGE_ENABLED_NOTICE]
+
+
 def v2_config(
     *,
     source_script: Path,
@@ -2474,6 +2752,13 @@ def v2_config(
         if isinstance(existing_knowledge, dict)
         else docs_preexisted
     )
+    # 升级沿用用户已显式关闭的开关；缺失或被改坏时回落唯一默认常量。
+    existing_usage = existing.get("usage_log") if existing else None
+    usage_enabled = (
+        existing_usage["enabled"]
+        if isinstance(existing_usage, dict) and isinstance(existing_usage.get("enabled"), bool)
+        else USAGE_LOG_DEFAULT_ENABLED
+    )
     return {
         "schema_version": CONFIG_SCHEMA,
         "version": VERSION,
@@ -2487,6 +2772,7 @@ def v2_config(
             "query": "on_demand",
             "docs_preexisting_at_install": bool(docs_flag),
         },
+        "usage_log": {"enabled": usage_enabled},
         "migration": migration,
         "installed_at": (
             existing.get("installed_at")
@@ -2726,6 +3012,7 @@ def project_changes(target: Path, source_root: Path) -> list[dict[str, Any]]:
     changes.extend(plan_docs_structure_changes(target))
     changes.extend(asset_structure_changes(target))
     changes.extend(project_doc_changes(target))
+    changes.extend(task_inputs_changes(target))
     cleanup = legacy_cleanup_plan(target)
     changes.extend(
         {"path": path, "action": "remove_owned_legacy"}
@@ -2842,8 +3129,42 @@ def apply_project_install(
     if existing != config_value:
         atomic_write_json(config_path, config_value)
         changed.append(".docs-harness/config.json")
+    changed.extend(apply_task_inputs_dir(target))
     changed.extend(apply_legacy_cleanup(target, cleanup))
     return list(dict.fromkeys(changed)), cleanup
+
+
+def task_inputs_changes(target: Path) -> list[dict[str, str]]:
+    """一次性输入目录的预览判定：缺嵌套 .gitignore 时报一条 create，否则为空。
+
+    与 plan_docs_structure_changes / asset_structure_changes 同形：project_changes（升级预览
+    与 project diff 的共同来源）汇总它，apply_task_inputs_dir 据它写入，三处同一份判定。
+    2.16.1 只有 apply 一侧，升级预览列 13 项而实际写入 14 项，diff 也看不到它。
+    """
+    if (target / TASK_INPUTS_RELATIVE / ".gitignore").is_file():
+        return []
+    return [{"path": f"{TASK_INPUTS_RELATIVE}/.gitignore", "action": "create"}]
+
+
+def apply_task_inputs_dir(target: Path) -> list[str]:
+    """确保一次性输入 JSON 的约定目录存在且不入库；返回本次实际写入的相对路径。
+
+    根因：plan create --content、acceptance record --input 等都要求输入文件位于项目内，
+    但此前没有约定位置；1.x 运行态目录 .docs-harness/task-inputs/ 在 LEGACY_RUNTIME_NAMES
+    内，project upgrade 必清，用它会反复丢文件。inputs/ 不在该元组内，升级不清理。
+
+    嵌套 .gitignore 写法与 usage_log._GITIGNORE_CONTENT 同口径，这是它的第 2 次出现：
+    两处各自保留、互相指向，第 3 次出现时抽公共函数（编码质量规范第 2、10 条）。
+    已存在的 .gitignore 一律不覆盖——用户可能改过。写入失败不吞：安装器的写入必须炸，
+    与 usage_log.append_event 的 best-effort 豁免是两条性质不同的路径。
+    """
+    changes = task_inputs_changes(target)
+    if not changes:
+        return []
+    directory = target / TASK_INPUTS_RELATIVE
+    directory.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(directory / ".gitignore", TASK_INPUTS_GITIGNORE_CONTENT)
+    return [change["path"] for change in changes]
 
 
 def project_findings(target: Path) -> list[dict[str, str]]:
@@ -2906,6 +3227,13 @@ def project_findings(target: Path) -> list[dict[str, str]]:
                 "code": "knowledge_mode_invalid",
                 "message": "知识资产生命周期配置无效",
             }
+        )
+    usage_log = config.get("usage_log")
+    if not isinstance(usage_log, dict) or set(usage_log) != {"enabled"} or not isinstance(
+        usage_log.get("enabled"), bool
+    ):
+        findings.append(
+            {"severity": "red", "code": "usage_log_invalid", "message": "usage 观测开关配置无效"}
         )
     script = target / "scripts" / "harness.py"
     if (
@@ -3177,6 +3505,7 @@ def command_project(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         cleanup = legacy_cleanup_plan(target)
         changes = project_changes(target, source_root)
         if args.action == "upgrade" and not args.apply:
+            notices = usage_enabled_notices(existing, USAGE_LOG_DEFAULT_ENABLED)
             return 0, {
                 "action": "upgrade",
                 "mode": "preview",
@@ -3191,12 +3520,14 @@ def command_project(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                 "apply_completion_possible": cleanup["cleanup_possible"],
                 "write_performed": False,
                 "knowledge": project_knowledge_summary(target),
+                **({"notices": notices} if notices else {}),
             }
         changed, cleanup_applied = apply_project_install(target, source_root)
         findings = project_findings(target)
         red = [item for item in findings if item["severity"] == "red"]
         delivery = project_delivery(target)
         pending = not red and delivery["delivery_status"] == "pending_commit"
+        notices = usage_enabled_notices(existing, project_config(target)["usage_log"]["enabled"])
         status = (
             "failed"
             if red
@@ -3228,6 +3559,7 @@ def command_project(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             "legacy_document_cleanup": cleanup_applied,
             "preserved_existing_docs": True,
             "knowledge": project_knowledge_summary(target),
+            **({"notices": notices} if notices else {}),
         }
     if args.action == "diff":
         cleanup = legacy_cleanup_plan(target)
@@ -3402,22 +3734,87 @@ def read_version_sources(root: Path) -> dict[str, str | None]:
             script.read_text(encoding="utf-8"),
         )
         sources["controller"] = match.group(1) if match else None
-    skill = root / "SKILL.md"
-    if skill.is_file():
-        metadata, _ = parse_frontmatter(skill.read_text(encoding="utf-8"))
-        sources["skill"] = metadata.get("version")
+    sources["skill"] = _skill_version(root)
     package = root / "package.json"
     if package.is_file():
         value = read_json(package)
         if isinstance(value, dict) and isinstance(value.get("version"), str):
             sources["package"] = value["version"]
     sources["templates"] = read_template_versions(root)
-    evals_file = root / "evals" / "evals.json"
-    if evals_file.is_file():
-        value = read_json(evals_file)
-        if isinstance(value, dict) and isinstance(value.get("version"), str):
-            sources["evals"] = value["version"]
+    sources["evals"] = _evals_version(root)
     return sources
+
+
+def _skill_version(root: Path) -> str | None:
+    """SKILL.md frontmatter 的 version；文件缺失或字段缺失返回 None。
+
+    抛出面按搬移前保留：read_text 对非 UTF-8 内容抛 UnicodeDecodeError、IO 故障抛
+    OSError（注意都不是 HarnessError——这一段不走 read_json）。parse_frontmatter 是
+    纯字符串处理，对任何输入都只返回 ({}, text)，畸形 frontmatter 经 get 自然得 None。
+    """
+    skill = root / "SKILL.md"
+    if not skill.is_file():
+        return None
+    metadata, _ = parse_frontmatter(skill.read_text(encoding="utf-8"))
+    return metadata.get("version")
+
+
+def _evals_version(root: Path) -> str | None:
+    """evals/evals.json 顶层 version 字符串；文件缺失或字段非字符串返回 None。
+
+    抛出面按搬移前保留：经 read_json，不可读或非法 JSON 抛 HarnessError(invalid_json)。
+    """
+    evals_file = root / "evals" / "evals.json"
+    if not evals_file.is_file():
+        return None
+    value = read_json(evals_file)
+    if isinstance(value, dict) and isinstance(value.get("version"), str):
+        return value["version"]
+    return None
+
+
+def is_source_package(target: Path) -> bool:
+    """target 是不是 docs-harness 源包本身（而不是装了 harness 的下游项目）。
+
+    判据是源包独有的两个标记文件同时带版本：SKILL.md 的 frontmatter version 与
+    evals/evals.json 的 version。安装器只写 scripts/、plan-templates/、
+    scripts/githooks/、AGENTS.md、CLAUDE.md、.docs-harness/config.json 与 docs/ 骨架
+    （见 portable_install_paths），永不写这两个文件。不看 package.json 与 VERSION：
+    任意 npm 或前端下游都可能有它们，作为判别式过弱；也不看 plan-templates：那本就是
+    被安装的。
+
+    只读这两个文件、不复用 read_version_sources 整体，是为了不把 package.json 与 8 个
+    模板 JSON 的 read_json 崩溃面带进结构检查——结构检查此前根本不读 package.json。
+
+    读取失败一律判为"不是源包"。这不是吞错：本函数是分类器，标记文件不可读在语义上
+    就等于没有源包标记；release sync 那条链路上同样的损坏必须炸，两个调用方两份契约。
+    被视为不可读的三种形态（已实测）：(a) evals/evals.json 非法 JSON 或不可读 →
+    HarnessError(invalid_json)；(b) SKILL.md 非 UTF-8 字节 → UnicodeDecodeError；
+    (c) 两个文件的权限或 IO 故障 → OSError。捕获清单按实际抛出面逐项列出，不写裸 Exception。
+    """
+    try:
+        return _skill_version(target) is not None and _evals_version(target) is not None
+    except (HarnessError, OSError, UnicodeDecodeError):
+        return False
+
+
+def structure_exempt_paths(target: Path) -> frozenset[str]:
+    """Structure 检查对 target 应排除的路径：下游排除 harness 自带文件，源包不排除。
+
+    源包不排除是守卫所在：排除了就丢掉"新增受管模块未登记 CODEMAP"这道检查。
+    清单在此单点构造——受管模块不能反向 import harness.py（循环依赖），
+    structure_check 不复制安装清单。githooks 两项当前是空集贡献（pre-commit 无后缀、
+    setup.sh 的 .sh 都不在 structure_check.CODE_SUFFIXES），仍列入以保持与安装面同源。
+    """
+    if is_source_package(target):
+        return frozenset()
+    return frozenset(
+        [
+            "scripts/harness.py",
+            *(f"scripts/{relative}" for relative in MANAGED_MODULE_RELATIVE_FILES),
+            *(f"{GIT_HOOKS_RELATIVE}/{relative}" for relative in GIT_HOOK_RELATIVE_FILES),
+        ]
+    )
 
 
 def read_template_versions(root: Path) -> str | None:
@@ -3767,6 +4164,10 @@ def command_plan_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                     f"FAIL: docs/INDEX.md: {basename} 条目须包含 2-4 个关键符号"
                 )
     for basename in archived_names:
+        # 同名活文档存在时，活索引条目指向的是活文档（plans/<basename>），不构成归档泄漏；
+        # 「新文档同名取代归档草稿」是受支持的工作流。
+        if any(path.name == basename for path in live_docs):
+            continue
         tokens = plan_index_doc_tokens(basename)
         leaked = [
             line for line in index_lines
@@ -3802,6 +4203,9 @@ def command_plan_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     # C3：全仓 .md 不得引用已归档文档的旧路径 docs/plans/<basename>。
     markdown_files = plan_check_markdown_files(target)
     for basename in archived_names:
+        # 同名活文档存在时 docs/plans/<basename> 指向活文档（新文档同名取代归档草稿），不构成死链。
+        if any(path.name == basename for path in live_docs):
+            continue
         stale = re.compile(r"docs/plans/" + re.escape(basename) + r"(?![\w.-])")
         for path in markdown_files:
             try:
@@ -3819,20 +4223,36 @@ def command_plan_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
 
     # C5：镜像为已实施-仅追溯的条目，其关键符号必须在 docs/ 之外的源码内容中至少命中 1 处。
     # 源码白名单遍历：构建产物里的旧符号不算「代码仍是真源」的证据，二进制/资产文件也无须读入。
+    # C8（同一次遍历的反向预警）：横幅为有效的条目，关键符号全部命中源码说明代码很可能
+    # 已交付而 plan 未 settle——下游实证过的结算泄漏形态（assets-check --fast 不跑本检查）。
     trace_pending: dict[str, list[str]] = {}
+    active_symbols: dict[str, list[str]] = {}
     if not fast:
+        active_basenames = {
+            Path(relative).name
+            for relative, banner in banners.items()
+            if "有效" in banner
+        }
         for line in index_lines:
-            if "关键符号" not in line or "已实施-仅追溯" not in line:
+            if "关键符号" not in line:
                 continue
             match = re.search(r"plans/([\w.-]+\.md)", line)
             basename = match.group(1) if match else "(未知条目)"
             symbols = re.findall(r"`([^`]+)`", line.split("关键符号", 1)[1])
-            if symbols:
+            if not symbols:
+                continue
+            if "已实施-仅追溯" in line:
                 trace_pending[basename] = symbols
-    if not fast and trace_pending:
+            elif basename in active_basenames:
+                active_symbols[basename] = symbols
+    if not fast and (trace_pending or active_symbols):
+        landed: dict[str, set[str]] = {basename: set() for basename in active_symbols}
         prune = PLAN_CHECK_EXCLUDED_DIRS | PLAN_CHECK_ARTIFACT_DIRS
         for path in plan_check_walk_files(target, prune):
-            if not trace_pending:
+            if not trace_pending and all(
+                len(landed[basename]) == len(symbols)
+                for basename, symbols in active_symbols.items()
+            ):
                 break
             if not path.is_file() or path.is_symlink():
                 continue
@@ -3850,11 +4270,21 @@ def command_plan_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             for basename, symbols in list(trace_pending.items()):
                 if any(symbol in content for symbol in symbols):
                     del trace_pending[basename]
+            for basename, symbols in active_symbols.items():
+                if len(landed[basename]) == len(symbols):
+                    continue
+                landed[basename].update(symbol for symbol in symbols if symbol in content)
         for basename in trace_pending:
             warnings.append(
                 f"WARN: docs/INDEX.md: 条目 {basename} 镜像为已实施-仅追溯"
                 "但关键符号在 docs/ 之外零命中，需复核代码是否仍是真源"
             )
+        for basename, symbols in active_symbols.items():
+            if landed[basename] == set(symbols):
+                warnings.append(
+                    f"WARN: docs/plans/{basename}: 横幅为有效但关键符号已全部在源码命中，"
+                    "代码很可能已交付；请 plan settle --status implemented，若不再推进请 deprecated"
+                )
 
     # C6：横幅为有效的活文档长期未触碰告警；无 git 历史或 git 不可用时静默跳过。
     if not fast:
@@ -3913,7 +4343,9 @@ def command_assets_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]
         acceptance_checker=check_acceptance_assets,
         adr_checker=check_adr_assets,
         script_hygiene_checker=check_script_line_endings,
-        structure_checker=check_structure,
+        structure_checker=lambda current: check_structure(
+            current, exempt=structure_exempt_paths(current)
+        ),
     )
     return (0 if payload["status"] == "passed" else 1), payload
 
@@ -3921,9 +4353,27 @@ def command_assets_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]
 def command_structure(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     """structure check/report 的 CLI 投影；规则实现与阈值真源在 structure_check 模块。"""
     target = safe_target(args.target)
+    exempt = structure_exempt_paths(target)
     if args.action == "report":
-        return 0, structure_report(target)
-    return 0, check_structure(target)
+        return 0, structure_report(target, exempt=exempt)
+    return 0, check_structure(target, exempt=exempt)
+
+
+def command_usage(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
+    """usage report 的 CLI 投影；聚合规则真源在 usage_report 模块。
+
+    报告内容本身永不触发非零退出（旁路观察不做门禁）；只有参数非法与日志不可读
+    两种真实错误走 HarnessError，与其余命令的错误面一致。
+    """
+    target = safe_target(args.target)
+    if args.days <= 0:
+        raise HarnessError("usage report 的 --days 必须是正整数", code="invalid_request")
+    try:
+        return 0, build_usage_report(target, args.days)
+    except OSError as exc:
+        raise HarnessError(
+            f"无法读取 usage 日志：{exc}", code="usage_log_unreadable"
+        ) from exc
 
 
 def command_self_test(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
@@ -3957,7 +4407,7 @@ def command_self_test(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         "script_version": script_version_valid,
         "command_parser": all(
             name in build_parser().format_help()
-            for name in ("knowledge", "plan", "acceptance", "adr", "project", "release", "assets-check", "structure", "self-test")
+            for name in ("knowledge", "plan", "acceptance", "adr", "project", "release", "assets-check", "structure", "usage", "self-test")
         ),
         "asset_check_flags": strict_parse_ok,
         "direct_mode_default": (
@@ -4114,9 +4564,22 @@ def build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--cross-module", action="store_true")
     plan.add_argument("--high-risk", action="store_true")
     plan.add_argument("--user-requested-plan", action="store_true")
+    plan.add_argument(
+        "--task",
+        help="任务描述（仅 select）：结果自动附带相关 Knowledge 事实",
+    )
+    plan.add_argument(
+        "--query",
+        help="误用拦截：plan select 不支持查询，请改用 knowledge query --query",
+    )
     plan.add_argument("--selection")
     plan.add_argument("--content")
     plan.add_argument("--output")
+    plan.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="仅校验（仅 create）：一次性报告全部输入错误与冲突，不写任何文件",
+    )
     plan.add_argument("--plan")
     plan.add_argument("--status", choices=PLAN_SETTLE_STATUSES)
     plan.add_argument("--replacement")
@@ -4132,6 +4595,11 @@ def build_parser() -> argparse.ArgumentParser:
     add_target(acceptance)
     acceptance.add_argument("--input")
     acceptance.add_argument("--output")
+    acceptance.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="仅校验（仅 create）：一次性报告全部输入错误与冲突，不写任何文件",
+    )
     acceptance.add_argument("--acceptance")
     acceptance.add_argument("--status", choices=("passed", "failed", "superseded"))
     acceptance.add_argument("--replacement")
@@ -4184,6 +4652,15 @@ def build_parser() -> argparse.ArgumentParser:
     structure.add_argument("action", choices=("check", "report"))
     add_target(structure)
 
+    usage = commands.add_parser(
+        "usage", help="本地使用观测：report 聚合 .docs-harness/usage 的调用日志（只读，不外发）"
+    )
+    usage.add_argument("action", choices=("report",))
+    add_target(usage)
+    usage.add_argument(
+        "--days", type=int, default=USAGE_REPORT_DEFAULT_DAYS, help="统计窗口天数（正整数，默认 %(default)s）"
+    )
+
     self_test = commands.add_parser("self-test", help=f"运行 {VERSION} 内置自检")
     add_target(self_test)
 
@@ -4210,9 +4687,67 @@ def emit(payload: dict[str, Any], as_json: bool) -> None:
         )
 
 
+# cmd.invoke 只收录枚举白名单 flag：全部来自 argparse 的 choices 或 store_true，
+# 不含任何自由文本；改这里等于改事件契约，须同步 docs/contracts.md。
+USAGE_FLAG_KEYS = ("status", "reaccept", "dry_run", "strict", "fast", "user_confirmed")
+# payload 列表键 → 事件计数字段；命令 payload 里不存在该键时事件不写对应字段。
+USAGE_COUNT_KEYS = (("facts", "hits"), ("failures", "failures"), ("warnings", "warnings"))
+# 事件另记 payload["status"] 为 result：退出码不足以表达结果——acceptance record 退 3
+# 表示记录已存入但整体验收未通过，而 3 在 project upgrade、plan settle 里语义又各不相同。
+# status 取值全部来自命令 payload 的既有枚举（created/frozen/pending/passed/failed/
+# error/dry_run_valid/needs_delivery…），不是自由文本。
+
+
+def usage_invoke_event(
+    args: argparse.Namespace, code: int, payload: dict[str, Any], duration_ms: int
+) -> dict[str, Any]:
+    """把一次命令调用投影成 cmd.invoke 事件：只取枚举白名单与计数，不取自由文本。
+
+    推导不出的字段直接不写键（不写 null），读侧统一 .get()，避免缺失与 null 两种空表示。
+    """
+    event: dict[str, Any] = {
+        "v": USAGE_SCHEMA_VERSION,
+        "ts": utc_now(),
+        "event": "cmd.invoke",
+        "command": args.command,
+        "exit_code": code,
+        "duration_ms": duration_ms,
+    }
+    action = getattr(args, "action", None)
+    if action is not None:
+        event["action"] = action
+    status = payload.get("status")
+    if isinstance(status, str):
+        event["result"] = status
+    flags = {key: getattr(args, key) for key in USAGE_FLAG_KEYS if getattr(args, key, None)}
+    if flags:
+        event["flags"] = flags
+    for source, field in USAGE_COUNT_KEYS:
+        value = payload.get(source)
+        if isinstance(value, list):
+            event[field] = len(value)
+    return event
+
+
+def record_usage_invoke(
+    args: argparse.Namespace, code: int, payload: dict[str, Any], started: float
+) -> None:
+    """旁路记录一次命令调用；未安装或开关关闭时不记录，写入失败不影响命令结果。
+
+    target 不经 safe_target：目录不存在时 is_enabled 读不到 config 自然返回 False，
+    观察路径因此不需要捕获任何异常。
+    """
+    target = Path(args.target).expanduser().resolve()
+    if not usage_log_enabled(target):
+        return
+    duration_ms = int((time.monotonic() - started) * 1000)
+    append_usage_event(target, usage_invoke_event(args, code, payload, duration_ms))
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    started = time.monotonic()
     try:
         if args.command == "knowledge":
             knowledge_handlers = {
@@ -4254,9 +4789,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             code, payload = command_assets_check(args)
         elif args.command == "structure":
             code, payload = command_structure(args)
+        elif args.command == "usage":
+            code, payload = command_usage(args)
         else:
             code, payload = command_self_test(args)
         emit(payload, args.json)
+        record_usage_invoke(args, code, payload, started)
         return code
     except HarnessError as exc:
         payload = {
@@ -4266,6 +4804,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             **exc.extra_payload,
         }
         emit(payload, getattr(args, "json", False))
+        record_usage_invoke(args, exc.exit_code, payload, started)
         return exc.exit_code
 
 
