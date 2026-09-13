@@ -17,6 +17,7 @@ const { attachDragStrip } = require('./lib/immersive-titlebar');
 const { binEntryFrom } = require('./lib/dsh-entry');
 const { probeHttp, waitForHttp } = require('./lib/http-probe');
 const { killProcessTree } = require('./lib/process-tree');
+const { attachPageGuard } = require('./lib/page-guard');
 const { createDshLogger } = require('./lib/dsh-log');
 const { checkForUpdate, UPDATE_OUTCOME, RELEASES_PAGE_URL } = require('./lib/update-check');
 const { attachGlobalHotkey, hotkeyChildEnv } = require('./lib/global-hotkey');
@@ -132,12 +133,11 @@ function resolveLauncher() {
 
 // 「dsh 已在监听」的判定单一来源:5xx 说明进程活着只是内部出错,
 // 仍算就绪(壳的职责是把 UI 指过去,不替 dsh 判断业务错误)。
-const isDshServing = (status) => status < 500;
+const isDshServing = (status) => status !== null;
 
 // 探测 dsh 服务是否已就绪
 async function isUp(url) {
-  const status = await probeHttp(url);
-  return status !== null && isDshServing(status);
+  return isDshServing(await probeHttp(url));
 }
 
 // 轮询等待服务就绪
@@ -307,6 +307,15 @@ async function ensureDsh() {
   return ready;
 }
 
+// 内容刷新单一入口:非 mac 窗口用 reloadContent 保留当前路由,macOS BrowserWindow
+// (beginStartupLoading 挂载,无 reloadContent)重新指向 dsh。插件热更重启后
+// 与页面守护(lib/page-guard.js)的自动恢复共用这一个动作。
+function refreshWindowContent() {
+  if (!win) return;
+  if (typeof win.reloadContent === 'function') win.reloadContent();
+  else win.loadContent(DSH_URL);
+}
+
 // 提示层:只负责把「有新版本」这件事呈现给用户。
 // 要不要提示、提示哪个版本已由 lib/update-check 判定完毕,这里不做任何判断。
 async function notifyUpdate({ version, url }) {
@@ -448,10 +457,7 @@ async function runPluginInstall({ update, dshHome }) {
   }
   if (dshStopped) {
     const ok = await ensureDsh();
-    if (ok && win) {
-      if (typeof win.reloadContent === 'function') win.reloadContent(); // 非 mac 窗口:保留当前路由刷新
-      else win.loadContent(DSH_URL); // macOS BrowserWindow(beginStartupLoading 挂载)
-    }
+    if (ok) refreshWindowContent();
   }
   return result;
 }
@@ -705,7 +711,18 @@ if (!app.requestSingleInstanceLock()) {
           (gate.error ? `: ${gate.error}` : '')
       );
     }
-    if (win) win.loadContent(DSH_URL); // 加载页 → dsh 页面原地切换
+    if (win) {
+      win.loadContent(DSH_URL); // 加载页 → dsh 页面原地切换
+      // 页面守护:内容页死亡(进程崩溃/加载失败/持续无响应)与服务代际更替的
+      // 检测与自动恢复,含 userData/logs/page-guard.log 事件落盘。
+      // contents 销毁时自内部 dispose,无需额外清理。见 docs/plans/shell-page-guard.md。
+      attachPageGuard({
+        contents: win.contentWebContents,
+        refresh: refreshWindowContent,
+        url: DSH_URL,
+        logDir: path.join(app.getPath('userData'), 'logs'),
+      });
+    }
     scheduleUpdateCheck(); // 内容切换之后再查,全程与启动链解耦
     schedulePluginChannelCheck(); // 插件热更检测,同样解耦
   });

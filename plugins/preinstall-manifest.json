@@ -10,11 +10,11 @@
   "source": "https://github.com/zhu1090093659/dsh-web-ui",
   "license": "Apache-2.0",
   "packages": [
-    { "name": "@linxin666/dsh-client-ui-git-graph", "version": "0.2.2" },
-    { "name": "@linxin666/dsh-skins", "version": "0.2.2" },
-    { "name": "@linxin666/dsh-pet", "version": "0.2.2" },
+    { "name": "@linxin666/dsh-client-ui-git-graph", "version": "0.3.6" },
+    { "name": "@linxin666/dsh-skins", "version": "0.2.9" },
+    { "name": "@linxin666/dsh-pet", "version": "0.3.6" },
     { "name": "@linxin666/dsh-live-stats", "version": "0.1.20" },
-    { "name": "@linxin666/dsh-client-ui-web-ui-settings", "version": "0.2.2" },
+    { "name": "@linxin666/dsh-client-ui-web-ui-settings", "version": "0.3.6" },
     {
       "name": "@aiwaretop/dsh-dispatch",
       "version": "0.1.3",
@@ -29,7 +29,7 @@
     },
     {
       "name": "dsh-better-sidebar",
-      "version": "0.13.1",
+      "version": "0.17.1",
       "license": "MIT",
       "comment": "VSCode 风格右侧侧边栏(资源管理器/编辑器/终端/Git/浏览器),源码 https://github.com/omdsh-dev/DSH-better-sidebar;已发布 npm,走同一 registry 链路。过门证据:LICENSE 全文 MIT、包 license 字段 MIT、发布包无 install/postinstall 脚本;依赖 node-pty(原生,本仓 allowScripts 已含)、mermaid、codemirror,无隧道/凭据存储类敏感依赖;发布物经 GitHub Actions OIDC 可信发布(_npmUser=npm-oidc-no-reply@github.com)并带 SLSA provenance 与 registry 签名,repository 字段即上游 omdsh-dev 仓库,HackSing 同名仓库为 fork 且无独立 npm 包"
     }

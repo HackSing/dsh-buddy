@@ -4,7 +4,13 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **预装插件同步上游最新**:`dsh-better-sidebar` 0.13.1 → 0.17.1,`@linxin666/dsh-client-ui-git-graph` 0.2.2 → 0.3.6,`@linxin666/dsh-pet` 0.2.2 → 0.3.6,`@linxin666/dsh-client-ui-web-ui-settings` 0.2.2 → 0.3.6,`@linxin666/dsh-skins` 0.2.2 → 0.2.9;协议门复验通过(Apache-2.0/MIT,发布包无 install 脚本,better-sidebar 新增依赖仅 @codemirror/lang-vue、dompurify、react-icons,无敏感依赖),各包 peer 要求 ≤ 内嵌 dsh 0.1.1-rc.2。内嵌 dsh 本体(registry latest)已是 0.1.1-rc.2,无更新。
+
 ### Fixed
+
+- **修复插件更新在慢网络下必然超时失败**:热更下载原先把 `AbortSignal.timeout(30s)` 挂在整个 fetch 上,该信号连同 body 下载一起计时——数十 MB 的更新包在网速低于「切片大小 ÷ 30s」时必然被掐断,弹「下载失败: The operation was aborted due to timeout」,且重试同样失败。改为两段式超时:建连+响应头 15s 预算,body 只看连续无进展(30s 无数据判停滞)不设总时长上限,慢而流动的下载可完成;连接失败与停滞的报错改为可读中文,并新增真实 HTTP 栈回归用例覆盖慢速、无响应、停滞三类形态。
 
 - **修复 Windows 退出应用时闪出终端窗口**:日常退出的宽限强杀原先派生一个 `detached` 的孤儿 `cmd`(先 `timeout` 再 `taskkill`)来承担 1s 宽限,而 Windows 会给 `detached` 子进程强制分配控制台窗口(`windowsHide` 对其无效),这个孤儿恰活在退出后的宽限期里,就是用户看到的「退出时闪终端」。改为 `before-quit` 内 `preventDefault` 拦住退出,主进程自己等满宽限期后再非 detached 强杀(默认隐藏窗口)并 `app.exit`。宽限语义(给 dsh 写后会话日志留 drain 窗口)不变,安装态与 POSIX 退出行为不变。
 

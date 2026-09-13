@@ -6,10 +6,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { createRequire } from 'node:module';
+import { createServer } from 'node:http';
 
 const require = createRequire(import.meta.url);
 const tar = require('tar');
-const { applyPluginUpdate, PLUGIN_UPDATE_OUTCOME } = require('../lib/plugin-update.js');
+const { applyPluginUpdate, downloadTarball, PLUGIN_UPDATE_OUTCOME } = require('../lib/plugin-update.js');
 
 const PROFILE = 'web';
 const CHANNEL_PACKAGES = [
@@ -219,4 +220,102 @@ test('下载失败时 prepareInstall 不被调用', async (t) => {
   });
   assert.equal(result.outcome, PLUGIN_UPDATE_OUTCOME.failed);
   assert.equal(called, false);
+});
+
+// ---- 超时语义回归(真实 HTTP 栈)----
+
+// 本地慢速 HTTP 服务:按 intervalMs 逐块吐 content,驱动真实全局 fetch 走完整
+// undici 栈(注入的假 fetch 模拟不出 signal 与 body 流的真实互动)。
+// stallAfter:吐到该字节数后保持连接但停止发数据(喂停滞用例);
+// respondHeaders=false:连接后永不给响应头(喂连接超时用例)。
+function startSlowServer(t, { content, chunkSize, intervalMs, stallAfter = Infinity, respondHeaders = true }) {
+  const sha256 = crypto.createHash('sha256').update(content).digest('hex');
+  const server = createServer((req, res) => {
+    if (!respondHeaders) return;
+    let sent = 0;
+    res.writeHead(200, { 'content-length': String(content.length) });
+    const timer = setInterval(() => {
+      if (sent >= Math.min(stallAfter, content.length)) return; // 停滞:不发数据也不 end
+      const end = Math.min(sent + chunkSize, content.length);
+      res.write(content.subarray(sent, end));
+      sent = end;
+      if (sent >= content.length) {
+        clearInterval(timer);
+        res.end();
+      }
+    }, intervalMs);
+    res.on('close', () => clearInterval(timer)); // 客户端超时中断后服务侧停止空转
+  });
+  return new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', () => {
+      t.after(() => server.close());
+      resolve({ url: `http://127.0.0.1:${server.address().port}/plugin-update.tar.gz`, sha256 });
+    });
+  });
+}
+
+function tempDownloadDir(t, { create } = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'plugin-download-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const downloadDir = path.join(root, 'downloads');
+  if (create) fs.mkdirSync(downloadDir, { recursive: true });
+  return downloadDir;
+}
+
+test('慢速但持续有数据的下载不受总时长上限惩罚(核心回归)', async (t) => {
+  // 总下载时长 ~1s,远超 header 预算 150ms——旧的整段 AbortSignal.timeout 在
+  // 150ms 即掐断;新语义只看阶段预算与连续停滞,应完整下载并过 sha256。
+  const content = crypto.randomBytes(20 * 1024);
+  const { url, sha256 } = await startSlowServer(t, { content, chunkSize: 1024, intervalMs: 50 });
+  const downloadDir = tempDownloadDir(t);
+  const dest = await downloadTarball({
+    url,
+    sha256,
+    downloadDir,
+    fetchImpl: fetch,
+    headerTimeoutMs: 150,
+    bodyIdleTimeoutMs: 200,
+  });
+  assert.equal(crypto.createHash('sha256').update(fs.readFileSync(dest)).digest('hex'), sha256);
+});
+
+test('响应头超时:迟迟不给响应头,短预算内判连接失败且不留落盘痕迹', async (t) => {
+  const { url } = await startSlowServer(t, { content: Buffer.alloc(0), respondHeaders: false });
+  const downloadDir = tempDownloadDir(t);
+  await assert.rejects(
+    downloadTarball({
+      url,
+      sha256: 'a'.repeat(64),
+      downloadDir,
+      fetchImpl: fetch,
+      headerTimeoutMs: 150,
+      bodyIdleTimeoutMs: 60000,
+    }),
+    /连接超时/
+  );
+  // mkdir 在收到响应头之后才发生,连接失败不应有任何落盘痕迹
+  assert.equal(fs.existsSync(downloadDir), false);
+});
+
+test('body 停滞:数据流中断达空闲判定线即失败,staging 清理', async (t) => {
+  const content = crypto.randomBytes(8 * 1024);
+  const { url, sha256 } = await startSlowServer(t, {
+    content,
+    chunkSize: 1024,
+    intervalMs: 20,
+    stallAfter: 2048, // 吐 2KB 后停滞
+  });
+  const downloadDir = tempDownloadDir(t, { create: true });
+  await assert.rejects(
+    downloadTarball({
+      url,
+      sha256,
+      downloadDir,
+      fetchImpl: fetch,
+      headerTimeoutMs: 5000,
+      bodyIdleTimeoutMs: 150,
+    }),
+    /下载停滞/
+  );
+  assert.equal(fs.readdirSync(downloadDir).length, 0); // 不留半成品
 });
