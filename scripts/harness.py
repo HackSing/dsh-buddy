@@ -70,7 +70,7 @@ from usage_log import (
     is_enabled as usage_log_enabled,
 )
 from usage_report import USAGE_REPORT_DEFAULT_DAYS, build_report as build_usage_report
-VERSION = "2.17.0"
+VERSION = "2.18.0"
 CONFIG_SCHEMA = "docs-harness/project-config/v13"
 KNOWN_LEGACY_CONFIG_SCHEMAS = {
     f"docs-harness/project-config/v{version}" for version in range(1, 13)
@@ -155,10 +155,12 @@ LEGACY_RUNTIME_NAMES = (
     "task-inputs",
 )
 KNOWLEDGE_MAP_RELATIVE = "docs/knowledge-map.json"
-REPOWIKI_RELATIVE = ".qoder/repowiki"
 SEMVER_PATTERN = r"[0-9]+\.[0-9]+\.[0-9]+"
 PLAN_CHECK_BANNER_MARKER = "状态："
 PLAN_CHECK_BANNER_STATES = ("有效", "已实施-仅追溯", "已废弃")
+# 符号全命中 WARN 的第三出口：部分交付仍在推进的方案以此横幅登记核对日，时效内不再提示。
+PLAN_PARTIAL_DELIVERY_BANNER = "有效-部分交付"
+PLAN_PARTIAL_DELIVERY_RECHECK_DAYS = 30
 PLAN_CHECK_ARCHIVE_EXEMPTION = "已归档"
 PLAN_CHECK_EXCLUDED_DIRS = {"node_modules", ".worktrees", "deliverables", "output", "artifacts"}
 PLAN_CHECK_ARTIFACT_DIRS = {"dist", "build", "dist-electron", "release", "zbuddy-output", "test-results", "coverage", "软著"}
@@ -401,8 +403,9 @@ _GENERIC_STANDARDS = """
 
 1. **验收先行**：动手前先把验收条件转写为可执行的验证方式（测试、命令或复现步骤），完成与否以此为准。验收标准明确时直接执行，验证结果随收尾报告交付；仅当验收标准缺失或有歧义、且不同理解会改变方案时，先向用户确认。
 2. **根因优先**：修复 bug 前先定位根因并列出影响面（含同根因可能导致的其他表现）。根因清楚且修复局部、可逆时直接修，根因分析随收尾报告交付；根因跨模块、修复不可逆或存在代价不同的多个方案时，先经用户确认再改代码。
-3. **回归必跑**：交付代码改动前，跑受影响模块的回归验证并附输出（模块级，非仓库级全量；全量测试的触发条件见"测试与验收范围"）。涉及工具 handler/状态机/workflow 的改动不因任务小而豁免：须逐段给出消费链确认证据——改了生产者不查消费者，是隐性回归的首要来源。
-4. **分批交付**：改动跨模块数据流或预计 >3 个文件时分批执行：改完 → 验证 → 锁定 → 下一批。批次划分随首批一并报告；仅当某批含不可逆或高风险动作时，先经用户确认。
+3. **回归必跑**：交付代码改动前，跑受影响模块的回归验证并附输出（模块级，非仓库级全量；全量测试的触发条件见"测试与验收范围"）。涉及工具 handler/状态机/workflow 的改动不因任务小而豁免：须逐段给出消费链确认证据——改了生产者不查消费者，是隐性回归的首要来源；消费者跨两个以上模块时按第 5 条分头并行确认。
+4. **分批交付**：改动跨模块数据流或预计 >3 个文件时分批执行。批次划分随首批一并报告，每批标注依赖（`B2 ← B1` 或 `独立`）与文件范围；有依赖的批次串行走"改完 → 验证 → 锁定 → 下一批"，互相独立且文件范围不相交的批次按第 5 条并行，各自验证后由主 agent 统一集成验证再锁定。仅当某批含不可逆或高风险动作时，先经用户确认。
+5. **并行优先**：任务拆出多个互不依赖的分支时，按分量选执行方式，不默认串行。单点任务直接做；轻量独立子任务（同时读几个文件、几个独立检索、几条独立命令）用同一条消息内的并行工具调用，不开子智能体；分支各自够重（需多步调研、评审，或文件范围不相交的实施）才同消息并行开子智能体，分支不重则 spawn 开销净亏。子智能体任务书必须带明确目标、验收条件、路径范围与文件白名单，汇报只回结论与证据路径，不回传文件内容。以下保持串行：修改同一文件、更新 CODEMAP/CHANGELOG/TODO/Knowledge 等受管公共文件（由主 agent 收尾统一写）、存在依赖的步骤、每批的验证门。并行不豁免第 3 条：分支回流后主 agent 仍跑一次集成验证。
 
 ## 编码质量规范
 
@@ -427,7 +430,7 @@ _GENERIC_STANDARDS = """
 2. **骨架先行（复杂任务）。** Full Plan 的 `module_interfaces` 字段冻结模块划分与接口骨架；实施先落文件与接口签名（空实现），再分批填充逻辑，不得绕开骨架直接堆代码。
 3. **增量检查随批次跑。** `assets-check` 内置 Structure 增量检查（WARN 级）；分批交付的每批验证点可用 `structure check` 单独快跑，WARN 按收尾规则转达，确实拆不动的说明理由即可。
 4. **存量债走定期整理。** 既有超红线文件/函数不在功能任务里顺手重构（见"不顺手加固"）；需要偿还时运行 `structure report` 拿存量清单，以报告开专门整理任务。
-5. **搜索面收敛。** 禁止无界递归检索——不得从仓库根对 `.` 做递归搜索，也不得让工具自己决定范围；路径必须落到本次任务相关的具体目录或文件，够用即止，并排除 `node_modules`、`.git`、构建产物（`dist`/`build`/`out`/`coverage`/`target`/`__pycache__`）、依赖缓存与生成物目录，大目录写宽了扫不出结果还拖慢任务。
+5. **搜索面收敛。** 禁止无界递归检索——不得从仓库根对 `.` 做递归搜索，也不得让工具自己决定范围；路径必须落到本次任务相关的具体目录或文件，够用即止，并排除 `node_modules`、`.git`、构建产物（`dist`/`build`/`out`/`coverage`/`target`/`__pycache__`）、依赖缓存与生成物目录，大目录写宽了扫不出结果还拖慢任务。委派给子智能体的检索同样受此约束：任务书里的路径范围就是它的搜索边界，不得让子智能体自行决定范围。
 
 ## 防御代码准入
 
@@ -463,9 +466,9 @@ _GENERIC_STANDARDS = """
 
 ## 方案、知识与验收资产
 
-- plans 文档卫生（状态横幅、索引符号、归档死链、符号存活与时效）由 `plan check` 把关，pre-commit 与 CI 的 assets-check 已包含；起草期间不跑，提交前或 plan settle 时跑一次，报错即改。判定纪律：代码里找不到符号只能证明概念已死，不能证明方案过期（合法待实施方案同样没有代码）；证据不足标"存疑"，交用户裁决。
+- plans 文档卫生（状态横幅、索引符号、归档死链、符号存活与时效）由 `plan check` 把关，pre-commit 与 CI 的 assets-check 已包含；起草期间不跑，提交前或 plan settle 时跑一次，报错即改。判定纪律：代码里找不到符号只能证明概念已死，不能证明方案过期（合法待实施方案同样没有代码）；证据不足标"存疑"，交用户裁决；符号全命中但仍在推进的部分交付方案按 WARN 提示登记核对日，不得为消除 WARN 而 settle。
 - WARN 消费：收尾时 assets-check 输出与本任务领域相关的 WARN，必须在收尾报告中转达，不得静默略过。
-- Plan：复杂任务先 `plan select` 再 `plan create --output docs/plans/<name>.json` 冻结执行合同（自动生成同名 Markdown 并维护 docs/INDEX.md）；实施完成运行 `plan settle --status implemented`，被取代或废弃用 `--status deprecated`。不手工复制平行方案。Full Plan 声明验收与知识影响，settle 时校验；收尾按 Knowledge → Acceptance → Plan 顺序结算，声明需要验收的先完成 Acceptance 结项。
+- Plan：复杂任务先 `plan select` 再 `plan create --output docs/plans/<name>.json` 冻结执行合同（自动生成同名 Markdown 并维护 docs/INDEX.md）；实施完成运行 `plan settle --status implemented`，被取代或废弃用 `--status deprecated`；无伴随 JSON 的手写方案同样直接 settle，不得手工补造冻结 JSON。不手工复制平行方案。Full Plan 声明验收与知识影响，settle 时校验；收尾按 Knowledge → Acceptance → Plan 顺序结算，声明需要验收的先完成 Acceptance 结项。
 - Knowledge：只记录有当前源码或项目文档证据支持的可复用事实：按需 `knowledge query`，沉淀 `create`，事实变化 `update`，被替代或废弃 `settle`，收尾 `check`。不得凭模型猜测自动写知识。
 - Acceptance：复杂任务在 Plan 后 `acceptance create` 建立目标，真实验证后逐条 `acceptance record`，证据文件必须位于随仓库提交的路径（如 docs/acceptance/evidence/<验收名>/）；失败修复后重新验收，最终 `acceptance settle` 并 `acceptance check`。简单任务直接验证，不强制创建资产。只有收到用户明确确认原话后才能记录 User Acceptance 通过；合同、测试、运行、安装和用户可见层不得相互替代。
 - 收尾统一运行 `assets-check`。提交时 pre-commit 钩子执行 `assets-check --fast`，GitHub CI 执行 `assets-check --strict`（新克隆机器先运行 `scripts/githooks/setup.sh` 激活钩子）。项目自定义提交检查写入 `scripts/githooks/pre-commit.local`，不得分叉修改受管 pre-commit。
@@ -475,39 +478,29 @@ _GENERIC_STANDARDS = """
 报告实际改动路径、执行命令与退出结果、验收层、未覆盖项和剩余风险。没有证据时不得声称完成。"""
 
 
-def _managed_content(target: Path) -> str:
+def _managed_content() -> str:
     """Harness 运行模式 + 通用规范。AGENTS.md 与 CLAUDE.md 受管区块共享。"""
-    if (target / REPOWIKI_RELATIVE).is_dir():
-        knowledge_line = (
-            "- 需要项目架构或模块事实时，优先按需阅读 .qoder/repowiki/zh/content/ "
-            "和 .qoder/repowiki/knowledge/zh/；不得全量注入。"
-        )
-    else:
-        knowledge_line = (
-            "- 需要项目架构或历史事实时，先查当前源码与符号；仍缺关键事实再显式运行 "
-            "knowledge query，不得全量加载 docs/。"
-        )
     return f"""## Docs Harness {VERSION}：默认直跑，能力按需
 
-- 普通问答、只读检查、代码修改、构建和测试默认由 agent 直接完成；Harness 不作为任务入口，也不创建任务控制状态。
+- 普通问答、只读检查、代码修改、构建和测试默认不经 Harness 流程直接执行；Harness 不作为任务入口，也不创建任务控制状态。"直接"指不走 Harness，不指主 agent 亲自串行完成，任务如何拆分与委派见工作流规则第 5 条。
 - 用户明确说“不使用 Harness”时必须直接执行，不得暗中恢复旧流程。
 - 只有缺少的项目事实会改变目标、范围、方案或验收时才运行 knowledge query；需要长期维护的事实才进入 Knowledge 资产生命周期。
 - 简单任务不生成方案；复杂、跨模块、高风险或用户明确要求时才走 Plan 与 Acceptance 资产流程，命令与结算顺序见"方案、知识与验收资产"。
 - 验收以真实功能为中心：能运行聚焦测试、接口、页面、应用、构建或安装流程时运行最小充分流程；改动产生运行态行为（页面、接口、应用、命令或安装流程）的任务完成后，agent 必须自己走一遍详细的运行态验证（模拟器/本地联调，可用 mock 数据），确认功能流程正常、视觉与交互对用户友好，发现不友好之处直接重新优化并复验，不把功能、视觉或交互体验的验证推给用户；纯文档、只读或不改变行为的任务只做与改动对应的验证；仅真实硬件、系统权限等本地确实无法运行的层准备最低成本环境交用户最短确认。
 - 高风险动作使用原生授权与沙箱，不建立第二套 Harness Gate 或授权协议。
 - Plan/Knowledge/Acceptance/ADR 的输入 JSON 形状、必填字段与 --dry-run 预检见 python3 scripts/harness.py <cmd> --help；校验失败的报错直接附期望形状；一次性输入 JSON 写入 `{TASK_INPUTS_RELATIVE}/`（不入库、升级不清理）。
-{knowledge_line}
+- 需要项目架构或历史事实时，先查当前源码与符号；仍缺关键事实再显式运行 knowledge query，不得全量加载 docs/。
 - 不在没有证据或没有明确维护任务时自动更新 Knowledge、Changelog、TODO 或质量账本。架构决策由主 agent 通过 adr create 登记；决策失效时用 adr settle 废弃或标记被替代。
 - 改动涉及用户可见行为、对外接口或命令契约、版本发布时同步更新 CHANGELOG；任务产生待跟进事项时登记 TODO；不满足触发条件则不更新。
 {_GENERIC_STANDARDS}"""
 
 
 def managed_agent_block(target: Path) -> str:
-    return f"{MANAGED_BEGIN}\n{_managed_content(target)}\n{MANAGED_END}"
+    return f"{MANAGED_BEGIN}\n{_managed_content()}\n{MANAGED_END}"
 
 
 def claude_block(target: Path) -> str:
-    return f"{CLAUDE_BEGIN}\n{_managed_content(target)}\n{CLAUDE_END}"
+    return f"{CLAUDE_BEGIN}\n{_managed_content()}\n{CLAUDE_END}"
 
 
 def validate_managed_markers(text: str, begin: str, end: str) -> None:
@@ -944,17 +937,6 @@ def knowledge_candidates(target: Path, scopes: Sequence[str]) -> list[Path]:
             if scopes and not any(fnmatch.fnmatch(relative, pattern) for pattern in scopes):
                 continue
             candidates.append(path)
-    repowiki = target / REPOWIKI_RELATIVE
-    if repowiki.is_dir() and not repowiki.is_symlink():
-        for path in repowiki.rglob("*.md"):
-            if path.is_file() and not path.is_symlink():
-                try:
-                    path.resolve().relative_to(target.resolve())
-                except ValueError:
-                    continue
-                relative = path.relative_to(target).as_posix()
-                if not scopes or any(fnmatch.fnmatch(relative, pattern) for pattern in scopes):
-                    candidates.append(path)
     return sorted(set(candidates))
 
 
@@ -1665,7 +1647,7 @@ def plan_create(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     }
 
 
-def plan_settle_paths(target: Path, raw: str) -> tuple[Path, Path, bool]:
+def plan_settle_paths(target: Path, raw: str) -> tuple[Path | None, Path, bool]:
     relative = Path(raw)
     if relative.is_absolute() or relative.suffix not in {".json", ".md"}:
         raise HarnessError("--plan 必须指向项目内方案 JSON 或 Markdown", code="invalid_plan_ref")
@@ -1680,16 +1662,26 @@ def plan_settle_paths(target: Path, raw: str) -> tuple[Path, Path, bool]:
         return root_json, root_markdown, False
     if archive_json.is_file() and archive_markdown.is_file():
         return archive_json, archive_markdown, True
-    raise HarnessError("方案 JSON 与 Markdown 伴随文件不完整或不存在", code="invalid_plan_ref")
+    # 手写方案：无伴随 JSON、无 Harness 文档标记、前 3 行有状态横幅；JSON 位返回 None。
+    for markdown, archived in ((root_markdown, False), (archive_markdown, True)):
+        if markdown.is_file() and not markdown.with_suffix(".json").exists() and plan_check_banner(markdown):
+            if PLAN_DOCUMENT_MARKER not in markdown.read_text(encoding="utf-8").splitlines()[:3]:
+                return None, markdown, archived
+    raise HarnessError(
+        "方案 JSON 与 Markdown 伴随文件不完整或不存在；手写方案须无 Harness 文档标记且前 3 行有状态横幅",
+        code="invalid_plan_ref",
+    )
 
 
-def replace_plan_status_banner(text: str, status: str) -> str:
+def replace_plan_status_banner(text: str, status: str, *, managed: bool = True) -> str:
+    """改写前 3 行内的状态横幅；首个「｜」之后的附注（架构决策、真源链接等）原样保留。"""
     lines = text.splitlines()
-    if PLAN_DOCUMENT_MARKER not in lines[:3]:
+    if managed and PLAN_DOCUMENT_MARKER not in lines[:3]:
         raise HarnessError("方案缺少 Harness 文档标记", code="invalid_plan_document")
     for index, line in enumerate(lines[:3]):
         if PLAN_CHECK_BANNER_MARKER in line:
-            lines[index] = f"> 状态：{status}"
+            _, bar, notes = line.partition("｜")
+            lines[index] = f"> 状态：{status}{bar}{notes}"
             return "\n".join(lines) + "\n"
     raise HarnessError("方案缺少状态横幅", code="invalid_plan_document")
 
@@ -1777,23 +1769,23 @@ def settle_implemented_plan(
 
 def settle_deprecated_plan(
     target: Path,
-    plan_json: Path,
+    plan_json: Path | None,
     document: Path,
     archived: bool,
     markdown: str,
     index: str,
     replacement: str,
-) -> tuple[Path, Path, list[str]]:
+) -> tuple[Path | None, Path, list[str]]:
     if "\n" in replacement:
         raise HarnessError("--replacement 必须是单行方案引用", code="invalid_plan_transition")
-    basename = plan_json.stem
+    basename = document.stem
     today = dt.date.today().isoformat()
     status = (
         f"{PLAN_STATUS_DEPRECATED}-被 {replacement} 取代（{today} 核对）"
         if replacement
         else f"{PLAN_STATUS_DEPRECATED}（{today} 核对，无替代方案）"
     )
-    updated = replace_plan_status_banner(markdown, status)
+    updated = replace_plan_status_banner(markdown, status, managed=plan_json is not None)
     updated_index = update_plan_index_text(index, basename=basename)
     changed: list[str] = []
     if archived:
@@ -1801,23 +1793,69 @@ def settle_deprecated_plan(
             atomic_write_text(document, updated)
             changed.append(document.relative_to(target).as_posix())
     else:
-        archive_json = target / PLAN_ARCHIVE_RELATIVE / plan_json.name
+        archive_json = target / PLAN_ARCHIVE_RELATIVE / f"{basename}.json"
         archive_document = target / PLAN_ARCHIVE_RELATIVE / document.name
         if archive_json.exists() or archive_document.exists():
             raise HarnessError("归档目标已存在", code="plan_archive_conflict", exit_code=3)
         atomic_write_text(document, updated)
-        plan_json.replace(archive_json)
-        document.replace(archive_document)
-        plan_json, document = archive_json, archive_document
-        changed.extend(
-            [plan_json.relative_to(target).as_posix(), document.relative_to(target).as_posix()]
-        )
+        if plan_json is not None:
+            plan_json = plan_json.replace(archive_json)
+            changed.append(plan_json.relative_to(target).as_posix())
+        document = document.replace(archive_document)
+        changed.append(document.relative_to(target).as_posix())
     if updated_index != index:
         index_path = target / PLAN_INDEX_RELATIVE
         atomic_write_text(index_path, updated_index)
         changed.append(PLAN_INDEX_RELATIVE)
     changed.extend(rewrite_archived_plan_links(target, basename))
     return plan_json, document, list(dict.fromkeys(changed))
+
+
+def settle_handwritten_plan(
+    target: Path, args: argparse.Namespace, document: Path, archived: bool
+) -> tuple[int, dict[str, Any]]:
+    """无冻结 JSON 的手写方案结算：只改横幅，deprecated 另归档并改写链接，不做治理终验。
+
+    受管方案区块外的 INDEX 条目属项目正文，不改写，只在 warnings 提示手工同步。
+    """
+    if args.governance_input:
+        raise HarnessError(
+            "手写方案没有冻结治理合同，不接受 --governance-input", code="invalid_plan_transition"
+        )
+    apply_plan_docs_structure(target)
+    index = (target / PLAN_INDEX_RELATIVE).read_text(encoding="utf-8")
+    markdown = document.read_text(encoding="utf-8")
+    basename = document.stem
+    in_block = any(f"(plans/{basename}.md)" in line for line in plan_index_entry_lines(index))
+    warnings = [] if in_block else [
+        f"docs/INDEX.md 中 {document.name} 的条目不在受管方案区块内，状态文字与路径需手工同步"
+    ]
+    replacement = args.replacement.strip() if isinstance(args.replacement, str) else ""
+    if args.status == "deprecated":
+        _, document, changed = settle_deprecated_plan(
+            target, None, document, archived, markdown, index, replacement
+        )
+    elif archived:
+        raise HarnessError("已归档方案不能重新标记为已实施", code="invalid_plan_transition")
+    else:
+        status = f"{PLAN_STATUS_IMPLEMENTED}（代码已是真源，{dt.date.today().isoformat()} 核对）"
+        identity = settled_plan_identity({}, markdown, index, basename) if in_block else None
+        atomic_write_text(document, replace_plan_status_banner(markdown, status, managed=False))
+        changed = [document.relative_to(target).as_posix()]
+        if identity:
+            entry = render_plan_index_entry(
+                basename=basename, title=identity[0], symbols=identity[1], status=status
+            )
+            atomic_write_text(
+                target / PLAN_INDEX_RELATIVE,
+                update_plan_index_text(index, basename=basename, entry=entry),
+            )
+            changed.append(PLAN_INDEX_RELATIVE)
+    return 0, {
+        "status": args.status, "plan_ref": None, "handwritten": True,
+        "document_ref": document.relative_to(target).as_posix(),
+        "replacement": replacement or None, "changed": changed, "warnings": warnings,
+    }
 
 
 # plan settle --governance-input 的 --help 示例（校验在 plan_governance；改 schema 同步此处）。
@@ -1836,6 +1874,8 @@ def plan_settle(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             code="missing_plan_input",
         )
     plan_json, document, archived = plan_settle_paths(target, args.plan)
+    if plan_json is None:
+        return settle_handwritten_plan(target, args, document, archived)
     frozen = validate_frozen_plan(read_json(plan_json))
     content = frozen.get("content")
     if not isinstance(content, dict):
@@ -3450,12 +3490,6 @@ def project_knowledge_summary(target: Path) -> dict[str, Any]:
             "managed_by_harness": True,
             "active_assets": len(list(managed_root.glob("*.json"))),
         }
-    if (target / REPOWIKI_RELATIVE).is_dir():
-        return {
-            "status": "available",
-            "source": "repowiki",
-            "managed_by_harness": False,
-        }
     if (target / "docs").is_dir():
         return {
             "status": "available",
@@ -4038,6 +4072,23 @@ def plan_check_banner(path: Path) -> str | None:
     return None
 
 
+def partial_delivery_checked_recently(banner: str, today: dt.date) -> bool:
+    """横幅为「有效-部分交付（YYYY-MM-DD 核对）」且核对日在时效内时返回 True。
+
+    未来日期与非法日期不豁免：写一个远期日期不能永久静默符号全命中告警。
+    """
+    match = re.search(
+        re.escape(PLAN_PARTIAL_DELIVERY_BANNER) + r"（(\d{4}-\d{2}-\d{2}) 核对", banner
+    )
+    if not match:
+        return False
+    try:
+        checked = dt.date.fromisoformat(match.group(1))
+    except ValueError:
+        return False
+    return 0 <= (today - checked).days <= PLAN_PARTIAL_DELIVERY_RECHECK_DAYS
+
+
 def plan_check_walk_files(target: Path, prune_dirs: set[str]) -> list[Path]:
     """剪枝遍历：不进入隐藏目录、符号链接目录与指定目录，避免枚举 node_modules 等巨大子树。"""
     files: list[Path] = []
@@ -4199,13 +4250,15 @@ def command_plan_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     # 源码白名单遍历：构建产物里的旧符号不算「代码仍是真源」的证据，二进制/资产文件也无须读入。
     # C8（同一次遍历的反向预警）：横幅为有效的条目，关键符号全部命中源码说明代码很可能
     # 已交付而 plan 未 settle——下游实证过的结算泄漏形态（assets-check --fast 不跑本检查）。
+    # 时效内登记为部分交付的方案不参与反向预警，也就不必为它扫描符号。
     trace_pending: dict[str, list[str]] = {}
     active_symbols: dict[str, list[str]] = {}
+    today = dt.date.today()
     if not fast:
         active_basenames = {
             Path(relative).name
             for relative, banner in banners.items()
-            if "有效" in banner
+            if "有效" in banner and not partial_delivery_checked_recently(banner, today)
         }
         for line in index_lines:
             if "关键符号" not in line:
@@ -4257,7 +4310,10 @@ def command_plan_check(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             if landed[basename] == set(symbols):
                 warnings.append(
                     f"WARN: docs/plans/{basename}: 横幅为有效但关键符号已全部在源码命中，"
-                    "代码很可能已交付；请 plan settle --status implemented，若不再推进请 deprecated"
+                    "代码很可能已交付；已交付请 plan settle --status implemented，不再推进请 "
+                    "--status deprecated；仍在推进的部分交付方案把横幅改为"
+                    f"「> 状态：{PLAN_PARTIAL_DELIVERY_BANNER}（{today.isoformat()} 核对）」，"
+                    f"{PLAN_PARTIAL_DELIVERY_RECHECK_DAYS} 天内不再提示"
                 )
 
     # C6：横幅为有效的活文档长期未触碰告警；无 git 历史或 git 不可用时静默跳过。
@@ -4460,7 +4516,11 @@ PLAN_EPILOG = _EPILOG_INTRO + "\n\n" + "\n\n".join((
         f"plan settle --governance-input（{PLAN_GOVERNANCE_INPUT_SCHEMA}）：",
         PLAN_GOVERNANCE_INPUT_EXAMPLE,
     ),
+    "plan settle 也接受无伴随 JSON、无 Harness 文档标记的手写方案 Markdown：只改横幅（deprecated 另归档并改写链接），"
+    "不做治理终验、不接受 --governance-input；受管方案区块外的 INDEX 条目不改写，按 warnings 手工同步。",
     "plan check [--fast] [--strict]：docs/plans 文档可发现性常驻检查（横幅、索引符号、归档死链、符号存活与时效）。",
+    f"部分交付仍在推进的方案横幅写「{PLAN_PARTIAL_DELIVERY_BANNER}（YYYY-MM-DD 核对）」，"
+    f"核对日起 {PLAN_PARTIAL_DELIVERY_RECHECK_DAYS} 天内不报符号全命中告警，未来日期不豁免。",
 ))
 
 ACCEPTANCE_EPILOG = _EPILOG_INTRO + "\n\n" + "\n\n".join((
@@ -4670,6 +4730,8 @@ USAGE_COUNT_KEYS = (("facts", "hits"), ("failures", "failures"), ("warnings", "w
 # 表示记录已存入但整体验收未通过，而 3 在 project upgrade、plan settle 里语义又各不相同。
 # status 取值全部来自命令 payload 的既有枚举（created/frozen/pending/passed/failed/
 # error/dry_run_valid/needs_delivery…），不是自由文本。
+# result=error 时另记 payload["code"] 为 error_code：HarnessError 的 code 是标识符枚举
+# （invalid_plan_ref、acceptance_record_mismatch…），不记 message 自由文本；缺了它首次失败无从归因。
 
 
 def usage_invoke_event(
@@ -4693,6 +4755,9 @@ def usage_invoke_event(
     status = payload.get("status")
     if isinstance(status, str):
         event["result"] = status
+    error_code = payload.get("code")
+    if status == "error" and isinstance(error_code, str):
+        event["error_code"] = error_code
     flags = {key: getattr(args, key) for key in USAGE_FLAG_KEYS if getattr(args, key, None)}
     if flags:
         event["flags"] = flags

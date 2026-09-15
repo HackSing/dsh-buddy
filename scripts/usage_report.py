@@ -31,7 +31,9 @@ _ACCEPTANCE_RECORD_STORED_CODES = (0, 3)
 
 _LIMITATIONS = (
     "以上均为本地命令调用计数，不代表能力价值，也不代表 agent 对知识的理解质量；"
-    "命令分布只按退出码取值分桶、不贴成败标签（3 在 harness 里被多个命令复用，语义各不相同）；"
+    "commands 的 errors 只数 HarnessError（result=error），error_codes 为其错误码分布；"
+    "exit_codes 按取值分桶不贴成败标签（3 在 harness 里被多个命令复用，语义各不相同）；"
+    "checks 只报每个检查命令最近一次调用的 failures/warnings，跨调用加总会把同一条告警重复计数；"
     "资产 create/settle 的成功判定为退出码 0 且非 dry-run；"
     "acceptance record 退出码 3 表示记录已存入但整体验收未通过，计入 acceptance_rework.records 分母；"
     "跨仓库汇总需维护者自行在各仓库运行 usage report --json 后合并，harness 不外发任何数据。"
@@ -67,14 +69,21 @@ def _succeeded(event: dict[str, Any]) -> bool:
 
 
 def _command_adoption(events: list[dict[str, Any]]) -> dict[str, Any]:
-    """A 组：每个 (command, action) 的调用次数、活跃天数、首末时间与退出码分桶。"""
+    """A 组：每个 (command, action) 的调用次数、活跃天数、首末时间、退出码分桶与报错归因。
+
+    errors 只数 result=error（HarnessError 路径），不从退出码推断：acceptance record 退 3
+    是记录已存入，project upgrade 退 3 是待提交，二者都不是报错。
+    """
     adoption: dict[str, dict[str, Any]] = {}
     active: dict[str, set[str]] = {}
     for event in events:
         label = _label(event)
         entry = adoption.setdefault(
             label,
-            {"calls": 0, "active_days": 0, "first": None, "last": None, "exit_codes": {}},
+            {
+                "calls": 0, "active_days": 0, "first": None, "last": None,
+                "exit_codes": {}, "errors": 0, "error_codes": {},
+            },
         )
         stamp = str(event.get("ts"))
         entry["calls"] += 1
@@ -82,6 +91,11 @@ def _command_adoption(events: list[dict[str, Any]]) -> dict[str, Any]:
         entry["last"] = stamp if entry["last"] is None else max(entry["last"], stamp)
         code = str(event.get("exit_code"))
         entry["exit_codes"][code] = entry["exit_codes"].get(code, 0) + 1
+        if event.get("result") == "error":
+            entry["errors"] += 1
+            error_code = event.get("error_code")
+            if isinstance(error_code, str):
+                entry["error_codes"][error_code] = entry["error_codes"].get(error_code, 0) + 1
         active.setdefault(label, set()).add(stamp[:10])
     for label, entry in adoption.items():
         entry["active_days"] = len(active[label])
@@ -144,23 +158,30 @@ def _knowledge_query(events: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _check_results(events: list[dict[str, Any]]) -> dict[str, Any]:
-    """F 组：凡带 failures/warnings 计数的调用，按命令累计并数出零失败次数。
+    """F 组：凡带 failures/warnings 计数的调用，按命令数出调用次数、零失败次数与最近一次的计数。
 
     不硬编码检查类命令清单：带这两个计数的事件就是检查类调用，命令面增删自动跟随。
+    只报最近一次而不跨调用加总：pre-commit 每次提交都跑一遍，未处置的同一条 WARN
+    会被反复计入（zbuddy-desktop 47 次检查累计 518 条，实为 12 条方案告警重复计数）。
     """
     results: dict[str, dict[str, int]] = {}
+    latest: dict[str, str] = {}
     for event in events:
         failures = event.get("failures")
         warnings = event.get("warnings")
         if not isinstance(failures, int) or not isinstance(warnings, int):
             continue
+        label = _label(event)
         entry = results.setdefault(
-            _label(event), {"calls": 0, "failures": 0, "warnings": 0, "clean": 0}
+            label, {"calls": 0, "clean": 0, "last_failures": 0, "last_warnings": 0}
         )
         entry["calls"] += 1
-        entry["failures"] += failures
-        entry["warnings"] += warnings
         entry["clean"] += 1 if failures == 0 else 0
+        stamp = str(event.get("ts"))
+        if stamp >= latest.get(label, ""):
+            latest[label] = stamp
+            entry["last_failures"] = failures
+            entry["last_warnings"] = warnings
     return results
 
 
