@@ -77,7 +77,7 @@
     # working, but faces a small catalog instead of the full Standard set.
     compactionTools: [read, write, edit, glob, grep, todo_write, ask_user_question]
     # While unpromoted, keep only the persona section and drop contexts.
-    sealSectionsUntilPromotion: [deployment:persona]
+    sealSectionsUntilPromotion: [deployment:persona-prefix]
     sealContextsUntilPromotion: true
 
 # ── identity ────────────────────────────────────────────────────────────────
@@ -91,7 +91,7 @@
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: You are a helpful software engineer assistant.
+    prefix: You are a helpful software engineer assistant.
 
 # Instruction FILES are NOT injected (replaces dsh-agent-instructions, local
 # addition): the full AGENTS.md/CLAUDE.md digest is a large injected block

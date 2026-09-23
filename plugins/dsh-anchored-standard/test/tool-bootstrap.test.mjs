@@ -359,14 +359,14 @@ test('unknown config keys reject at apply time', () => {
 
 // ── local addition: phase-aware prompt seal (2026-08-18) ────────────────────
 
-const PERSONA = { name: 'deployment:persona', text: 'You are a helpful software engineer assistant.' }
+const PERSONA = { name: 'deployment:persona-prefix', text: 'You are a helpful software engineer assistant.' }
 const IDENTITY = { name: 'harness:identity', text: 'You are an AI agent powered by DeepSeek Harness.' }
 const GOVERNANCE = { name: 'docs-harness:governance', text: '## Docs Harness rules' }
 const RUNTIME_CONTEXT = { name: 'runtime-context', text: 'cwd: D:/project' }
 
 const sealedConfig = {
   ...config,
-  sealSectionsUntilPromotion: ['deployment:persona'],
+  sealSectionsUntilPromotion: ['deployment:persona-prefix'],
   sealContextsUntilPromotion: true,
 }
 
@@ -433,7 +433,7 @@ test('a missing sealed section disables the seal with one warning (fail-open)', 
   }))
   assert.deepEqual(result.sections, [IDENTITY, GOVERNANCE])
   assert.deepEqual(result.contexts, [RUNTIME_CONTEXT])
-  assert.ok(warns.some((message) => message.includes('deployment:persona')))
+  assert.ok(warns.some((message) => message.includes('deployment:persona-prefix')))
 })
 
 test('assemblies without a sections array pass through with one warning', async () => {

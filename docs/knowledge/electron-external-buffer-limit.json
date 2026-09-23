@@ -1,40 +1,39 @@
 {
   "schema_version": "docs-harness/knowledge-asset/v1",
-  "title": "Electron 当 Node 跑内嵌 dsh 的原生能力边界：external buffer 被禁",
+  "title": "Electron 当 Node 跑内嵌 dsh 的原生能力边界:external buffer 被禁",
   "key_symbols": [
     "readUtf16",
-    "patch-dsh-picker",
     "DSH_PICKER_BROWSE",
-    "browse-picker-patch"
+    "browse-picker-patch",
+    "use-browse-picker"
   ],
-  "summary": "本壳用 Electron 二进制当 Node 运行内嵌 dsh，上游任何走 external ArrayBuffer 的原生路径都会 napi fatal 崩进程；Win32 目录选择器已按此打补丁，browse 后端是降级退路",
+  "summary": "本壳用 Electron 二进制当 Node 运行内嵌 dsh,上游任何走 external ArrayBuffer 的原生路径都会 napi fatal 崩进程;Win32 目录选择器的该缺陷已由上游 0.1.5-rc.1 修复,本仓补丁退役,browse 后端仍是降级退路",
   "facts": [
     {
       "id": "electron.no-external-buffers",
-      "statement": "Electron 运行时禁用 external ArrayBuffer（koffi doc/pointers.md 点名 Electron），koffi.view() 调用即 FATAL ERROR: Error::New napi_get_last_error_info 崩掉整个进程；同一份 koffi 3.1.5 与同一段代码在系统 Node 24 上三种长度全部正常，Electron 38.8.6 首次调用即崩——差异来自运行时而非 koffi 版本",
+      "statement": "Electron 运行时禁用 external ArrayBuffer(koffi doc/pointers.md 点名 Electron),koffi.view() 调用即 FATAL ERROR: Error::New napi_get_last_error_info 崩掉整个进程;同一份 koffi 3.1.5 与同一段代码在系统 Node 24 上三种长度全部正常,Electron 38.8.6 首次调用即崩——差异来自运行时而非 koffi 版本。这是运行时边界,不随 dsh 版本变化,评估任何新的上游原生路径时仍然适用",
       "source_refs": [
-        "scripts/patch-dsh-picker.js"
+        "main.js"
       ]
     },
     {
       "id": "electron.runtime-inherited-by-dsh-children",
-      "statement": "main.js 的 resolveLauncher 以 process.execPath + ELECTRON_RUN_AS_NODE=1 拉起内嵌 dsh，dsh 内部再以 process.execPath 派生的子进程（如 Win32 目录选择器 worker）继承同一 Electron 运行时，因此上游在真 Node 下正确的原生代码在本壳可能整条链路失效；判断上游 bug 归属时必须先区分「上游目标环境」与「本壳运行时」",
+      "statement": "main.js 的 resolveLauncher 以 process.execPath + ELECTRON_RUN_AS_NODE=1 拉起内嵌 dsh,dsh 内部再以 process.execPath 派生的子进程(如 Win32 目录选择器 worker)继承同一 Electron 运行时,因此上游在真 Node 下正确的原生代码在本壳可能整条链路失效;判断上游 bug 归属时必须先区分「上游目标环境」与「本壳运行时」",
       "source_refs": [
-        "main.js",
-        "scripts/patch-dsh-picker.js"
+        "main.js"
       ]
     },
     {
-      "id": "picker.native-patch",
-      "statement": "@deepseek-ai/dsh-host-directory-picker-native 的 worker.cjs readUtf16 用 koffi.view 读对话框返回路径，用户选完目录即崩，前端报 win32 folder dialog worker exited before reporting a result；scripts/patch-dsh-picker.js 把它换成 lstrlenW 量长度 + koffi.decode 复制读，由 postinstall 自动重打、predist/dist:win 以 --check 把关，上游形状一变即硬失败而非静默错过",
+      "id": "picker.upstream-fixed-in-0-1-5-rc-1",
+      "statement": "@deepseek-ai/dsh-host-directory-picker-native 的 worker.cjs 原先用 koffi.view 读对话框返回的 UTF-16 路径,用户选完目录即崩(前端报 win32 folder dialog worker exited before reporting a result);dsh 0.1.5-rc.1 起上游改为 pointer buffer + koffi.decode('str16'),不再触碰 external buffer,本仓 scripts/patch-dsh-picker.js 随之按自身预案删除,package.json 的 postinstall/predist/dist:win 与 scripts/dist-win.ps1 的挂载点同步摘除。换 dsh 版本时须重验上游仍未回退到 koffi.view",
       "source_refs": [
-        "scripts/patch-dsh-picker.js",
-        "package.json"
+        "package.json",
+        "scripts/dist-win.ps1"
       ]
     },
     {
       "id": "picker.browse-fallback",
-      "statement": "降级退路是 dsh 自带的 browse 目录选择：profile 的 cordis.patch.yml 里禁掉 id=directory-picker 的 auto 行，再 insert 后端 dsh-host-directory-picker-browse 与客户端 dsh-client-ui-directory-picker-browse 两张面（auto 插件同时挂两者，pin 时都要自己给）；已实证 loader 确实解析 insert 行——包名写错时 dsh 直接以 failed to import loader entry 启动失败",
+      "statement": "降级退路是 dsh 自带的 browse 目录选择:profile 的 cordis.patch.yml 里禁掉 id=directory-picker 的 auto 行,再 insert 后端 dsh-host-directory-picker-browse 与客户端 dsh-client-ui-directory-picker-browse 两张面(auto 插件同时挂两者,pin 时都要自己给);已实证 loader 确实解析 insert 行——包名写错时 dsh 直接以 failed to import loader entry 启动失败",
       "source_refs": [
         "lib/browse-picker-patch.js",
         "scripts/use-browse-picker.js"
@@ -42,7 +41,7 @@
     },
     {
       "id": "picker.fallback-reach",
-      "statement": "构建期 DSH_PICKER_BROWSE=1 让 build-web-profile.js 把降级块写进随包 profile，同时让 patch-dsh-picker.js 让开；但 lib/bundled-profile.js 的幂等解包对已存在 profile 直接跳过，存量用户拿不到随包降级，必须在本机跑 scripts/use-browse-picker.js 改 DSH_HOME 里的 patch 层",
+      "statement": "构建期 DSH_PICKER_BROWSE=1 让 build-web-profile.js 把降级块写进随包 profile;但 lib/bundled-profile.js 的幂等解包对已存在 profile 直接跳过,存量用户拿不到随包降级,必须在本机跑 scripts/use-browse-picker.js 改 DSH_HOME 里的 patch 层。原生补丁退役后该开关不再与补丁互斥,只剩「用不用 browse 后端」这一个含义",
       "source_refs": [
         "scripts/build-web-profile.js",
         "lib/bundled-profile.js",
@@ -51,9 +50,15 @@
     }
   ],
   "status": "active",
-  "revision": 1,
-  "revision_history": [],
+  "revision": 2,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:fe4624a05953063b238cf5f6b5134de28dc7cf64a3527668298a84193a716714",
+      "updated_at": "2026-08-18T08:07:49+00:00"
+    }
+  ],
   "created_at": "2026-08-18T08:07:49+00:00",
-  "updated_at": "2026-08-18T08:07:49+00:00",
-  "asset_fingerprint": "sha256:fe4624a05953063b238cf5f6b5134de28dc7cf64a3527668298a84193a716714"
+  "updated_at": "2026-09-10T09:08:25+00:00",
+  "asset_fingerprint": "sha256:a9982d570ed3c86e9d8ca6f01c315679eefefc236695114c6a7e8f7ccb8c1b55"
 }

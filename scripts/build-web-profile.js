@@ -74,7 +74,7 @@ function buildWebProfileTar({ profileName, packages, outputPath, applyPickerPatc
     }
 
     // 降级出包:把目录选择钉在 browse 交互上,随包 profile 自带该 patch 层。
-    // 只在原生对话框那条路走不通时使用(见 scripts/patch-dsh-picker.js 的失败提示),
+    // 只在原生对话框那条路走不通时使用(见 scripts/use-browse-picker.js),
     // 因此是显式开关而非默认。
     if (applyPickerPatch) {
       console.log(`[build-web-profile] browse picker: ${applyBrowsePicker(profileDir)}`);

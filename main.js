@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, dialog } = require('electron');
+const { app, BrowserWindow, shell, dialog, session } = require('electron');
 const { spawn } = require('child_process');
 const os = require('os');
 const path = require('path');
@@ -15,10 +15,16 @@ const {
 const { resolveWindowMode } = require('./lib/window-mode');
 const { attachDragStrip } = require('./lib/immersive-titlebar');
 const { binEntryFrom } = require('./lib/dsh-entry');
-const { probeHttp, waitForHttp } = require('./lib/http-probe');
+const { probeHttp, probeBody, waitForHttp } = require('./lib/http-probe');
 const { killProcessTree } = require('./lib/process-tree');
 const { attachPageGuard } = require('./lib/page-guard');
 const { createDshLogger } = require('./lib/dsh-log');
+const {
+  AUTH_COOKIE_PREFIX,
+  authenticatedUrl,
+  exchangeAuthCookie,
+  waitForLaunchToken,
+} = require('./lib/dsh-browser-auth');
 const { checkForUpdate, UPDATE_OUTCOME, RELEASES_PAGE_URL } = require('./lib/update-check');
 const { attachGlobalHotkey, hotkeyChildEnv } = require('./lib/global-hotkey');
 const { checkPluginChannel, CHANNEL_OUTCOME } = require('./lib/plugin-channel');
@@ -39,12 +45,16 @@ const RETIRED_PLUGINS = preinstallManifest.retired.map((r) => r.name);
 // 默认走「内嵌 dsh」:用 Electron 自带的 Node 运行时执行随包分发的 dsh,用户机器无需 Node。
 // 参考 https://github.com/deepseek-ai/deepseek-harness#run
 const DSH_PKG = '@deepseek-ai/dsh';
-const DSH_VERSION = '0.1.1-rc.2'; // 与 package.json dependencies 保持一致(dsh 仍是 developer preview)
+const DSH_VERSION = '0.1.5-rc.1'; // 与 package.json dependencies 保持一致(dsh 仍是 developer preview)
 const DSH_URL = process.env.DSH_URL || 'http://127.0.0.1:3080';
 // ----------------
 
 let dshProc = null;
 let dshLog = null; // dsh 子进程输出捕获器,仅在本壳拉起 dsh 时创建(复用外部服务时保持 null)
+// 本壳拉起的 dsh 打印的 launch token(dsh 0.1.5-rc.1 起的浏览器授权入口)。
+// 复用外部 dsh 时拿不到,保持 null——此时窗口能否进 UI 取决于 Electron 会话里
+// 是否还留着上次的授权 cookie(见 warnIfUnauthorized)。
+let dshLaunchToken = null;
 let globalHotkey = null; // 全局快捷键句柄(attachGlobalHotkey 返回,before-quit 清理)
 let win = null;
 let quitting = false;
@@ -271,6 +281,9 @@ async function ensureDsh() {
     shell: process.platform === 'win32' && launcher.kind !== 'embedded',
     // 独立进程组:dsh 自身还会派生子进程,退出时须整组回收
     detached: process.platform !== 'win32',
+    // 壳是 GUI 进程、没有控制台:经 shell 起的 cmd.exe(npx/env 启动器)是控制台程序,
+    // 不隐藏会弹一个可见控制台窗口。内嵌路径起的是 Electron 二进制(GUI),本就无窗。
+    windowsHide: true,
   });
   dshProc = proc;
   dshLog = createDshLogger({ dir: path.join(app.getPath('userData'), 'logs') });
@@ -295,7 +308,15 @@ async function ensureDsh() {
     app.quit();
   });
 
-  const ready = await waitForServer(DSH_URL, launcher.timeoutMs);
+  // rc.5 起的就绪信号是启动行打印的 launch token:它在插件装载结算后才打印,比
+  // 「HTTP 端口能应答」更贴近「UI 真能用」(实测端口先于装载结算就回 404),而且
+  // 窗口加载与 /api 调用都要靠它换授权。拿不到 token(自定义 DSH_ARGS 不打印 URL、
+  // 或装载结算前进程已挂)时,退回单次 HTTP 探活下判断——此时端口已等过同一窗口。
+  dshLaunchToken = await waitForLaunchToken(proc, { timeoutMs: launcher.timeoutMs });
+  const ready = dshLaunchToken !== null || (await isUp(DSH_URL));
+  if (dshLaunchToken === null && ready) {
+    console.warn('[dsh-buddy] dsh 未打印 launch token,窗口将以裸 URL 加载(授权取决于已有 cookie)');
+  }
   // 仅当仍在正常等待(未因 error/exit 触发退出)时才报超时,避免与上面两个 handler 的弹窗重复
   if (!ready && !quitting) {
     const seconds = Math.round(launcher.timeoutMs / 1000);
@@ -307,13 +328,65 @@ async function ensureDsh() {
   return ready;
 }
 
+// 首屏标题就绪门:只在本壳拉起的 dsh 且拿到 launch token 时等待——外部复用的 dsh
+// 没有修复插件,而没有 token 的 /api 调用必然 401,两种情况等都是白等。
+// 全程 fail-soft:换 cookie 失败或轮询超时都照常放行,标题退化为点击刷新。
+async function awaitSessionTitles() {
+  if (!dshProc || !dshLaunchToken) return;
+  let cookie;
+  try {
+    cookie = await exchangeAuthCookie(DSH_URL, dshLaunchToken);
+  } catch (err) {
+    console.warn(`[dsh-buddy] session titles gate skipped: ${err.message}`);
+    return;
+  }
+  const gate = await waitForTitlesSettled(DSH_URL, { cookie });
+  console.log(
+    `[dsh-buddy] session titles ${gate.settled ? 'settled before first paint' : 'not fully settled (timed out), continuing'}` +
+      (gate.error ? `: ${gate.error}` : '')
+  );
+}
+
+// 复用外部 dsh 时没有 launch token,只能靠 Electron 会话里上次留下的授权 cookie;
+// 两者都没有时 dsh 会回 401,窗口显示的是 unauthorized 而不是 UI。与其让用户看白屏,
+// 不如把原因和出路说清楚——壳自己无法替外部进程补签授权。
+async function warnIfUnauthorized() {
+  if (dshLaunchToken) return;
+  const cookies = await session.defaultSession.cookies.get({ url: DSH_URL }).catch(() => []);
+  if (cookies.some((c) => c.name.startsWith(AUTH_COOKIE_PREFIX))) return;
+  await dialog.showMessageBox({
+    type: 'warning',
+    title: 'DSH Buddy',
+    message: '无法授权已在运行的 dsh 服务,界面可能显示 unauthorized',
+    detail:
+      `${DSH_URL} 上已有一个 dsh 在运行,但它的访问令牌只打印在它自己的启动输出里,` +
+      '本应用拿不到。' +
+      '\n\n解决办法:关闭那个 dsh 进程后重启本应用,由本应用自己拉起 dsh;' +
+      '或在浏览器里用它启动时打印的带 token 的地址访问。',
+    buttons: ['OK'],
+    noLink: true,
+  });
+}
+
+// 页面守护的代际探测要读首页里的 __DSH_BOOT__ rev,而 dsh 0.1.5-rc.1 起裸 GET /
+// 一律 401——不带授权 cookie 探到的永远是 401 页,代际检测会静默失效。
+// cookie 取自窗口会话(窗口带 token 加载时由 303 换得),外部复用的 dsh 同样适用。
+async function probeWithSessionAuth(url) {
+  const cookies = await session.defaultSession.cookies.get({ url });
+  const cookie = cookies
+    .filter((c) => c.name.startsWith(AUTH_COOKIE_PREFIX))
+    .map((c) => `${c.name}=${c.value}`)
+    .join('; ');
+  return probeBody(url, { headers: cookie ? { cookie } : undefined });
+}
+
 // 内容刷新单一入口:非 mac 窗口用 reloadContent 保留当前路由,macOS BrowserWindow
 // (beginStartupLoading 挂载,无 reloadContent)重新指向 dsh。插件热更重启后
 // 与页面守护(lib/page-guard.js)的自动恢复共用这一个动作。
 function refreshWindowContent() {
   if (!win) return;
   if (typeof win.reloadContent === 'function') win.reloadContent();
-  else win.loadContent(DSH_URL);
+  else win.loadContent(authenticatedUrl(DSH_URL, dshLaunchToken));
 }
 
 // 提示层:只负责把「有新版本」这件事呈现给用户。
@@ -702,17 +775,12 @@ if (!app.requestSingleInstanceLock()) {
       app.quit();
       return;
     }
-    // 首屏标题就绪门:只在本壳拉起的 dsh 且修复插件就位时等待——外部复用的
-    // dsh 没有修复插件,等只会白等;超时也照常放行,退化为点击刷新。
-    if (titleRepairReady && dshProc) {
-      const gate = await waitForTitlesSettled(DSH_URL);
-      console.log(
-        `[dsh-buddy] session titles ${gate.settled ? 'settled before first paint' : 'not fully settled (timed out), continuing'}` +
-          (gate.error ? `: ${gate.error}` : '')
-      );
-    }
+    if (titleRepairReady) await awaitSessionTitles();
+    await warnIfUnauthorized();
     if (win) {
-      win.loadContent(DSH_URL); // 加载页 → dsh 页面原地切换
+      // 带 token 加载:dsh 用 303 把 token 换成授权 cookie 后跳回干净的 /,
+      // 之后这个窗口的 /api 调用都由 cookie 承载(dsh 0.1.5-rc.1 起的授权门)。
+      win.loadContent(authenticatedUrl(DSH_URL, dshLaunchToken)); // 加载页 → dsh 页面原地切换
       // 页面守护:内容页死亡(进程崩溃/加载失败/持续无响应)与服务代际更替的
       // 检测与自动恢复,含 userData/logs/page-guard.log 事件落盘。
       // contents 销毁时自内部 dispose,无需额外清理。见 docs/plans/shell-page-guard.md。
@@ -721,6 +789,7 @@ if (!app.requestSingleInstanceLock()) {
         refresh: refreshWindowContent,
         url: DSH_URL,
         logDir: path.join(app.getPath('userData'), 'logs'),
+        probe: probeWithSessionAuth,
       });
     }
     scheduleUpdateCheck(); // 内容切换之后再查,全程与启动链解耦
