@@ -35,6 +35,23 @@
           "next_action": null,
           "failure_attributions": [],
           "recorded_at": "2026-09-10T09:31:58+00:00"
+        },
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260923T121846-d78457941f",
+          "objective_fingerprint": "sha256:a422c0ff91f047e1e1d746a269573348731e9a768c7f8f63384fe24d1b3662a3",
+          "acceptance_type": "contract_check",
+          "status": "passed",
+          "layer": "L1",
+          "evidence_layer": null,
+          "method": "合并 origin/main 后重录(原证据按 7 个预装包记录,已过期):导出 package.json 的 @deepseek-ai 钉版、lockfile 中 rc.2 残留与 dsh 家族非 rc.1 条目计数、预装清单 packages/retired、main.js DSH_VERSION;清单现为 5 个包,git-graph/web-ui-settings 已进退休清单",
+          "evidence_refs": [
+            "docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c1-pins-and-manifest-0923.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-09-23T12:18:46+00:00"
         }
       ]
     },
@@ -62,6 +79,23 @@
           "next_action": null,
           "failure_attributions": [],
           "recorded_at": "2026-09-10T09:31:59+00:00"
+        },
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260923T121850-f8bfd681c7",
+          "objective_fingerprint": "sha256:a422c0ff91f047e1e1d746a269573348731e9a768c7f8f63384fe24d1b3662a3",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "repository_full_test",
+          "method": "合并 origin/main(含页面守护、插件热更)与门禁修复后重跑 npm test:412 项全绿,exit 0",
+          "evidence_refs": [
+            "docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c2-npm-test-0923.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-09-23T12:18:50+00:00"
         }
       ]
     },
@@ -90,6 +124,25 @@
           "next_action": null,
           "failure_attributions": [],
           "recorded_at": "2026-09-10T09:31:59+00:00"
+        },
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260923T121850-dd054bee86",
+          "objective_fingerprint": "sha256:a422c0ff91f047e1e1d746a269573348731e9a768c7f8f63384fe24d1b3662a3",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "node scripts/verify-dsh-compat.js 0.1.5-rc.1(门禁已修为候选等于钉住版本时按仓库 lockfile npm ci)四门全绿,④ 按现清单装 5 个插件后 web 带授权 cookie 返回 200;另以仓库 dsh 真实拉起 web 对比页面守护探测:裸探 401 取不到 rev,带 cookie 200 取到 rev;标题修复运行证据沿用 c3b(合并未触及该插件)",
+          "evidence_refs": [
+            "docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c3-verify-dsh-compat-report-0923.md",
+            "docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c3c-page-guard-auth-probe.md",
+            "docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c3b-title-repair-runtime.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-09-23T12:18:50+00:00"
         }
       ]
     },
@@ -117,6 +170,23 @@
           "next_action": null,
           "failure_attributions": [],
           "recorded_at": "2026-09-10T09:31:59+00:00"
+        },
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260923T122047-d7cebdffe9",
+          "objective_fingerprint": "sha256:a422c0ff91f047e1e1d746a269573348731e9a768c7f8f63384fe24d1b3662a3",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "按现清单(5 包)前台重建随包 profile:build-web-profile.js exit 0(产物 107904001 字节),verify-profile-tar.js 断言通过(entries=14829),tar 内 web/package.json 依赖与清单 5 包名称版本逐一一致",
+          "evidence_refs": [
+            "docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c4-profile-tar-0923.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-09-23T12:20:47+00:00"
         }
       ]
     },
@@ -126,7 +196,7 @@
       "acceptance_type": "user_acceptance",
       "layer": "L5",
       "evidence_layer": null,
-      "status": "pending",
+      "status": "passed",
       "records": [
         {
           "schema_version": "docs-harness/acceptance-record/v3",
@@ -160,12 +230,31 @@
             ],
             "environment_ready": true
           }
+        },
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260923T121903-dc18a38423",
+          "objective_fingerprint": "sha256:a422c0ff91f047e1e1d746a269573348731e9a768c7f8f63384fe24d1b3662a3",
+          "acceptance_type": "user_acceptance",
+          "status": "passed",
+          "layer": "L5",
+          "evidence_layer": null,
+          "method": "用户 npm start 启动壳做最短确认:进入 dsh UI(非 unauthorized)、皮肤中心可用、插件面预装插件数。原交接步骤写的「7 个」为 9-10 旧清单数字,确认前已更正为现清单的 5 个(skin-center/pet/dispatch/docs-harness/better-sidebar)",
+          "evidence_refs": [],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-09-23T12:19:03+00:00",
+          "user_confirmation": {
+            "confirmed_by": "user",
+            "confirmation": "是5个插件，确认"
+          }
         }
       ]
     }
   ],
-  "status": "pending",
-  "revision": 6,
+  "status": "passed",
+  "revision": 12,
   "revision_history": [
     {
       "revision": 1,
@@ -191,10 +280,41 @@
       "revision": 5,
       "asset_fingerprint": "sha256:d6f5f523bf37d4c25a117b22320643fae06ebfae462a7a890fdbdba9e925b297",
       "updated_at": "2026-09-10T09:31:59+00:00"
+    },
+    {
+      "revision": 6,
+      "asset_fingerprint": "sha256:a3792ac0a9030943896b6bbaf1339654957bc5ea27800dc55277e424d54a48fd",
+      "updated_at": "2026-09-10T09:31:59+00:00"
+    },
+    {
+      "revision": 7,
+      "asset_fingerprint": "sha256:470068731b6ef3f07acee1332517279263ccddd6f887547aef10b666a0b58bd6",
+      "updated_at": "2026-09-23T12:18:46+00:00"
+    },
+    {
+      "revision": 8,
+      "asset_fingerprint": "sha256:2c301a1f6d6c707e76774af36e7d2afc4fa15c772a8231345a152e351e22c102",
+      "updated_at": "2026-09-23T12:18:50+00:00"
+    },
+    {
+      "revision": 9,
+      "asset_fingerprint": "sha256:c774143228800abeb60be63ed9cef44fcd6e19d454e03262af60affdf6b0e76e",
+      "updated_at": "2026-09-23T12:18:50+00:00"
+    },
+    {
+      "revision": 10,
+      "asset_fingerprint": "sha256:a8863e26ac037cf1ca757ae992015762f854a199fd2bf8f96db43bb66318900f",
+      "updated_at": "2026-09-23T12:19:03+00:00"
+    },
+    {
+      "revision": 11,
+      "asset_fingerprint": "sha256:1fa0533b6737cf76f779c6287730925d58d412e6ceca2f0a6579548be132fefc",
+      "updated_at": "2026-09-23T12:20:47+00:00"
     }
   ],
   "created_at": "2026-09-10T08:44:16+00:00",
-  "updated_at": "2026-09-10T09:31:59+00:00",
-  "settled_at": null,
-  "asset_fingerprint": "sha256:a3792ac0a9030943896b6bbaf1339654957bc5ea27800dc55277e424d54a48fd"
+  "updated_at": "2026-09-23T12:20:51+00:00",
+  "settled_at": "2026-09-23T12:20:51+00:00",
+  "asset_fingerprint": "sha256:7a084e40fe7396183a5be6465a49d655ea22be2e9d55f5ffdbc625f05d9d81f1",
+  "replacement": null
 }

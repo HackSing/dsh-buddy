@@ -1,11 +1,11 @@
-> 状态：有效（待验收）
+> 状态：已验收-仅追溯
 <!-- docs-harness:acceptance-document/v1 -->
 
 # 内嵌 dsh 0.1.5-rc.1 升级的五层验收
 
-- 修订：6
+- 修订：12
 - 关键符号：`launchTokenFrom`、`exchangeAuthCookie`、`postSessionList`、`DSH_VERSION`
-- 资产指纹：`sha256:a3792ac0a9030943896b6bbaf1339654957bc5ea27800dc55277e424d54a48fd`
+- 资产指纹：`sha256:7a084e40fe7396183a5be6465a49d655ea22be2e9d55f5ffdbc625f05d9d81f1`
 - 关联方案：`docs/plans/dsh-upgrade-0.1.5-rc.1.json`
 
 ## 验收目标
@@ -19,32 +19,32 @@
 - 状态：passed
 - 类型：contract_check
 - 层级：L1
-- 证据：`docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c1-pins-and-manifest.md`
+- 证据：`docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c1-pins-and-manifest-0923.md`
 
 ### `c2` 单元与契约测试:npm test 全绿,含 rc.5 RPC 新形状与授权模块测试
 
 - 状态：passed
 - 类型：behavior_acceptance
 - 层级：L2
-- 证据：`docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c2-npm-test.txt`
+- 证据：`docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c2-npm-test-0923.txt`
 
 ### `c3` 门禁四门:verify-dsh-compat 0.1.5-rc.1 报告 4/4
 
 - 状态：passed
 - 类型：behavior_acceptance
 - 层级：L3
-- 证据：`docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c3-verify-dsh-compat-report.md`、`docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c3b-title-repair-runtime.md`
+- 证据：`docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c3-verify-dsh-compat-report-0923.md`、`docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c3c-page-guard-auth-probe.md`、`docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c3b-title-repair-runtime.md`
 
 ### `c4` 随包 web profile 产物:build-web-profile 产 tar 且 verify-profile-tar 通过
 
 - 状态：passed
 - 类型：behavior_acceptance
 - 层级：L4
-- 证据：`docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c4-profile-tar.md`
+- 证据：`docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c4-profile-tar-0923.md`
 
 ### `c5` 用户最短确认:壳窗口真的进 dsh UI(非 unauthorized),皮肤中心与插件面符合预期
 
-- 状态：pending
+- 状态：passed
 - 类型：user_acceptance
 - 层级：L5
 - 证据：

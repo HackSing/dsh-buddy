@@ -1,9 +1,9 @@
-> 状态：有效（实施中）
+> 状态：已实施-仅追溯（代码已是真源，2026-09-23 核对）
 <!-- docs-harness:plan-document/v1 -->
 
 # 内嵌 dsh 0.1.1-rc.2 → 0.1.5-rc.1：web 授权门、RPC 端点改形与预装清单重整
 
-- 冻结合同：`sha256:70803cdf0630f0400f1ce5c2229496d8cb8dd5fc0035979e07e489c2e8d50999`
+- 冻结合同：`sha256:d2dab8f7169fcfc9afb38069d5ed0fc3a42573e9b3eb43e0c9918c018b44f957`
 - 关键符号：`launchTokenFrom`、`exchangeAuthCookie`、`authenticatedUrl`、`postSessionList`
 
 ## 背景

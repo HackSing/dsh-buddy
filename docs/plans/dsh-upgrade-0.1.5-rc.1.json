@@ -42,10 +42,15 @@
   "governance": {
     "acceptance_required": true,
     "knowledge_impact": "updated",
-    "updated_knowledge_refs": [],
+    "updated_knowledge_refs": [
+      "docs/knowledge/dsh-web-auth-rpc-contract.json",
+      "docs/knowledge/session-title-projection-cache.json",
+      "docs/knowledge/electron-external-buffer-limit.json",
+      "docs/knowledge/dsh-web-ui-license-audit.json"
+    ],
     "unchanged_reason": null,
-    "governance_settled_at": null
+    "governance_settled_at": "2026-09-23T12:20:51+00:00"
   },
   "frozen_at": "2026-09-10T08:43:54+00:00",
-  "plan_fingerprint": "sha256:70803cdf0630f0400f1ce5c2229496d8cb8dd5fc0035979e07e489c2e8d50999"
+  "plan_fingerprint": "sha256:d2dab8f7169fcfc9afb38069d5ed0fc3a42573e9b3eb43e0c9918c018b44f957"
 }
