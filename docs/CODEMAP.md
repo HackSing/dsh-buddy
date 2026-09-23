@@ -19,4 +19,5 @@ Structure 检查会校验登记路径存在、公开接口符号存活，并提�
 - `lib/process-tree.js` — 职责:整组回收进程树,不留孤儿;公开接口:`killProcessTree`
 - `lib/patch-dsh-no-window.js` — 职责:给内嵌 dsh-win32-process 三处 CreateProcess 创建标志补 CREATE_NO_WINDOW 的幂等文本变换(消 Windows 运行时闪终端);公开接口:`patchSource`、`patchFile`、`MARKER`、`CREATE_NO_WINDOW`
 - `scripts/patch-dsh-no-window.js` — 职责:上述补丁的目标定位与 CLI(postinstall 打上、--check 把关、--target 热修已安装应用);公开接口:命令行入口
+- `scripts/verify-dsh-compat.js` — 职责:dsh 追新兼容门禁(候选版本在干净工作区装包、preset 单测、preset/预装插件装载后 web 启动四项验证并出报告);公开接口:命令行入口、`planProbeInstall`
 - `lib/plugin-update.js` — 职责:插件热更安装编排,按通道 schema 分流 v1 整包/v2 逐插件切片,负责下载(两段式超时:响应头预算 + body 空闲判定)、sha256 校验与外科替换,失败折叠 failed 不动现有 profile;公开接口:`applyPluginUpdate`、`downloadTarball`、`PLUGIN_UPDATE_OUTCOME`、`DOWNLOAD_NAME`

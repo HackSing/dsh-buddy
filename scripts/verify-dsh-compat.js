@@ -164,36 +164,66 @@ function freshHome(ctx, tag) {
 
 // ---- 四个验证步骤 ----
 
-function stepInstall(ctx) {
+// 探针安装规划(纯函数)。dsh 家族包之间的依赖全是 ^ 范围,只钉仓库里那批包、其余
+// 交给注册表解析时,未钉的家族包会浮到上游更新的 rc——2026-09-22 rc.3 发布后,
+// 验 0.1.5-rc.1 的探针实测约 200 个包浮到 rc.3,rc.1/rc.3 混装即崩。因此:
+// - 候选即当前钉住版本:答案必须与发布物同源,发布走 npm ci + lockfile,探针也走 lockfile;
+// - 候选是新版本:钉在旧版本上的家族包整组抬到候选版本(与「整组同抬」的升级方式一致),
+//   非家族的 @deepseek-ai 钉版(cordis-* 等)不带版本号交给注册表——旧钉版可能
+//   不满足候选树的 peer 范围(实测 rc.3 的 dsh-app-boot 要求 cordis-plugin-group ^1.0.2)。
+function planProbeInstall({ candidate, pinned, dependencies }) {
+  if (candidate === pinned) return { mode: 'lockfile' };
+  const specs = [`${DSH_PKG}@${candidate}`];
+  for (const [name, version] of Object.entries(dependencies)) {
+    if (!name.startsWith('@deepseek-ai/') || name === DSH_PKG) continue;
+    specs.push(version === pinned ? `${name}@${candidate}` : name);
+  }
+  return { mode: 'fresh', specs };
+}
+
+// lockfile 模式:工作区只放依赖声明——package.json、lockfile 与 workspaces 各包的
+// package.json(npm ci 要求 workspaces 目录在场才能对上 lockfile)。
+// --omit=dev 跳过 electron 等构建工具;--ignore-scripts 是因为根 postinstall 引用的
+// 补丁脚本不在工作区,且补丁作用于壳而非 web 启动。
+function installFromLockfile(workspace, workspaces) {
+  fs.copyFileSync(path.join(REPO_ROOT, 'package.json'), path.join(workspace, 'package.json'));
+  fs.copyFileSync(path.join(REPO_ROOT, 'package-lock.json'), path.join(workspace, 'package-lock.json'));
+  for (const pattern of workspaces || []) {
+    if (!pattern.endsWith('/*')) throw stepError(`不支持的 workspaces 形状: ${pattern}`, '');
+    const dir = pattern.slice(0, -2);
+    for (const name of fs.readdirSync(path.join(REPO_ROOT, dir))) {
+      const pkgJson = path.join(REPO_ROOT, dir, name, 'package.json');
+      if (!fs.existsSync(pkgJson)) continue;
+      fs.mkdirSync(path.join(workspace, dir, name), { recursive: true });
+      fs.copyFileSync(pkgJson, path.join(workspace, dir, name, 'package.json'));
+    }
+  }
+  return npm(['ci', '--omit=dev', '--legacy-peer-deps', '--ignore-scripts', '--no-audit', '--no-fund'], {
+    cwd: workspace,
+  });
+}
+
+function installFresh(workspace, specs) {
   fs.writeFileSync(
-    path.join(ctx.workspace, 'package.json'),
-    `${JSON.stringify({ name: 'dsh-compat-probe', version: '0.0.0', private: true }, null, 2)}\n`
+    path.join(workspace, 'package.json'),
+    `${JSON.stringify({ name: 'dsh-compat-probe', version: '0.0.0', private: true }, null, 2)}
+`
   );
   // --legacy-peer-deps:npm 11 的严格 peer 解析在 dsh 这棵 500+ 包的树上会陷入
   // 病态回溯(2026-08-20 实测:npm 11.12.1 / win32,15 分钟 CPU 打满仍停在解析阶段,
   // 加此旗标 35s 装完 429 包)。代价是 peer 不再自动安装,而 dsh 树里有一批包
   // 只以 peer 形态被引用(dsh-app-boot 的 cordis-plugin-group、dsh-agent-presets
-  // 的 dsh-scope 等)——仓库 dependencies 里那 19 个 @deepseek-ai 显式 pin 正是
-  // 为此存在,探针安装时整组同步带上,与发布物保持同源,缺一个就在这里红灯。
-  const repoDeps = JSON.parse(
-    fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')
-  ).dependencies;
-  const extras = Object.entries(repoDeps)
-    .filter(([name]) => name.startsWith('@deepseek-ai/') && name !== DSH_PKG)
-    .map(([name, version]) => `${name}@${version}`);
-  const log = npm(
-    [
-      'install',
-      '--no-audit',
-      '--no-fund',
-      '--legacy-peer-deps',
-      `${DSH_PKG}@${ctx.version}`,
-      ...extras,
-    ],
-    {
-      cwd: ctx.workspace,
-    }
-  );
+  // 的 dsh-scope 等)——仓库 dependencies 里的 @deepseek-ai 显式 pin 正是为此存在,
+  // 探针安装时整组带上(见 planProbeInstall),缺一个就在这里红灯。
+  return npm(['install', '--no-audit', '--no-fund', '--legacy-peer-deps', ...specs], { cwd: workspace });
+}
+
+function stepInstall(ctx) {
+  const { dependencies, workspaces } = ctx.manifest;
+  const plan = planProbeInstall({ candidate: ctx.version, pinned: ctx.pinned, dependencies });
+  ctx.installMode = plan.mode;
+  const log =
+    plan.mode === 'lockfile' ? installFromLockfile(ctx.workspace, workspaces) : installFresh(ctx.workspace, plan.specs);
   const pkgDir = path.join(ctx.workspace, 'node_modules', ...DSH_PKG.split('/'));
   const entry = binEntryFrom(pkgDir);
   if (!entry) throw stepError(`装包成功但无法从 ${pkgDir} 的 bin 字段解析出入口文件`, log);
@@ -280,6 +310,7 @@ function renderReport(ctx, results) {
     '',
     `- 候选版本: \`${ctx.version}\``,
     `- 当前钉住: \`${ctx.pinned}\``,
+    `- 安装方式: ${ctx.installMode === 'lockfile' ? '仓库 lockfile(npm ci,与发布物同源)' : ctx.installMode === 'fresh' ? '注册表全新解析(家族钉版整组抬到候选版本)' : '未执行'}`,
     `- 结论: **${passed}/${results.length}** 项通过`,
     `- 环境: ${process.platform}-${process.arch} / node ${process.version}`,
     `- 时间: ${new Date().toISOString()}`,
@@ -323,10 +354,10 @@ function parseArgs(argv) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const pinned = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'))
-    .dependencies[DSH_PKG];
+  const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
+  const pinned = manifest.dependencies[DSH_PKG];
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-compat-'));
-  const ctx = { version: args.version, pinned, root, workspace: path.join(root, 'workspace') };
+  const ctx = { version: args.version, pinned, manifest, root, workspace: path.join(root, 'workspace') };
   fs.mkdirSync(ctx.workspace, { recursive: true });
 
   let results;
@@ -352,4 +383,6 @@ async function main() {
   process.exitCode = results.every((r) => r.ok) ? 0 : 1;
 }
 
-main();
+if (require.main === module) main();
+
+module.exports = { planProbeInstall };

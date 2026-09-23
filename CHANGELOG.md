@@ -11,6 +11,7 @@
 - **适配 rc.5 的 host API RPC 端点改形**:unary 端点从点号改为两段斜杠(`/api/session.list` → `/api/session/list`,`method` 同改 `session/list`),payload 从 `{}` 改为单字段 `args` 包住按参数名索引的实参(`{args:{_request:{}}}`);旧形状在 rc.5 分别回 404 与 `gateway/arguments-invalid`。`lib/session-titles.js` 的端点契约集中在三个常量,契约测试按新形状重写并补 401 回路。
 - **预装插件清单重整**:`@linxin666` 的 pet / web-ui-settings 由 0.2.2 抬到 0.3.20(git-graph 同批抬版后因闪窗问题退出预装,见 Removed);`dsh-better-sidebar` 由 0.13.1 抬到 0.19.0(@deepseek-ai peer 全家族对齐 ^0.1.5-rc.1,取代同期上游同步的 0.17.1);治理插件 `@aiwaretop/dsh-docs-harness` 抬到 0.2.2(该版把设置区安装从 rc.5 已删除的 `installSettingsSection` 自由函数改为 `settings` 服务的 `installSection` 方法)。
 - **门禁 `verify-dsh-compat` 的 web 探活改走授权门**:先等 launch token(同时作为装载结算信号)、再换 cookie、再带 cookie 探 200;token 超时、授权失败、带 cookie 仍不出 200 三类失败各自独立报出,不折叠成一句「等 200 超时」。
+- **门禁 `verify-dsh-compat` 的探针安装不再混装新旧 rc**:dsh 家族包之间全是 `^` 范围依赖,探针原先只钉仓库里那批包、其余交给注册表,上游 2026-09-22 发布 0.1.5-rc.3 后,验 rc.1 的探针约 200 个家族包浮到 rc.3,混装即崩(`user patch-layer watching requires the Cordis HMR service`),③④ 恒红;验新候选时家族钉版又停在旧版本,同样混装。改为:候选等于当前钉住版本时按仓库 lockfile `npm ci`(与发布物同源);候选是新版本时家族钉版整组抬到候选版本,非家族 cordis 钉版交给注册表按候选树解析。报告新增「安装方式」行。实测 rc.1(lockfile)与 rc.3(整组抬版)均 4/4。
 
 ### Removed
 
