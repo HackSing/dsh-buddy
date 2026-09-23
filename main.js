@@ -15,8 +15,9 @@ const {
 const { resolveWindowMode } = require('./lib/window-mode');
 const { attachDragStrip } = require('./lib/immersive-titlebar');
 const { binEntryFrom } = require('./lib/dsh-entry');
-const { probeHttp, waitForHttp } = require('./lib/http-probe');
+const { probeHttp, probeBody, waitForHttp } = require('./lib/http-probe');
 const { killProcessTree } = require('./lib/process-tree');
+const { attachPageGuard } = require('./lib/page-guard');
 const { createDshLogger } = require('./lib/dsh-log');
 const {
   AUTH_COOKIE_PREFIX,
@@ -142,12 +143,11 @@ function resolveLauncher() {
 
 // 「dsh 已在监听」的判定单一来源:5xx 说明进程活着只是内部出错,
 // 仍算就绪(壳的职责是把 UI 指过去,不替 dsh 判断业务错误)。
-const isDshServing = (status) => status < 500;
+const isDshServing = (status) => status !== null;
 
 // 探测 dsh 服务是否已就绪
 async function isUp(url) {
-  const status = await probeHttp(url);
-  return status !== null && isDshServing(status);
+  return isDshServing(await probeHttp(url));
 }
 
 // 轮询等待服务就绪
@@ -368,6 +368,27 @@ async function warnIfUnauthorized() {
   });
 }
 
+// 页面守护的代际探测要读首页里的 __DSH_BOOT__ rev,而 dsh 0.1.5-rc.1 起裸 GET /
+// 一律 401——不带授权 cookie 探到的永远是 401 页,代际检测会静默失效。
+// cookie 取自窗口会话(窗口带 token 加载时由 303 换得),外部复用的 dsh 同样适用。
+async function probeWithSessionAuth(url) {
+  const cookies = await session.defaultSession.cookies.get({ url });
+  const cookie = cookies
+    .filter((c) => c.name.startsWith(AUTH_COOKIE_PREFIX))
+    .map((c) => `${c.name}=${c.value}`)
+    .join('; ');
+  return probeBody(url, { headers: cookie ? { cookie } : undefined });
+}
+
+// 内容刷新单一入口:非 mac 窗口用 reloadContent 保留当前路由,macOS BrowserWindow
+// (beginStartupLoading 挂载,无 reloadContent)重新指向 dsh。插件热更重启后
+// 与页面守护(lib/page-guard.js)的自动恢复共用这一个动作。
+function refreshWindowContent() {
+  if (!win) return;
+  if (typeof win.reloadContent === 'function') win.reloadContent();
+  else win.loadContent(authenticatedUrl(DSH_URL, dshLaunchToken));
+}
+
 // 提示层:只负责把「有新版本」这件事呈现给用户。
 // 要不要提示、提示哪个版本已由 lib/update-check 判定完毕,这里不做任何判断。
 async function notifyUpdate({ version, url }) {
@@ -509,10 +530,7 @@ async function runPluginInstall({ update, dshHome }) {
   }
   if (dshStopped) {
     const ok = await ensureDsh();
-    if (ok && win) {
-      if (typeof win.reloadContent === 'function') win.reloadContent(); // 非 mac 窗口:保留当前路由刷新
-      else win.loadContent(authenticatedUrl(DSH_URL, dshLaunchToken)); // macOS BrowserWindow(beginStartupLoading 挂载)
-    }
+    if (ok) refreshWindowContent();
   }
   return result;
 }
@@ -759,9 +777,21 @@ if (!app.requestSingleInstanceLock()) {
     }
     if (titleRepairReady) await awaitSessionTitles();
     await warnIfUnauthorized();
-    // 带 token 加载:dsh 用 303 把 token 换成授权 cookie 后跳回干净的 /,
-    // 之后这个窗口的 /api 调用都由 cookie 承载(dsh 0.1.5-rc.1 起的授权门)。
-    if (win) win.loadContent(authenticatedUrl(DSH_URL, dshLaunchToken)); // 加载页 → dsh 页面原地切换
+    if (win) {
+      // 带 token 加载:dsh 用 303 把 token 换成授权 cookie 后跳回干净的 /,
+      // 之后这个窗口的 /api 调用都由 cookie 承载(dsh 0.1.5-rc.1 起的授权门)。
+      win.loadContent(authenticatedUrl(DSH_URL, dshLaunchToken)); // 加载页 → dsh 页面原地切换
+      // 页面守护:内容页死亡(进程崩溃/加载失败/持续无响应)与服务代际更替的
+      // 检测与自动恢复,含 userData/logs/page-guard.log 事件落盘。
+      // contents 销毁时自内部 dispose,无需额外清理。见 docs/plans/shell-page-guard.md。
+      attachPageGuard({
+        contents: win.contentWebContents,
+        refresh: refreshWindowContent,
+        url: DSH_URL,
+        logDir: path.join(app.getPath('userData'), 'logs'),
+        probe: probeWithSessionAuth,
+      });
+    }
     scheduleUpdateCheck(); // 内容切换之后再查,全程与启动链解耦
     schedulePluginChannelCheck(); // 插件热更检测,同样解耦
   });

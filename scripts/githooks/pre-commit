@@ -28,4 +28,11 @@ if [ "$CODE" -ne 0 ]; then
     echo "pre-commit: assets-check 未通过（exit=$CODE），提交已中止" >&2
     exit 1
 fi
+
+# 项目级扩展点：scripts/githooks/pre-commit.local 存在时在同一 shell source，
+# 可用 $PYTHON_BIN，非零退出即中止提交。项目自定义检查写该文件（随项目提交，
+# 不计入受管指纹），不要分叉修改本受管文件。
+if [ -f "scripts/githooks/pre-commit.local" ]; then
+    . "scripts/githooks/pre-commit.local"
+fi
 exit 0

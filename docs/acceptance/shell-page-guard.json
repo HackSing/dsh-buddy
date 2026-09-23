@@ -1,0 +1,129 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "壳层页面守护:三类恢复路径与回归安全",
+  "key_symbols": [
+    "attachPageGuard",
+    "createReloadGovernor",
+    "probeBody"
+  ],
+  "objective": "验证壳层页面守护对渲染进程崩溃、服务代际更替的自动恢复行为,以及纯逻辑单测与既有套件回归安全",
+  "plan_ref": "docs/plans/shell-page-guard.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "渲染进程被 kill -9 后窗口自动恢复且事件落盘 page-guard.log",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260823T083931-53828332dc",
+          "objective_fingerprint": "sha256:612df3f75c8a74a851b319573690a47791d03cf2f160f014f7e2dc3410e25237",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "渲染进程 kill -9 后守护同秒记录 recover: render process gone (killed) 并自动重载,CDP DOM 断言新加载完成",
+          "evidence_refs": [
+            "docs/acceptance/evidence/shell-page-guard/VERIFICATION.md",
+            "docs/acceptance/evidence/shell-page-guard/page-guard.log",
+            "docs/acceptance/evidence/shell-page-guard/c1-after-recover.png"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-23T08:39:31+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "dsh boot rev 变化后窗口在一个探测周期内自动刷新",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260823T083931-557fdecb1e",
+          "objective_fingerprint": "sha256:612df3f75c8a74a851b319573690a47791d03cf2f160f014f7e2dc3410e25237",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "假服务 rev 翻转后 24 秒(<30s 周期)检出并恢复,基线对齐且仅一次恢复,CDP DOM 断言页面为新代际",
+          "evidence_refs": [
+            "docs/acceptance/evidence/shell-page-guard/VERIFICATION.md",
+            "docs/acceptance/evidence/shell-page-guard/page-guard.log",
+            "docs/acceptance/evidence/shell-page-guard/c2-after-genflip.png"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-23T08:39:31+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "page-guard 聚焦单测全绿且既有测试套件无回归",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260823T083931-41a649e717",
+          "objective_fingerprint": "sha256:612df3f75c8a74a851b319573690a47791d03cf2f160f014f7e2dc3410e25237",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "node --test 聚焦 12/12 通过;npm test 全套件 393 项 0 失败(1 既有跳过)",
+          "evidence_refs": [
+            "docs/acceptance/evidence/shell-page-guard/focused-tests.txt",
+            "docs/acceptance/evidence/shell-page-guard/full-suite.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-08-23T08:39:31+00:00"
+        }
+      ]
+    }
+  ],
+  "status": "passed",
+  "revision": 5,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:a42c3435ee10b2c6a9a61a920637153774f56cc9b0a96fac34eb1c5c2ac57d90",
+      "updated_at": "2026-08-23T08:30:43+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:e343bbf791d06400373090a40ebba591534019f233b1e857528e6d767ffad206",
+      "updated_at": "2026-08-23T08:39:31+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:90b08ab7cb92d04cc15d394cdbf740dca61cf935a5cf8c512b4d24b2b757c163",
+      "updated_at": "2026-08-23T08:39:31+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:7033fd13b8dfbf1c6dbe7b350c06ce5dc69c3bf764520c7ffbb27f2611d56b84",
+      "updated_at": "2026-08-23T08:39:31+00:00"
+    }
+  ],
+  "created_at": "2026-08-23T08:30:43+00:00",
+  "updated_at": "2026-08-23T08:39:58+00:00",
+  "settled_at": "2026-08-23T08:39:58+00:00",
+  "asset_fingerprint": "sha256:4c8a48d1717dee3a74aa3f201ddc7e72799e94a582e2899330cba90cb889c8f9",
+  "replacement": null
+}

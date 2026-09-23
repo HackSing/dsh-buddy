@@ -1,0 +1,20 @@
+✔ extractBootRev:从真实形状的首页提取顶层 rev,不误取 entries 里的插件 rev (0.781875ms)
+✔ extractBootRev:无标记/形状不符/非字符串返回 null (0.098583ms)
+✔ governor:最小间隔内拒绝,拒绝不消耗名额 (0.135208ms)
+✔ governor:滑动窗口内超过 maxPerWindow 拒绝,窗口滑走后恢复 (0.067875ms)
+✔ render-process-gone(crashed)触发恢复;clean-exit 不触发 (1.47275ms)
+✔ did-fail-load:仅主帧且非 ERR_ABORTED 触发恢复 (0.090041ms)
+✔ unresponsive:宽限内 responsive 回来不恢复;超宽限恢复 (121.675875ms)
+✔ 代际更替:did-finish-load 对齐基线,rev 变化触发一次恢复,再次加载后静默 (155.788541ms)
+✔ 页面死亡后服务回来:即使 rev 未变也持续重试恢复,直到加载成功 (131.908417ms)
+✔ 服务不可达:不触发恢复动作 (51.86825ms)
+✔ governor 拒绝时不恢复,抑制日志只记一次 (0.917125ms)
+✔ dispose 后事件与探测均不再动作;contents destroyed 自动 dispose (51.052334ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 597.869125
