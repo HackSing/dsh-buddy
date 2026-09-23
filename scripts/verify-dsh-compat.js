@@ -15,6 +15,7 @@ const os = require('os');
 const path = require('path');
 const { binEntryFrom } = require('../lib/dsh-entry');
 const { waitForHttp } = require('../lib/http-probe');
+const { exchangeAuthCookie, waitForLaunchToken } = require('../lib/dsh-browser-auth');
 const { killProcessTree } = require('../lib/process-tree');
 const { installBundledPresets } = require('../lib/bundled-presets');
 
@@ -88,7 +89,10 @@ function reservePort() {
   });
 }
 
-// 用候选版本的入口拉起 web,轮询到 HTTP 200 后回收进程树,返回状态码与全部日志
+// 用候选版本的入口拉起 web,走完授权门拿到 HTTP 200 后回收进程树,返回状态码与全部日志。
+// 授权门(dsh 0.1.5-rc.1 起):裸 GET / 一律 401,因此「真的能出页面」要分三步问——
+// 等启动行打印 launch token(它在插件装载结算后才打印,同时也是就绪信号)、用 token
+// 换授权 cookie、带 cookie 探 200。三步各自的失败原因不同,不折叠成一句超时。
 async function bootWeb(entry, dshHome, cwd) {
   const port = await reservePort();
   const url = `http://127.0.0.1:${port}/`;
@@ -107,18 +111,35 @@ async function bootWeb(entry, dshHome, cwd) {
     exitCode = code;
   });
 
+  const logOf = () => `$ node <dsh> web --port ${port}\n${Buffer.concat(chunks).toString('utf8')}`;
   try {
+    const token = await waitForLaunchToken(child, { timeoutMs: WEB_READY_TIMEOUT_MS });
+    if (token === null) {
+      const why =
+        exitCode !== null
+          ? `web 进程提前退出(code ${exitCode})`
+          : `等待 ${url} 打印 launch token 超时`;
+      throw stepError(why, logOf());
+    }
+    let cookie;
+    try {
+      cookie = await exchangeAuthCookie(url, token);
+    } catch (err) {
+      throw stepError(`${url} 的授权门不通:${err.message}`, logOf());
+    }
     const status = await waitForHttp(url, {
       timeoutMs: WEB_READY_TIMEOUT_MS,
       accept: (s) => s === 200,
+      headers: { cookie },
     });
-    const log = `$ node <dsh> web --port ${port}\n${Buffer.concat(chunks).toString('utf8')}`;
     if (status === null) {
       const why =
-        exitCode !== null ? `web 进程提前退出(code ${exitCode})` : `等待 ${url} 返回 200 超时`;
-      throw stepError(why, log);
+        exitCode !== null
+          ? `web 进程提前退出(code ${exitCode})`
+          : `等待 ${url} 带授权 cookie 返回 200 超时`;
+      throw stepError(why, logOf());
     }
-    return { status, log, port };
+    return { status, log: logOf(), port };
   } finally {
     killProcessTree(child.pid);
   }

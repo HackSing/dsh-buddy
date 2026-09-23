@@ -28,6 +28,7 @@
 - [preserved 弹窗降噪与预装清单 task-board→dispatch 换血](plans/preserved-quiet-manifest-swap.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）；关键符号：`profileUpgradeDecision`、`preserved-current`、`retiredPackages`、`diffChannelVersions`
 - [dispatch vendored sqlite 多平台化,解除 Windows 挂账](plans/multiplatform-sqlite-vendor.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）；关键符号：`seedNativeAddons`、`patchDatabaseJs`、`platformDirs`、`PREBUILD_TARGETS`
 - [内嵌 dsh 0.1.1-rc.1 → 0.1.1-rc.2 全家族钉版同抬](plans/dsh-upgrade-0.1.1-rc.2.md) — 状态：已实施-仅追溯（代码已是真源，2026-08-23 核对）；关键符号：`DSH_VERSION`、`@deepseek-ai/dsh`、`allowScripts`
+- [内嵌 dsh 0.1.1-rc.2 → 0.1.5-rc.1：web 授权门、RPC 端点改形与预装清单重整](plans/dsh-upgrade-0.1.5-rc.1.md) — 状态：有效（实施中）；关键符号：`launchTokenFrom`、`exchangeAuthCookie`、`authenticatedUrl`、`postSessionList`
 <!-- docs-harness:plans-index:end -->
 
 <!-- docs-harness:knowledge-index:start -->
@@ -35,16 +36,17 @@
 
 - [bundled agent preset 安装拓扑约束](knowledge/bundled-preset-topology.md) — 状态：有效（现行事实）；关键符号：`BUNDLED_PRESET_DIRS`、`installBundledPresets`、`agent-presets`
 - [插件预装协议门槛(license gate)](knowledge/plugin-license-gate.md) — 状态：有效（现行事实）；关键符号：`license_gate`、`preinstall-manifest`、`copyleft`
-- [dsh-web-ui 协议尽调与预装子集决策](knowledge/dsh-web-ui-license-audit.md) — 状态：有效（现行事实）；关键符号：`preinstall-manifest`、`dsh-web-ui-all`、`cloudflared`、`@linxin666`
 - [Windows 随包 profile 构建与解包约束](knowledge/windows-profile-packaging.md) — 状态：有效（现行事实）；关键符号：`installBundledProfile`、`build-web-profile`、`DSH_SKIP_PROFILE`、`npmRebuild`
 - [dsh 网关 settings 白名单：第三方插件设置面必须自建路由](knowledge/dsh-settings-gateway-allowlist.md) — 状态：有效（现行事实）；关键符号：`WEB_SETTINGS_NAMESPACES`、`settings.describe`、`docs-harness-settings`、`HarnessSettingsStore`
-- [Electron 当 Node 跑内嵌 dsh 的原生能力边界：external buffer 被禁](knowledge/electron-external-buffer-limit.md) — 状态：有效（现行事实）；关键符号：`readUtf16`、`patch-dsh-picker`、`DSH_PICKER_BROWSE`、`browse-picker-patch`
 - [complete persona 压制插件 prompt section 的根因与相位化密封方案](knowledge/anchored-complete-persona.md) — 状态：有效（现行事实）；关键符号：`sealSectionsUntilPromotion`、`extraIndex`、`installBundledPresets`、`complete`
 - [插件热更通道:滚动 release channel + 成品 tar 分发,运行时复用 bundled-profile 安装链路](knowledge/plugin-channel-hot-update.md) — 状态：有效（现行事实）；关键符号：`checkPluginChannel`、`applyPluginUpdate`、`plugin-channel.json`、`profileUpgradeDecision`
-- [会话列表标题链路:投影缓存是唯一冷源,强杀丢尾帧,coldSnapshot 可修复](knowledge/session-title-projection-cache.md) — 状态：有效（现行事实）；关键符号：`coldSnapshot`、`session_projcache`、`writeBatchMaxDelayMs`、`dsh-buddy-title-repair`
 - [dsh Web UI 插件开发规范:包结构/cordis patch 加载/settings.section 注册/DOM 注入自愈/出壳通道,详细指南落 docs/dsh-web-ui-plugin-guide.md](knowledge/dsh-web-ui-plugin-guide.md) — 状态：有效（现行事实）；关键符号：`dsh.client`、`cordis.patch.yml`、`settings.section`、`ctx.slots.register`
 - [预装插件存量缺口与 CI 安装位污染](knowledge/preinstall-existing-user-gap.md) — 状态：有效（现行事实）；关键符号：`installBundledProfile`、`preinstall-manifest`、`virtualStoreDir`、`healProfilesModuleFallback`
 - [Windows 进程回收与 NSIS 安装器的异步陷阱](knowledge/windows-async-pitfalls.md) — 状态：有效（现行事实）；关键符号：`killProcessTree`、`killAndWaitExit`、`assertNoExistingInstall`、`reportRegistryEntry`
+- [Electron 当 Node 跑内嵌 dsh 的原生能力边界:external buffer 被禁](knowledge/electron-external-buffer-limit.md) — 状态：有效（现行事实）；关键符号：`readUtf16`、`DSH_PICKER_BROWSE`、`browse-picker-patch`、`use-browse-picker`
+- [dsh-web-ui 协议尽调与预装子集决策](knowledge/dsh-web-ui-license-audit.md) — 状态：有效（现行事实）；关键符号：`preinstall-manifest`、`dsh-web-ui-all`、`cloudflared`、`@linxin666`
+- [dsh web 的浏览器授权门与 host API RPC 端点契约(0.1.5-rc.1 实证)](knowledge/dsh-web-auth-rpc-contract.md) — 状态：有效（现行事实）；关键符号：`launchTokenFrom`、`exchangeAuthCookie`、`AUTH_COOKIE_PREFIX`、`postSessionList`
+- [会话列表标题链路:投影缓存是唯一冷源,强杀丢尾帧,coldSnapshot 可修复](knowledge/session-title-projection-cache.md) — 状态：有效（现行事实）；关键符号：`coldSnapshot`、`session_projcache`、`writeBatchMaxDelayMs`、`dsh-buddy-title-repair`
 <!-- docs-harness:knowledge-index:end -->
 
 <!-- docs-harness:acceptance-index:start -->
@@ -67,6 +69,7 @@
 - [启动加载窗口:首屏即时反馈验收](acceptance/startup-loading-window.md) — 状态：已验收-仅追溯；关键符号：`buildStageScript`、`installBundledProfile`、`setStartupStage`
 - [preserved 弹窗降噪与清单换血验收](acceptance/preserved-quiet-manifest-swap.md) — 状态：已验收-仅追溯；关键符号：`profileUpgradeDecision`、`preserved-current`、`retiredPackages`
 - [dispatch 多平台 sqlite vendor 验收](acceptance/multiplatform-sqlite-vendor.md) — 状态：已验收-仅追溯；关键符号：`seedNativeAddons`、`patchDatabaseJs`、`platformDirs`
+- [内嵌 dsh 0.1.5-rc.1 升级的五层验收](acceptance/dsh-upgrade-0.1.5-rc.1.md) — 状态：有效（待验收）；关键符号：`launchTokenFrom`、`exchangeAuthCookie`、`postSessionList`、`DSH_VERSION`
 <!-- docs-harness:acceptance-index:end -->
 
 <!-- docs-harness:adr-index:start -->

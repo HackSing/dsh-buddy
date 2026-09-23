@@ -1,0 +1,200 @@
+{
+  "schema_version": "docs-harness/acceptance-asset/v1",
+  "title": "内嵌 dsh 0.1.5-rc.1 升级的五层验收",
+  "key_symbols": [
+    "launchTokenFrom",
+    "exchangeAuthCookie",
+    "postSessionList",
+    "DSH_VERSION"
+  ],
+  "objective": "证明内嵌 dsh 抬到 0.1.5-rc.1 后,钉版形状、壳的 rc.5 授权消费链、门禁四门与随包 profile 产物在真实执行下全部成立。",
+  "plan_ref": "docs/plans/dsh-upgrade-0.1.5-rc.1.json",
+  "knowledge_refs": [],
+  "criteria": [
+    {
+      "id": "c1",
+      "title": "钉版与预装清单形状:30+ 个 @deepseek-ai 钉版同为 0.1.5-rc.1,manifest 无 rc.5 不兼容包",
+      "acceptance_type": "contract_check",
+      "layer": "L1",
+      "evidence_layer": null,
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260910T093158-b7657890e5",
+          "objective_fingerprint": "sha256:a422c0ff91f047e1e1d746a269573348731e9a768c7f8f63384fe24d1b3662a3",
+          "acceptance_type": "contract_check",
+          "status": "passed",
+          "layer": "L1",
+          "evidence_layer": null,
+          "method": "脚本读取 package.json / package-lock.json / plugins/preinstall-manifest.json / main.js 后逐项断言:33 个 @deepseek-ai 钉版除 cordis-plugin-group(独立版本线)外全为 0.1.5-rc.1;lock 中 0.1.1-rc.2 条目为 0;manifest packages 7 条与 retired 3 条与决策一致;main.js DSH_VERSION 为 0.1.5-rc.1;全仓 0.1.1-rc.2 残留仅剩历史文档。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c1-pins-and-manifest.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-09-10T09:31:58+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "单元与契约测试:npm test 全绿,含 rc.5 RPC 新形状与授权模块测试",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L2",
+      "evidence_layer": "focused_test",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260910T093159-4e31aca377",
+          "objective_fingerprint": "sha256:a422c0ff91f047e1e1d746a269573348731e9a768c7f8f63384fe24d1b3662a3",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L2",
+          "evidence_layer": "focused_test",
+          "method": "npm test(node --test 全仓单元/契约用例)一次跑完,389 pass / 0 fail;其中新增 test/dsh-browser-auth.test.mjs 覆盖 rc.5 授权门解析与 cookie 交换,test/session-titles.test.mjs 起真实 HTTP 服务器断言 /api/session/list 端点、client-request 信封与授权 cookie 头,test/title-repair-plugin.test.mjs 以 rc.5 形状的假持久层断言 cachedSnapshot/coldSnapshot 的新入参。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c2-npm-test.txt"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-09-10T09:31:59+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "门禁四门:verify-dsh-compat 0.1.5-rc.1 报告 4/4",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L3",
+      "evidence_layer": "local_runtime",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260910T093159-e04dfde562",
+          "objective_fingerprint": "sha256:a422c0ff91f047e1e1d746a269573348731e9a768c7f8f63384fe24d1b3662a3",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L3",
+          "evidence_layer": "local_runtime",
+          "method": "node scripts/verify-dsh-compat.js 0.1.5-rc.1 --report build/dsh-compat-0.1.5-rc.1.md 完整跑一轮,四门全绿(③随包 3 个 preset 装载后 web 返回 200,④manifest 7 个插件安装后 web 返回 200);③④ 的 web 探活已按 rc.5 授权契约改为 launch token → 303 换 dsh-auth cookie → 带 cookie 探 200。追加:门禁通过后发现的标题修复插件静默空转已修复,并以真实启动壳后投影缓存的回写行验证。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c3-verify-dsh-compat-report.md",
+            "docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c3b-title-repair-runtime.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-09-10T09:31:59+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "title": "随包 web profile 产物:build-web-profile 产 tar 且 verify-profile-tar 通过",
+      "acceptance_type": "behavior_acceptance",
+      "layer": "L4",
+      "evidence_layer": "package_or_install",
+      "status": "passed",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260910T093159-1b81452717",
+          "objective_fingerprint": "sha256:a422c0ff91f047e1e1d746a269573348731e9a768c7f8f63384fe24d1b3662a3",
+          "acceptance_type": "behavior_acceptance",
+          "status": "passed",
+          "layer": "L4",
+          "evidence_layer": "package_or_install",
+          "method": "node scripts/build-web-profile.js 前台重建随包 profile(exit 0,产物 108269349 字节),再跑 node scripts/verify-profile-tar.js 断言通过(entries=15012 links=0 binaries=26);解出 profile package.json 核对装入的 7 个插件与 manifest 逐条一致。",
+          "evidence_refs": [
+            "docs/acceptance/evidence/dsh-upgrade-0.1.5-rc.1/c4-profile-tar.md"
+          ],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-09-10T09:31:59+00:00"
+        }
+      ]
+    },
+    {
+      "id": "c5",
+      "title": "用户最短确认:壳窗口真的进 dsh UI(非 unauthorized),皮肤中心与插件面符合预期",
+      "acceptance_type": "user_acceptance",
+      "layer": "L5",
+      "evidence_layer": null,
+      "status": "pending",
+      "records": [
+        {
+          "schema_version": "docs-harness/acceptance-record/v3",
+          "record_id": "acc-20260910T093159-d7f3e081f2",
+          "objective_fingerprint": "sha256:a422c0ff91f047e1e1d746a269573348731e9a768c7f8f63384fe24d1b3662a3",
+          "acceptance_type": "user_acceptance",
+          "status": "user_pending",
+          "layer": "L5",
+          "evidence_layer": null,
+          "method": null,
+          "evidence_refs": [],
+          "reason": null,
+          "next_action": null,
+          "failure_attributions": [],
+          "recorded_at": "2026-09-10T09:31:59+00:00",
+          "user_handoff": {
+            "automatically_verified": [
+              "门禁 ③④ 已用 launch token 换授权 cookie 后探到 web HTTP 200,证明服务端授权门本身可通过",
+              "npm test 389 全绿,覆盖 launchTokenFrom / exchangeAuthCookie / postSessionList 的契约",
+              "随包 profile tar 断言通过,7 个预装插件与清单一致(含替换后的 skin-center 0.3.20)"
+            ],
+            "user_checks": [
+              "壳窗口打开后直接进 dsh UI,不是 unauthorized/401 页面,也没有弹出「未取得授权 cookie」的告警框",
+              "设置页里皮肤中心可打开,随包只带 blue-fantasy 一个皮肤属预期(其余皮肤改为卡片内按需从 dsh-market.com 安装)",
+              "插件面能看到 7 个预装插件且都正常装载,原先的 live-stats(实时统计)已按决策移出预装、不再出现"
+            ],
+            "steps": [
+              "在仓库根目录运行 npm start 启动壳(若已有实例占着 3080 端口先关掉)",
+              "等窗口加载完成,确认进入的是 dsh 界面而非 401/unauthorized",
+              "打开设置 → 皮肤中心,确认列表可用;再打开插件面清点 7 个预装插件"
+            ],
+            "environment_ready": true
+          }
+        }
+      ]
+    }
+  ],
+  "status": "pending",
+  "revision": 6,
+  "revision_history": [
+    {
+      "revision": 1,
+      "asset_fingerprint": "sha256:f5152892f88ee4270228a39f918fcee8d1c5e28a1fa5af1db2db24d2acac070d",
+      "updated_at": "2026-09-10T08:44:16+00:00"
+    },
+    {
+      "revision": 2,
+      "asset_fingerprint": "sha256:d5b58c7150db4aeff5f5c1dc99d4209e0739c3bf5d39bf6f8144351233987058",
+      "updated_at": "2026-09-10T09:31:58+00:00"
+    },
+    {
+      "revision": 3,
+      "asset_fingerprint": "sha256:4c36cae60cda9ef39e3f53765fbbcf933a15d5ac9005bfac56cd5b30e34af0e8",
+      "updated_at": "2026-09-10T09:31:59+00:00"
+    },
+    {
+      "revision": 4,
+      "asset_fingerprint": "sha256:8a83438d62ecca510e431a972784b97ec346be8ea143004a6c12fa4efb432b68",
+      "updated_at": "2026-09-10T09:31:59+00:00"
+    },
+    {
+      "revision": 5,
+      "asset_fingerprint": "sha256:d6f5f523bf37d4c25a117b22320643fae06ebfae462a7a890fdbdba9e925b297",
+      "updated_at": "2026-09-10T09:31:59+00:00"
+    }
+  ],
+  "created_at": "2026-09-10T08:44:16+00:00",
+  "updated_at": "2026-09-10T09:31:59+00:00",
+  "settled_at": null,
+  "asset_fingerprint": "sha256:a3792ac0a9030943896b6bbaf1339654957bc5ea27800dc55277e424d54a48fd"
+}

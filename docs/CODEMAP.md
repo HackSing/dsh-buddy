@@ -7,3 +7,14 @@
 
 Structure 检查会校验登记路径存在、公开接口符号存活，并提醒未登记的新增代码文件；
 测试文件不必登记。
+
+## 壳与 dsh 的交互层
+
+- `lib/dsh-browser-auth.js` — 职责:dsh 0.1.5-rc.1 web 浏览器授权门的单一来源(解析 launch token、拼带 token 的 URL、token 换授权 cookie);公开接口:`launchTokenFrom`、`authenticatedUrl`、`waitForLaunchToken`、`exchangeAuthCookie`、`AUTH_COOKIE_PREFIX`
+- `lib/http-probe.js` — 职责:「此刻这个 HTTP 端点通不通」的探测与轮询等待,不可达折叠成 null 不抛;公开接口:`probeHttp`、`waitForHttp`
+- `lib/session-titles.js` — 职责:首屏标题就绪门,按 host API 契约取会话列表并判定标题是否回写完;公开接口:`waitForTitlesSettled`、`untitledSessions`、`titleOf`、`postSessionList`
+- `lib/dsh-entry.js` — 职责:从 dsh 包目录按 bin 字段解析可执行入口;公开接口:`binEntryFrom`
+- `lib/dsh-log.js` — 职责:dsh 子进程输出三路分发(落盘/内存尾部/透传控制台);公开接口:`createDshLogger`
+- `lib/process-tree.js` — 职责:整组回收进程树,不留孤儿;公开接口:`killProcessTree`
+- `lib/patch-dsh-no-window.js` — 职责:给内嵌 dsh-win32-process 三处 CreateProcess 创建标志补 CREATE_NO_WINDOW 的幂等文本变换(消 Windows 运行时闪终端);公开接口:`patchSource`、`patchFile`、`MARKER`、`CREATE_NO_WINDOW`
+- `scripts/patch-dsh-no-window.js` — 职责:上述补丁的目标定位与 CLI(postinstall 打上、--check 把关、--target 热修已安装应用);公开接口:命令行入口

@@ -21,6 +21,21 @@ test('untitledSessions: blank/running 不参与,title 非空字符串才算就�
   );
 });
 
+// 授权缺失的回路:rc.5 的 /api 没 cookie 一律 401,postSessionList 必须把它当失败
+// 报出来(而不是当成空列表误判「标题都就绪了」)。
+test('postSessionList: 401 抛错而非误当空列表', async (t) => {
+  const server = http.createServer((req, res) => {
+    res.writeHead(401);
+    res.end('unauthorized');
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  await assert.rejects(
+    () => postSessionList(`http://127.0.0.1:${server.address().port}`),
+    /session\/list HTTP 401/
+  );
+});
+
 test('waitForTitlesSettled: 第三轮取数后所有标题就绪则提前返回', async () => {
   const responses = [
     [{ sessionId: 'a' }],
@@ -60,20 +75,23 @@ test('waitForTitlesSettled: 请求持续失败也只在超时后放行,并附诊
   assert.equal(result.error, 'connection refused');
 });
 
-// 真实 HTTP 回路:验证 unary 信封与 server-response 解析,防信封字段名漂移。
-test('postSessionList 走真实 HTTP,信封与响应解析符合 host API 契约', async (t) => {
+// 真实 HTTP 回路:验证 unary 信封与 server-response 解析,防端点形状与信封字段名漂移。
+// 端点、方法名、payload 形状与授权 cookie 是 dsh 0.1.5-rc.1 的 host API 契约,
+// 旧的 `session.list` + 空 payload 在 rc.5 上分别回 404 与 arguments-invalid。
+test('postSessionList 走真实 HTTP,端点/信封/授权头符合 host API 契约', async (t) => {
   const server = http.createServer((req, res) => {
     assert.equal(req.method, 'POST');
-    assert.equal(req.url, '/api/session.list');
+    assert.equal(req.url, '/api/session/list');
     assert.match(String(req.headers['content-type']), /^application\/json/);
+    assert.equal(req.headers.cookie, 'dsh-auth-x=v1.signed');
     const chunks = [];
     req.on('data', (c) => chunks.push(c));
     req.on('end', () => {
       const envelope = JSON.parse(Buffer.concat(chunks).toString('utf8'));
       assert.equal(envelope.type, 'client-request');
-      assert.equal(envelope.method, 'session.list');
+      assert.equal(envelope.method, 'session/list');
       assert.equal(typeof envelope.rpcId, 'string');
-      assert.deepEqual(envelope.payload, {});
+      assert.deepEqual(envelope.payload, { args: { _request: {} } });
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(
         JSON.stringify({
@@ -86,7 +104,9 @@ test('postSessionList 走真实 HTTP,信封与响应解析符合 host API 契约
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => server.close());
-  const items = await postSessionList(`http://127.0.0.1:${server.address().port}`);
+  const items = await postSessionList(`http://127.0.0.1:${server.address().port}`, {
+    cookie: 'dsh-auth-x=v1.signed',
+  });
   assert.deepEqual(items, [{ sessionId: 's1' }]);
 });
 
@@ -97,5 +117,5 @@ test('postSessionList: 业务错误(result.ok=false)抛错而非误当空列表'
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => server.close());
-  await assert.rejects(() => postSessionList(`http://127.0.0.1:${server.address().port}`), /session\.list rejected/);
+  await assert.rejects(() => postSessionList(`http://127.0.0.1:${server.address().port}`), /session\/list rejected/);
 });

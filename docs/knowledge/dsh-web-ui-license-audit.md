@@ -3,9 +3,9 @@
 
 # dsh-web-ui 协议尽调与预装子集决策
 
-- 修订：3
+- 修订：4
 - 关键符号：`preinstall-manifest`、`dsh-web-ui-all`、`cloudflared`、`@linxin666`
-- 资产指纹：`sha256:85e1457b933ff9fd3d042f00f5c1f5fa16b19de5133ffc1b3ea96fe74cb70e2c`
+- 资产指纹：`sha256:c0a54017eec09801e0a116c11341cf51659e5189f249b36aa0b815218e050bc3`
 
 ## 摘要
 
@@ -27,12 +27,12 @@ dsh-web-ui 各包经 dsh plugin --profile web add 安装(转发 pnpm),内嵌 dsh
 
 ### `webui.subset.security`
 
-预装限六包安全 UI 子集(task-board/git-graph/skins/pet/live-stats/web-ui-settings,均 0.1.16);dsh-ssh(明文凭据)与 dsh-remote-web-ui(cloudflared 公网隧道)及聚合包 dsh-web-ui-all 明确排除,理由记录于 manifest 的 excluded 字段;pnpm 10 默认拦截 cloudflared 构建脚本可作为二线防护但不可依赖
+预装只取安全 UI 子集,不取聚合包:dsh-ssh(明文凭据)与 dsh-remote-web-ui(cloudflared 公网隧道)及聚合包 dsh-web-ui-all 明确排除,理由记录于 manifest 的 excluded 字段;pnpm 10 默认拦截 cloudflared 构建脚本可作为二线防护但不可依赖。子集成员与版本随内嵌 dsh 变动,唯一真源是 plugins/preinstall-manifest.json 的 packages/retired 两个字段,不要在本资产里复述具体版本号:2026-09-10 的 0.1.5-rc.1 升级里 task-board 早已被 @aiwaretop/dsh-dispatch 取代,dsh-skins 被上游退役为空载具改装 dsh-client-ui-skin-center,live-stats 因上游未适配 rc.5 退出预装
 
 证据：`plugins/preinstall-manifest.json`
 
 ### `webui.profile.portable`
 
-预装六包全部为纯 JS(clsx/schemastery/zod 等,无原生模块——含原生依赖的 dsh-ssh 已被子集排除),因此同一份 web-profile.tar.gz 跨平台可复用,Windows 打包无需按平台重建 profile;构建脚本依赖构建机的系统 tar 与 pnpm:macOS 自带 bsdtar,Windows 10+ 同样自带 bsdtar(tar.exe),pnpm 需自行安装;Windows 壳侧现状:titleBarStyle 沉浸式仅 darwin 启用(win 保留原生边框),killDsh 已有 taskkill 分支,npx 回退在 win32 下经 shell 执行
+预装的 @linxin666 系全部为纯 JS(clsx/schemastery/zod 等,无原生模块——含原生依赖的 dsh-ssh 已被子集排除),因此同一份 web-profile.tar.gz 跨平台可复用,Windows 打包无需按平台重建 profile;构建脚本依赖构建机的系统 tar 与 pnpm:macOS 自带 bsdtar,Windows 10+ 同样自带 bsdtar(tar.exe),pnpm 需自行安装;Windows 壳侧现状:titleBarStyle 沉浸式仅 darwin 启用(win 保留原生边框),killDsh 已有 taskkill 分支,npx 回退在 win32 下经 shell 执行
 
 证据：`scripts/build-web-profile.js`、`plugins/preinstall-manifest.json`、`main.js`

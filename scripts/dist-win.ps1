@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 DSH Buddy - Windows 打包入口主体（scripts\dist-win.bat 只是双击引导壳）。
 
@@ -43,7 +43,7 @@ $script:LastLoggedStage = ''
 # 出现——如第二次 pnpm install 的 "Done in"——不会把进度拉回去）。
 $script:Stages = @(
     @{ name = 'start';          percent = 0;   pattern = $null;                           message = '正在启动打包链' }
-    @{ name = 'patch-picker';   percent = 2;   pattern = '\[patch-dsh-picker\] check';    message = '已校验 dsh picker 补丁' }
+    @{ name = 'patch-no-win';   percent = 3;   pattern = '\[patch-dsh-no-window\] check'; message = '已校验子进程隐藏控制台补丁' }
     @{ name = 'patch-mm-ui';    percent = 4;   pattern = '\[patch-multimodal-ui\] check'; message = '已校验多模态 UI 补丁' }
     @{ name = 'profile-init';   percent = 6;   pattern = 'dsh: initialized profile';      message = '已初始化随包插件 profile' }
     @{ name = 'plugin-install'; percent = 12;  pattern = 'Progress: resolved';            message = '正在安装预装插件' }

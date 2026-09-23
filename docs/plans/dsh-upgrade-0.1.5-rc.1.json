@@ -1,0 +1,51 @@
+{
+  "schema_version": "docs-harness/plan/v3",
+  "plan_level": "full",
+  "plan_profile": "migration_release",
+  "secondary_profiles": [],
+  "template_versions": [
+    "level/full@2.12.1",
+    "profile/migration_release@2.12.1"
+  ],
+  "selection_fingerprint": "sha256:1ae0b0a80aeabec28665804e8c899e05c8aa76a0b96b652efd0fbac18d015573",
+  "content": {
+    "title": "内嵌 dsh 0.1.1-rc.2 → 0.1.5-rc.1：web 授权门、RPC 端点改形与预装清单重整",
+    "key_symbols": [
+      "launchTokenFrom",
+      "exchangeAuthCookie",
+      "authenticatedUrl",
+      "postSessionList"
+    ],
+    "background": "dsh 0.1.5-rc.1 引入两处破坏性变更,钉版同抬之外还要改壳与门禁。(1) web 加了强制浏览器授权:裸 GET / 返回 401,必须用启动行打印的 launch token 走 GET /?token=X → 303 + dsh-auth-<authority> cookie,再带 cookie 取 / 才是 200;/api 同样只认 cookie(requestRejection = Host/Origin 围栏 + isAuthenticated)。(2) 网关 RPC 端点从点号改成两段斜杠:session.list → POST /api/session/list,method session/list,payload {args:{_request:{}}},旧形状回 404。两处都已在本机 rc.5 实测确认。插件面另有三个独立不兼容:上游删除 @deepseek-ai/dsh-settings 的 installSettingsSection/settingsNamespace 导出(替代是 settings 服务的 installSection 方法),导致 @linxin666/dsh-client-ui-skin-center@0.2.9(被已退役载具 dsh-skins 锁死)、@linxin666/dsh-live-stats@0.1.20(上游 latest,无修复版)、@aiwaretop/dsh-docs-harness@0.2.1(本生态自研)三者在 rc.5 下装载即让 web 进程 code 1 退出;同时 better-sidebar/git-graph/pet 需要的 dsh-client-ui-primitives、dsh-client-ui-slots、dsh-client-store 不在宿主树(rc.5 把它们挪成 peer,门禁探针用 --legacy-peer-deps 不自动装)。",
+    "objective": "把内嵌 dsh 全家钉版抬到 0.1.5-rc.1,壳(Electron)与门禁(verify-dsh-compat)适配 rc.5 的授权门与 RPC 端点新形状,预装清单重整到一套在 rc.5 上真实可启动的插件集合,node scripts/verify-dsh-compat.js 0.1.5-rc.1 四门全绿,随包 web profile 重建并通过 verify-profile-tar。",
+    "non_goals": "不做 dist 出包与真机安装验收(随下次 release);不做插件 channel 发布(minDshVersion 推导属发布侧);不改 dsh 上游源码;不为 rc.5 已修复的 external buffer 问题保留 patch-dsh-picker(已删);不顺手重构 main.js 存量体量债。",
+    "success_criteria": "1) verify-dsh-compat 0.1.5-rc.1 报告 4/4;2) npm test 全绿且 http-probe/session-titles 的契约测试按 rc.5 新形状重写;3) build-web-profile 产出 tar 且 verify-profile-tar 通过;4) 壳的三条 rc.5 授权消费链(窗口加载、首屏标题门、就绪探测)各有实测证据;5) 全仓代码面无 0.1.1-rc.2 残留。",
+    "execution_scope": "package.json 钉版(+4 个新 peer 钉版)、main.js、lib/http-probe.js、lib/session-titles.js、新增 lib/dsh-browser-auth.js、scripts/verify-dsh-compat.js、plugins/preinstall-manifest.json、test/ 下对应测试;另跨仓修复 D:/Project/docs-harness/dsh-plugin 的 settings 安装调用(发布 0.2.2 须用户批准,发布后才抬本仓清单)。",
+    "implementation": "批次 1(授权基础设施):新增 lib/dsh-browser-auth.js 作为 rc.5 授权的单一来源(token 解析、带 token 的 URL、token 换 cookie);lib/http-probe.js 的 probeHttp 改成选项对象并支持 headers,waitForHttp 透传,更新两处调用点。批次 2(壳消费链):main.js 在 spawn 后等 launch token,窗口改加载 authenticatedUrl,复用外部 dsh 且 Electron session 无 dsh-auth cookie 时弹框说明;lib/session-titles.js 的 postSessionList 改 /api/session/list + method session/list + payload {args:{_request:{}}} 并接受 cookie,无 cookie 时壳直接跳过首屏标题门(不空转 10s)。批次 3(门禁):verify-dsh-compat 的 bootWeb 从子进程输出取 token、换 cookie、带 cookie 探 200,失败原因保持区分(进程提前退出 / 等 200 超时 / 未打印 token)。批次 4(清单):git-graph/pet/web-ui-settings 0.2.2→0.3.20;dsh-skins→skin-center 0.3.20 并把 dsh-skins 移入 retired;live-stats 移入 retired;docs-harness 待 0.2.2 发布后抬版;package.json 补 dsh-client-ui-primitives/dsh-client-ui-slots/dsh-client-store 钉版;逐包过协议门与 install 脚本核对写回 comment。批次 5(收尾):门禁 4/4 → 重建 profile → npm test → CHANGELOG/Knowledge/INDEX/CODEMAP/assets-check。",
+    "module_interfaces": "lib/dsh-browser-auth.js(新) — 职责:rc.5 web 浏览器授权的单一来源,不碰窗口也不碰业务判定。公开接口:launchTokenFrom(text) → string|null(纯函数,从 dsh web 启动行解析 launch token);authenticatedUrl(baseUrl, token) → string(token 为空原样返回);waitForLaunchToken(child, {timeoutMs}) → Promise<string|null>(监听子进程 stdout/stderr,进程先退出则 null);exchangeAuthCookie(baseUrl, token, {timeoutMs}) → Promise<string|null>(GET /?token 取 303 的 set-cookie,返回 name=value)。复用:不新增 HTTP 依赖,沿用 node:http。\nlib/http-probe.js(改) — probeHttp(url, {timeoutMs, headers}) / waitForHttp(url, {timeoutMs, accept, headers, probeTimeoutMs, intervalMs});「此刻通不通」的语义与 null 折叠不变。\nlib/session-titles.js(改) — postSessionList(url, {cookie, timeoutMs}) 与 waitForTitlesSettled(url, {cookie, ...});untitledSessions/titleOf 不变(rc.5 的 SessionListValue 投影形状未变)。\nscripts/verify-dsh-compat.js(改) — bootWeb(entry, dshHome, cwd) 返回 {status, log, port} 不变,内部改走 token→cookie→200。\nmain.js(改) — 复用上述模块,不自带 token 正则或 cookie 拼装。",
+    "acceptance_plan": "① 门禁四门:node scripts/verify-dsh-compat.js 0.1.5-rc.1 --report build/dsh-compat-0.1.5-rc.1.md 输出 4/4。② 单元:npm test 全绿,含按 rc.5 形状重写的 session-titles 契约测试与新增 dsh-browser-auth 测试。③ 运行层:壳 npm start 起真机 web,窗口真的进 UI(不是 unauthorized),首屏标题门拿到 200 而非 401。④ 产物:build-web-profile.js 产出 tar,verify-profile-tar.js 通过。⑤ 用户确认:壳界面与皮肤中心由用户最短确认(内置皮肤降为 1 个属预期)。",
+    "acceptance_required": true,
+    "knowledge_impact": "updated",
+    "constraints": "门禁探针用 --legacy-peer-deps,peer 不自动装,插件的 @deepseek-ai 依赖必须落在仓库钉版(profile node_modules 永不含 @deepseek-ai,实际解析到宿主树);协议门红线不变(AGPL optional peer 不得手动补装);docs-harness 插件设置区仍受网关命名空间白名单限制,改 settings 安装方式不得动它自有的 loopback 路由;npm publish 属对外动作,须用户明确批准。",
+    "risks_and_rollback": "风险 1:壳复用外部 dsh 时拿不到 token,Electron session 也没有 dsh-auth cookie → 窗口 401;缓解是启动前检查 cookie 并弹框说明,不静默白屏。风险 2:rc.5 后续 rc 再改 RPC 端点形状 → 端点与信封集中在 session-titles 一处,改一处即可。风险 3:存量用户 profile 里残留 live-stats/dsh-skins 会让 rc.5 启动崩 → 两者进 retired,profileUpgradeDecision 命中退休包即强制整目录备份替换。回滚:git 工作树未提交,按批次 revert;钉版回 0.1.1-rc.2 并恢复 manifest 旧版本即回到升级前状态。",
+    "source_target": "源:内嵌 dsh 全家 0.1.1-rc.2 + @linxin666 0.2.2 一代 + dsh-skins/live-stats 在单。目标:内嵌 dsh 全家 0.1.5-rc.1(34 个钉版)+ @linxin666 0.3.20 一代 + skin-center 替代 dsh-skins,live-stats 退出预装。",
+    "versions_artifacts": "产物:package.json/package-lock.json 钉版、build/dsh-compat-0.1.5-rc.1.md 门禁报告、build/web-profile.tar.gz(不入 git)、plugins/preinstall-manifest.json、@aiwaretop/dsh-docs-harness 0.2.2(跨仓,待批准发布)。",
+    "compatibility_rollout": "壳与 dsh 同包分发,授权适配随版本一起到用户手里,无混版窗口;存量 DSH_HOME profile 经 retired 清单强制替换完成清退;用户手工 dsh plugin add 的清单外插件若依赖已删除导出,首启会被上游 loader 判失败——此为上游行为,CHANGELOG 提示用户自行抬版。",
+    "data_safety": "不触碰会话日志与 settings.yaml 写入路径;profile 整目录替换前按既有机制备份到 profiles/<name>-<时间戳>;launch token 与 auth cookie 只在进程内存与 Electron session 中流转,不落盘进仓库或日志外的新位置(dsh.log 本就含启动行,行为不变)。",
+    "monitoring_stop": "每批次验证点:批 1/2 跑 npm test 受影响模块;批 3 跑一轮门禁;批 4 跑门禁到 4/4。停止条件:门禁连续两轮因同一插件失败且上游无兼容版本时停止抬版,改为把该插件移出预装并报告(live-stats 已按此处理);docs-harness 0.2.2 未获批准发布前不抬清单版本,门禁以移除该条目的清单跑通后再补。",
+    "rollback": "工作树未提交,按批次 git checkout 对应文件;钉版与 manifest 回退到 rc.2 一代即恢复原状;docs-harness 跨仓改动独立成提交,未发布前不影响本仓。",
+    "delivery_layers": "合同层:钉版与 manifest 形状;测试层:npm test;运行层:门禁四门 + 壳 npm start 真机启动;安装层:本次不覆盖(dist 与真机安装随下次 release);用户可见层:皮肤中心改为按需装、live-stats 下线,交用户最短确认。"
+  },
+  "acceptance_refs": [
+    "docs/acceptance/dsh-upgrade-0.1.5-rc.1.json"
+  ],
+  "governance": {
+    "acceptance_required": true,
+    "knowledge_impact": "updated",
+    "updated_knowledge_refs": [],
+    "unchanged_reason": null,
+    "governance_settled_at": null
+  },
+  "frozen_at": "2026-09-10T08:43:54+00:00",
+  "plan_fingerprint": "sha256:70803cdf0630f0400f1ce5c2229496d8cb8dd5fc0035979e07e489c2e8d50999"
+}
