@@ -70,7 +70,7 @@ from usage_log import (
     is_enabled as usage_log_enabled,
 )
 from usage_report import USAGE_REPORT_DEFAULT_DAYS, build_report as build_usage_report
-VERSION = "2.18.0"
+VERSION = "2.19.0"
 CONFIG_SCHEMA = "docs-harness/project-config/v13"
 KNOWN_LEGACY_CONFIG_SCHEMAS = {
     f"docs-harness/project-config/v{version}" for version in range(1, 13)
@@ -93,8 +93,11 @@ PLAN_TEMPLATE_RELATIVE_FILES = (
     "profiles/migration-release.json",
 )
 TASK_INPUTS_RELATIVE = ".docs-harness/inputs"
+TASKS_RELATIVE = ".docs-harness/tasks"
+# 不入库、升级不清理的本地约定目录；共用下方嵌套忽略与 local_only_dir_changes 一份判定。
+LOCAL_ONLY_DIRS = (TASK_INPUTS_RELATIVE, TASKS_RELATIVE)
 # 与 usage_log._GITIGNORE_CONTENT 同口径的嵌套忽略（该写法的第 2 次出现，第 3 次再抽）。
-TASK_INPUTS_GITIGNORE_CONTENT = "*\n"
+LOCAL_ONLY_GITIGNORE_CONTENT = "*\n"
 GIT_HOOKS_RELATIVE = "scripts/githooks"
 GIT_HOOK_RELATIVE_FILES = ("pre-commit", "setup.sh")
 MANAGED_MODULE_RELATIVE_FILES = (
@@ -399,13 +402,13 @@ def parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
 _GENERIC_STANDARDS = """
 ## 工作流规则
 
-每条规则自带触发条件；不满足触发条件的部分不启用，无需另行豁免。
+每条规则自带触发条件；不满足触发条件的部分不启用，无需另行豁免。需要停下来等用户的只有三种情况：本文写明的确认点、用户另有要求、原生授权提示。其余步骤不需要用户输入时直接继续，进度说明与下一步动作放在同一条消息里，不以阶段汇报、"是否继续"的征询或不阻塞工作的选项清单收尾。
 
 1. **验收先行**：动手前先把验收条件转写为可执行的验证方式（测试、命令或复现步骤），完成与否以此为准。验收标准明确时直接执行，验证结果随收尾报告交付；仅当验收标准缺失或有歧义、且不同理解会改变方案时，先向用户确认。
 2. **根因优先**：修复 bug 前先定位根因并列出影响面（含同根因可能导致的其他表现）。根因清楚且修复局部、可逆时直接修，根因分析随收尾报告交付；根因跨模块、修复不可逆或存在代价不同的多个方案时，先经用户确认再改代码。
 3. **回归必跑**：交付代码改动前，跑受影响模块的回归验证并附输出（模块级，非仓库级全量；全量测试的触发条件见"测试与验收范围"）。涉及工具 handler/状态机/workflow 的改动不因任务小而豁免：须逐段给出消费链确认证据——改了生产者不查消费者，是隐性回归的首要来源；消费者跨两个以上模块时按第 5 条分头并行确认。
-4. **分批交付**：改动跨模块数据流或预计 >3 个文件时分批执行。批次划分随首批一并报告，每批标注依赖（`B2 ← B1` 或 `独立`）与文件范围；有依赖的批次串行走"改完 → 验证 → 锁定 → 下一批"，互相独立且文件范围不相交的批次按第 5 条并行，各自验证后由主 agent 统一集成验证再锁定。仅当某批含不可逆或高风险动作时，先经用户确认。
-5. **并行优先**：任务拆出多个互不依赖的分支时，按分量选执行方式，不默认串行。单点任务直接做；轻量独立子任务（同时读几个文件、几个独立检索、几条独立命令）用同一条消息内的并行工具调用，不开子智能体；分支各自够重（需多步调研、评审，或文件范围不相交的实施）才同消息并行开子智能体，分支不重则 spawn 开销净亏。子智能体任务书必须带明确目标、验收条件、路径范围与文件白名单，汇报只回结论与证据路径，不回传文件内容。以下保持串行：修改同一文件、更新 CODEMAP/CHANGELOG/TODO/Knowledge 等受管公共文件（由主 agent 收尾统一写）、存在依赖的步骤、每批的验证门。并行不豁免第 3 条：分支回流后主 agent 仍跑一次集成验证。
+4. **分批交付**：改动跨模块数据流或预计 >3 个文件时分批执行。批次划分写入进度清单并随首批一并报告，每批标注依赖（`B2 ← B1` 或 `独立`）与文件范围；有依赖的批次串行走"改完 → 验证 → 锁定 → 下一批"（锁定指验证通过后该批不再回改，是验证门，不是停下汇报的点），互相独立且文件范围不相交的批次按第 5 条并行，各自验证后由主 agent 统一集成验证再锁定。仅当某批含不可逆或高风险动作时，先经用户确认。
+5. **并行优先**：任务拆出多个互不依赖的分支时，按分量选执行方式，不默认串行。单点任务直接做；轻量独立子任务（同时读几个文件、几个独立检索、几条独立命令）用同一条消息内的并行工具调用，不开子智能体；分支各自够重（需多步调研、评审，或文件范围不相交的实施）才同消息并行开子智能体，分支不重则 spawn 开销净亏。子智能体任务书必须带明确目标、验收条件、路径范围与文件白名单，汇报只回结论与证据路径，不回传文件内容；主 agent 核对证据支持结论后才采纳，不直接转述子智能体的结论。以下保持串行：修改同一文件、更新 CODEMAP/CHANGELOG/TODO/Knowledge 等受管公共文件（由主 agent 收尾统一写）、存在依赖的步骤、每批的验证门。并行不豁免第 3 条：分支回流后主 agent 仍跑一次集成验证。
 
 ## 编码质量规范
 
@@ -475,7 +478,7 @@ _GENERIC_STANDARDS = """
 
 ## 收尾
 
-报告实际改动路径、执行命令与退出结果、验收层、未覆盖项和剩余风险。没有证据时不得声称完成。"""
+先列需要用户决定或确认的事项，没有就写"无"；再报告实际改动路径、执行命令与退出结果、验收层、未覆盖项和剩余风险。没有证据时不得声称完成。"""
 
 
 def _managed_content() -> str:
@@ -489,6 +492,7 @@ def _managed_content() -> str:
 - 验收以真实功能为中心：能运行聚焦测试、接口、页面、应用、构建或安装流程时运行最小充分流程；改动产生运行态行为（页面、接口、应用、命令或安装流程）的任务完成后，agent 必须自己走一遍详细的运行态验证（模拟器/本地联调，可用 mock 数据），确认功能流程正常、视觉与交互对用户友好，发现不友好之处直接重新优化并复验，不把功能、视觉或交互体验的验证推给用户；纯文档、只读或不改变行为的任务只做与改动对应的验证；仅真实硬件、系统权限等本地确实无法运行的层准备最低成本环境交用户最短确认。
 - 高风险动作使用原生授权与沙箱，不建立第二套 Harness Gate 或授权协议。
 - Plan/Knowledge/Acceptance/ADR 的输入 JSON 形状、必填字段与 --dry-run 预检见 python3 scripts/harness.py <cmd> --help；校验失败的报错直接附期望形状；一次性输入 JSON 写入 `{TASK_INPUTS_RELATIVE}/`（不入库、升级不清理）。
+- 预计跨多批次或可能经历上下文压缩的长任务，把进度清单写入 `{TASKS_RELATIVE}/<任务名>.md`（不入库、升级不清理）：完成一项勾一项，新发现的事项随时补进去，查进度以这个文件为准，不以对话记录为准。有 Plan 的任务在清单开头写明 Plan 路径，条目按 Plan 的步骤或批次列出、只记进度，不复述 Plan 内容；Plan 是冻结合同，进度不写回 Plan。
 - 需要项目架构或历史事实时，先查当前源码与符号；仍缺关键事实再显式运行 knowledge query，不得全量加载 docs/。
 - 不在没有证据或没有明确维护任务时自动更新 Knowledge、Changelog、TODO 或质量账本。架构决策由主 agent 通过 adr create 登记；决策失效时用 adr settle 废弃或标记被替代。
 - 改动涉及用户可见行为、对外接口或命令契约、版本发布时同步更新 CHANGELOG；任务产生待跟进事项时登记 TODO；不满足触发条件则不更新。
@@ -3026,7 +3030,7 @@ def project_changes(target: Path, source_root: Path) -> list[dict[str, Any]]:
     changes.extend(plan_docs_structure_changes(target))
     changes.extend(asset_structure_changes(target))
     changes.extend(project_doc_changes(target))
-    changes.extend(task_inputs_changes(target))
+    changes.extend(local_only_dir_changes(target))
     cleanup = legacy_cleanup_plan(target)
     changes.extend(
         {"path": path, "action": "remove_owned_legacy"}
@@ -3143,41 +3147,43 @@ def apply_project_install(
     if existing != config_value:
         atomic_write_json(config_path, config_value)
         changed.append(".docs-harness/config.json")
-    changed.extend(apply_task_inputs_dir(target))
+    changed.extend(apply_local_only_dirs(target))
     changed.extend(apply_legacy_cleanup(target, cleanup))
     return list(dict.fromkeys(changed)), cleanup
 
 
-def task_inputs_changes(target: Path) -> list[dict[str, str]]:
-    """一次性输入目录的预览判定：缺嵌套 .gitignore 时报一条 create，否则为空。
+def local_only_dir_changes(target: Path) -> list[dict[str, str]]:
+    """本地约定目录的预览判定：每个缺嵌套 .gitignore 的目录报一条 create，否则为空。
 
     与 plan_docs_structure_changes / asset_structure_changes 同形：project_changes（升级预览
-    与 project diff 的共同来源）汇总它，apply_task_inputs_dir 据它写入，三处同一份判定。
+    与 project diff 的共同来源）汇总它，apply_local_only_dirs 据它写入，三处同一份判定。
     2.16.1 只有 apply 一侧，升级预览列 13 项而实际写入 14 项，diff 也看不到它。
     """
-    if (target / TASK_INPUTS_RELATIVE / ".gitignore").is_file():
-        return []
-    return [{"path": f"{TASK_INPUTS_RELATIVE}/.gitignore", "action": "create"}]
+    return [
+        {"path": f"{relative}/.gitignore", "action": "create"}
+        for relative in LOCAL_ONLY_DIRS
+        if not (target / relative / ".gitignore").is_file()
+    ]
 
 
-def apply_task_inputs_dir(target: Path) -> list[str]:
-    """确保一次性输入 JSON 的约定目录存在且不入库；返回本次实际写入的相对路径。
+def apply_local_only_dirs(target: Path) -> list[str]:
+    """确保本地约定目录存在且不入库；返回本次实际写入的相对路径。
 
-    根因：plan create --content、acceptance record --input 等都要求输入文件位于项目内，
-    但此前没有约定位置；1.x 运行态目录 .docs-harness/task-inputs/ 在 LEGACY_RUNTIME_NAMES
-    内，project upgrade 必清，用它会反复丢文件。inputs/ 不在该元组内，升级不清理。
+    inputs/（2.16.1）：plan create --content、acceptance record --input 等要求输入文件位于
+    项目内，此前没有约定位置；1.x 运行态目录 .docs-harness/task-inputs/ 在
+    LEGACY_RUNTIME_NAMES 内，project upgrade 必清，用它会反复丢文件。
+    tasks/（2.19.0）：长任务的进度清单，上下文压缩后以文件为准。两者都不在该元组内，升级不清理。
 
     嵌套 .gitignore 写法与 usage_log._GITIGNORE_CONTENT 同口径，这是它的第 2 次出现：
-    两处各自保留、互相指向，第 3 次出现时抽公共函数（编码质量规范第 2、10 条）。
+    新增目录只进 LOCAL_ONLY_DIRS，不另写一份；第 3 次出现时抽公共函数（编码质量规范第 2、10 条）。
     已存在的 .gitignore 一律不覆盖——用户可能改过。写入失败不吞：安装器的写入必须炸，
     与 usage_log.append_event 的 best-effort 豁免是两条性质不同的路径。
     """
-    changes = task_inputs_changes(target)
-    if not changes:
-        return []
-    directory = target / TASK_INPUTS_RELATIVE
-    directory.mkdir(parents=True, exist_ok=True)
-    atomic_write_text(directory / ".gitignore", TASK_INPUTS_GITIGNORE_CONTENT)
+    changes = local_only_dir_changes(target)
+    for change in changes:
+        gitignore = target / change["path"]
+        gitignore.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(gitignore, LOCAL_ONLY_GITIGNORE_CONTENT)
     return [change["path"] for change in changes]
 
 
